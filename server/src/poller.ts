@@ -37,8 +37,8 @@ async function structTick() {
 }
 
 export function startPoller() {
-  cron.schedule("*/30 * * * * *", liveTick); // every 30 seconds
-  console.log("[poller] ESPN live scores every 30s");
+  cron.schedule("*/15 * * * * *", liveTick); // every 15 seconds
+  console.log("[poller] ESPN live scores every 15s");
   if (process.env.FOOTBALL_DATA_TOKEN) {
     cron.schedule("*/10 * * * *", structTick); // every 10 minutes
     console.log("[poller] football-data structure sync every 10min");

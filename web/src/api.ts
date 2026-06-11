@@ -335,5 +335,5 @@ export const useLiveMatches = () =>
   useQuery({
     queryKey: ["live"],
     queryFn: () => get<LiveMatch[]>("/api/live"),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
   });
