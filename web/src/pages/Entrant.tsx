@@ -1,10 +1,20 @@
 import { useParams, Link } from "react-router-dom";
-import { useWallchart, type WallchartMatch } from "../api.js";
+import { useWallchart, useLeaderboard, useGroups, type WallchartMatch } from "../api.js";
 
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+const ordinal = (n: number) => {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
+};
+
+function Stat({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+  const isNum = typeof value === "number";
   return (
     <div className="fl-card px-3 py-3 text-center">
-      <div className="font-mono text-2xl leading-none" style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}>
+      <div
+        className={(isNum ? "font-mono text-2xl" : "font-display text-lg") + " leading-tight"}
+        style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}
+      >
         {value}
       </div>
       <div className="mt-1.5 text-[10px] uppercase tracking-[1px] text-muted">{label}</div>
@@ -50,10 +60,22 @@ function MatchRow({ m }: { m: WallchartMatch }) {
 export default function Entrant() {
   const { id } = useParams();
   const { data, isLoading, error } = useWallchart(id!);
+  const { data: leaderboard } = useLeaderboard();
+  const { data: groups } = useGroups();
 
   if (isLoading)
     return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error || !data) return <p className="text-down">Couldn’t load this entrant.</p>;
+
+  const eid = Number(id);
+  const me = leaderboard?.find((e) => e.entrantId === eid);
+  const overallPos = me && leaderboard ? ordinal(1 + leaderboard.filter((e) => e.total > me.total).length) : "–";
+  // Knockout standing: during the group stage everyone is "Group X"; the bracket
+  // rounds (R16 → Final) fill in once the entrant knockout is wired up.
+  let knockoutPos = "—";
+  for (const g of groups ?? []) {
+    if (g.entrants.some((e) => e.entrantId === eid)) { knockoutPos = `Group ${g.group}`; break; }
+  }
 
   const byRound = new Map<string, typeof data.knockout>();
   for (const k of data.knockout) {
@@ -89,12 +111,15 @@ export default function Entrant() {
         </div>
       </div>
 
-      {/* breakdown */}
-      <div className="mb-7 grid max-w-md grid-cols-4 gap-2">
-        <Stat label="Total" value={data.totals.total} accent />
-        <Stat label="Group" value={data.totals.MATCH} />
-        <Stat label="Knockout" value={data.totals.PROGRESSION} />
-        <Stat label="Final/3rd" value={data.totals.FINALTHIRD} />
+      {/* stat cards */}
+      <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+        <Stat label="Total points" value={me?.total ?? data.totals.total} accent />
+        <Stat label="Overall position" value={overallPos} />
+        <Stat label="Knockout position" value={knockoutPos} />
+        <Stat label="Week 1" value={me?.week1 ?? 0} />
+        <Stat label="Week 2" value={me?.week2 ?? 0} />
+        <Stat label="Week 3" value={me?.week3 ?? 0} />
+        <Stat label="Round of 32" value={me?.r32 ?? 0} />
       </div>
 
       {/* group stage */}
