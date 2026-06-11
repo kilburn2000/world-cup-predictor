@@ -286,6 +286,8 @@ export interface Fixture {
   awayCode: string | null;
   homeScore: number | null;
   awayScore: number | null;
+  mostCommonScore?: string | null;
+  mostCommonResult?: "HOME" | "DRAW" | "AWAY" | null;
 }
 export const useFixtures = () =>
   useQuery({ queryKey: ["fixtures"], queryFn: () => get<Fixture[]>("/api/fixtures"), refetchInterval: 30_000 });

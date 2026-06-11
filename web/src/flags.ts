@@ -5,7 +5,7 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
 
 const ISO2: Record<string, string> = {
   algeria: "DZ", argentina: "AR", australia: "AU", austria: "AT", belgium: "BE",
-  bosniaherzegovina: "BA", brazil: "BR", canada: "CA", capeverdeislands: "CV",
+  bosniaherzegovina: "BA", brazil: "BR", canada: "CA", capeverde: "CV",
   colombia: "CO", congodr: "CD", croatia: "HR", curaao: "CW", czechia: "CZ",
   ecuador: "EC", egypt: "EG", france: "FR", germany: "DE", ghana: "GH",
   haiti: "HT", iran: "IR", iraq: "IQ", ivorycoast: "CI", japan: "JP",

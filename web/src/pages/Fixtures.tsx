@@ -59,6 +59,11 @@ export default function Fixtures() {
         <div key={g.date} className="mb-6">
           <h2 className="mb-2 text-[11px] uppercase tracking-[1.8px] text-gold">{g.date}</h2>
           <div className="fl-card overflow-hidden">
+            <div className="hidden border-b border-line px-4 py-1.5 text-[9px] uppercase tracking-wide text-muted sm:grid sm:grid-cols-[52px_1fr_auto_1fr_50px_56px_44px] sm:gap-2">
+              <div /><div /><div /><div />
+              <div className="col-span-2 text-center">Most predicted</div>
+              <div />
+            </div>
             {g.items.map((f) => {
               const live = f.status === "IN_PLAY";
               const done = f.status === "FINISHED";
@@ -67,7 +72,7 @@ export default function Fixtures() {
                   key={f.id}
                   to={`/live/fixtures/${f.id}`}
                   state={{ from: "/live/fixtures", label: "Fixtures" }}
-                  className="grid grid-cols-[58px_1fr_auto_1fr_46px] items-center gap-2 border-t border-line px-4 py-2.5 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft"
+                  className="grid grid-cols-[52px_1fr_auto_1fr_44px] items-center gap-2 border-t border-line px-4 py-2.5 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft sm:grid-cols-[52px_1fr_auto_1fr_50px_56px_44px]"
                 >
                   <div className="font-mono text-[11px] text-muted">{f.kickoff ? londonTime(f.kickoff) : "–"}</div>
                   <Team name={f.home} align="right" />
@@ -79,6 +84,12 @@ export default function Fixtures() {
                     )}
                   </div>
                   <Team name={f.away} align="left" />
+                  <div className="hidden text-center font-mono text-[12px] text-cream sm:block">
+                    {f.mostCommonScore ? f.mostCommonScore.replace("-", "–") : "–"}
+                  </div>
+                  <div className="hidden text-center font-mono text-[10px] text-muted sm:block">
+                    {f.mostCommonResult === "HOME" ? f.homeCode : f.mostCommonResult === "AWAY" ? f.awayCode : f.mostCommonResult === "DRAW" ? "Draw" : "–"}
+                  </div>
                   <div className="text-right">
                     {live ? (
                       <span className="font-mono text-[10px] font-semibold text-[#d9534f]">LIVE</span>

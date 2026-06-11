@@ -5,7 +5,6 @@ import { getMatches } from "./espn.js";
 // ESPN team name -> our DB (football-data) name, for the few that differ.
 export const norm = (s: string) => String(s).toLowerCase().replace(/[^a-z]/g, "");
 export const ESPN_ALIAS: Record<string, string> = {
-  [norm("Cape Verde")]: norm("Cape Verde Islands"),
   [norm("DR Congo")]: norm("Congo DR"),
   [norm("Côte d'Ivoire")]: norm("Ivory Coast"),
   [norm("USA")]: norm("United States"),

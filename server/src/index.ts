@@ -502,20 +502,49 @@ app.get("/api/fixtures", async () => {
     left join teams at on at.id = m.away_team_id
     order by m.kickoff_utc asc nulls last, m.id
   `;
-  return (rows as any[]).map((m) => ({
-    id: m.id,
-    stage: m.stage,
-    group: m.grp,
-    matchday: m.matchday,
-    kickoff: m.kickoff_utc,
-    status: m.status,
-    home: m.home,
-    homeCode: m.home_code,
-    away: m.away,
-    awayCode: m.away_code,
-    homeScore: m.hg,
-    awayScore: m.ag,
-  }));
+
+  // aggregate group-match predictions for the most-common score + result per fixture
+  const preds = await sql`
+    select p.match_id mid, p.pred_home_team_id ph, p.pred_home_goals phg, p.pred_away_goals pag, m.home_team_id mh
+    from predictions p join matches m on m.id = p.match_id
+    where p.scope = 'MATCH'
+  `;
+  const agg = new Map<number, { score: Map<string, number>; result: { HOME: number; DRAW: number; AWAY: number } }>();
+  for (const p of preds as any[]) {
+    const h = p.ph === p.mh ? p.phg : p.pag; // align to the fixture's home/away
+    const a = p.ph === p.mh ? p.pag : p.phg;
+    let g = agg.get(p.mid);
+    if (!g) agg.set(p.mid, (g = { score: new Map(), result: { HOME: 0, DRAW: 0, AWAY: 0 } }));
+    g.score.set(`${h}-${a}`, (g.score.get(`${h}-${a}`) ?? 0) + 1);
+    g.result[h > a ? "HOME" : h < a ? "AWAY" : "DRAW"]++;
+  }
+  const modeScore = (s: Map<string, number>) => {
+    let best: string | null = null, bc = 0;
+    for (const [k, c] of s) if (c > bc) { best = k; bc = c; }
+    return best;
+  };
+  const modeResult = (r: { HOME: number; DRAW: number; AWAY: number }) =>
+    (["HOME", "DRAW", "AWAY"] as const).reduce((a, b) => (r[b] > r[a] ? b : a));
+
+  return (rows as any[]).map((m) => {
+    const g = agg.get(m.id);
+    return {
+      id: m.id,
+      stage: m.stage,
+      group: m.grp,
+      matchday: m.matchday,
+      kickoff: m.kickoff_utc,
+      status: m.status,
+      home: m.home,
+      homeCode: m.home_code,
+      away: m.away,
+      awayCode: m.away_code,
+      homeScore: m.hg,
+      awayScore: m.ag,
+      mostCommonScore: g ? modeScore(g.score) : null,
+      mostCommonResult: g ? modeResult(g.result) : null,
+    };
+  });
 });
 
 // One fixture + every entrant's prediction and the points it scores for this game.
