@@ -14,7 +14,7 @@ import { fd, mapGroup } from "./footballData.js";
 import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
-import { dbNameMap, resolveEspn } from "./sync.js";
+import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout } from "./wc.js";
 import { runImport, savePredictions, checkUnresolved } from "./importSheet.js";
 import { extractFromPhoto, toPredictions } from "./photoImport.js";
@@ -407,17 +407,13 @@ app.get("/api/live", async () => {
     let minute: number | null = null;
     let half: string | null = null;
     let period: number | null = null;
-    let events: any[] = [];
+    // synthesised goal log (already aligned to this match's home/away)
+    const events: any[] = (liveEvents.get(m.id) ?? []).slice().sort((a, b) => a.minute - b.minute);
     if (enrich) {
-      const flip = enrich.homeId !== m.mh;
       const liveNow = m.status === "IN_PLAY";
       minute = liveNow ? enrich.espn.minute : null;
       half = liveNow ? enrich.espn.half : null;
       period = liveNow ? enrich.espn.period : null;
-      events = (enrich.espn.events ?? []).map((ev: any) => ({
-        ...ev,
-        team: flip ? (ev.team === "home" ? "away" : "home") : ev.team,
-      }));
     }
 
     return {

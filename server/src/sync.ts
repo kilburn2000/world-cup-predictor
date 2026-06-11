@@ -20,6 +20,27 @@ export async function dbNameMap(): Promise<Map<string, number>> {
 export const resolveEspn = (name: string, byNorm: Map<string, number>) =>
   byNorm.get(ESPN_ALIAS[norm(name)] ?? norm(name)) ?? null;
 
+// Goal events synthesised from score changes — ESPN's free feed gives us the
+// score but no event log, so we infer a goal whenever a side's tally rises.
+// Keyed by DB match id, aligned to the DB match's home/away. In-memory (rebuilt
+// from the score on restart). No scorer names or cards — that data isn't in the feed.
+export type SynthEvent = { minute: number; type: "goal"; team: "home" | "away" };
+export const liveEvents = new Map<number, SynthEvent[]>();
+
+function reconcileGoals(matchId: number, side: "home" | "away", target: number, minute: number) {
+  const list = liveEvents.get(matchId) ?? [];
+  const current = list.filter((e) => e.team === side).length;
+  if (current < target) {
+    for (let i = current; i < target; i++) list.push({ minute, type: "goal", team: side });
+  } else if (current > target) {
+    let remove = current - target; // VAR/correction — drop the most recent of that side
+    for (let i = list.length - 1; i >= 0 && remove > 0; i--) {
+      if (list[i].team === side) { list.splice(i, 1); remove--; }
+    }
+  }
+  liveEvents.set(matchId, list);
+}
+
 // Pull live scores from ESPN and update matched fixtures. Returns how many
 // matches changed (so the poller only re-scores when something moved).
 export async function syncFromEspn(): Promise<number> {
@@ -41,9 +62,10 @@ export async function syncFromEspn(): Promise<number> {
          or (home_team_id = ${awayId} and away_team_id = ${homeId})
       limit 1
     `;
-    // Lock a match once it's done — the result never changes, so we don't
-    // re-process it (or let a late ESPN edit stomp it). Admin override aside.
-    if (!dbm || dbm.result_overridden || dbm.status === "FINISHED") continue;
+    // Lock a match once it's done WITH a recorded score — the result won't
+    // change. A FINISHED row with null goals is bad data (e.g. clobbered), so we
+    // still allow ESPN to correct it. Admin override always wins.
+    if (!dbm || dbm.result_overridden || (dbm.status === "FINISHED" && dbm.home_goals !== null)) continue;
 
     const status = m.completed || m.state === "post" ? "FINISHED" : m.state === "in" ? "IN_PLAY" : "SCHEDULED";
     const playing = status === "IN_PLAY" || status === "FINISHED";
@@ -54,6 +76,13 @@ export async function syncFromEspn(): Promise<number> {
     if (status === "FINISHED") {
       if (m.winner) winnerId = m.winner === "home" ? homeId : awayId;
       else winnerId = hg > ag ? dbm.home_team_id : hg < ag ? dbm.away_team_id : null;
+    }
+
+    // keep the synthesised goal log in step with the score (handles both new
+    // goals and the initial backfill when the server starts mid-match)
+    if (playing) {
+      reconcileGoals(dbm.id, "home", hg ?? 0, m.minute ?? 0);
+      reconcileGoals(dbm.id, "away", ag ?? 0, m.minute ?? 0);
     }
 
     if (dbm.status !== status || dbm.home_goals !== hg || dbm.away_goals !== ag) {
