@@ -11,6 +11,7 @@ import Scoring from "./pages/Scoring.js";
 import Upload from "./pages/Upload.js";
 import Entrant from "./pages/Entrant.js";
 import Players from "./pages/Players.js";
+import Prizes from "./pages/Prizes.js";
 import Admin from "./pages/Admin.js";
 import ManageEntrants from "./pages/ManageEntrants.js";
 import EditPredictions from "./pages/EditPredictions.js";
@@ -32,6 +33,7 @@ function labelFor(pathname: string): string {
   if (pathname === "/") return "Live Standings";
   if (pathname.startsWith("/stats")) return "Stats";
   if (pathname.startsWith("/players")) return "Players";
+  if (pathname.startsWith("/prizes")) return "Prizes";
   if (pathname.startsWith("/table")) return "Group Tables";
   if (pathname.startsWith("/admin")) return "Admin";
   if (pathname.startsWith("/manage")) return "Manage Entrants";
@@ -79,6 +81,7 @@ export default function App() {
           <nav className="-mx-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <NavLink to="/" className={tab} end>Standings</NavLink>
             <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
+            <NavLink to="/prizes" className={tab}>Prizes</NavLink>
             <NavLink to="/admin" className={adminBtn}>Admin</NavLink>
           </nav>
         </div>
@@ -95,6 +98,7 @@ export default function App() {
           <Route path="/stats/knockout" element={<WCKnockout />} />
           <Route path="/live/*" element={<Navigate to="/stats/scores" replace />} />
           <Route path="/players" element={<Players />} />
+          <Route path="/prizes" element={<Prizes />} />
           <Route path="/entrant/:id" element={<Entrant />} />
           <Route path="/entrant/:id/edit" element={<AuthGate><EditPredictions /></AuthGate>} />
           <Route path="/table" element={<LiveTable />} />
