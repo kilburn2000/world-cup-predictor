@@ -126,8 +126,8 @@ function MatchCard({ m }: { m: LiveMatch }) {
 
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="text-right">
-            <div className="font-display text-2xl leading-tight text-cream">
-              {m.home} <span className="align-middle">{flagFor(m.home)}</span>
+            <div className="flex items-center justify-end gap-2 font-display text-2xl leading-tight text-cream">
+              {m.home}<span className="align-middle">{flagFor(m.home)}</span>
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.homeCode}</div>
           </div>
@@ -143,8 +143,8 @@ function MatchCard({ m }: { m: LiveMatch }) {
             )}
           </div>
           <div className="text-left">
-            <div className="font-display text-2xl leading-tight text-cream">
-              <span className="align-middle">{flagFor(m.away)}</span> {m.away}
+            <div className="flex items-center gap-2 font-display text-2xl leading-tight text-cream">
+              <span className="align-middle">{flagFor(m.away)}</span>{m.away}
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.awayCode}</div>
           </div>
@@ -153,18 +153,23 @@ function MatchCard({ m }: { m: LiveMatch }) {
 
       {/* most common — always shown under the score */}
       {m.mostCommonScore && (
-        <div className="flex items-center justify-center gap-1.5 border-b border-line px-5 py-2.5 text-[11.5px] text-muted sm:px-6">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 border-b border-line px-5 py-2.5 text-[11.5px] text-muted sm:px-6">
           <span className="text-[9px] uppercase tracking-wide">Most predicted</span>
-          <span className="font-mono text-cream">{m.mostCommonScore.replace("-", "–")}</span>
+          <span>
+            <span className="font-mono text-cream">{m.mostCommonScore.replace("-", "–")}</span> ({m.mostCommonScoreCount})
+          </span>
           <span>·</span>
-          {m.mostCommonResult === "DRAW" ? (
-            <span>draw</span>
-          ) : (
-            <span className="inline-flex items-center gap-1">
-              {flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}
-              {(m.mostCommonResult === "HOME" ? m.home : m.away)} win
-            </span>
-          )}
+          <span className="inline-flex items-center gap-1">
+            {m.mostCommonResult === "DRAW" ? (
+              "draw"
+            ) : (
+              <>
+                {flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}
+                {(m.mostCommonResult === "HOME" ? m.home : m.away)} win
+              </>
+            )}
+            {" "}({m.mostCommonResultCount})
+          </span>
         </div>
       )}
 

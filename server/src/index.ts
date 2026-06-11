@@ -427,7 +427,7 @@ app.get("/api/live", async () => {
 
   // most-common predicted score + result for a match (aligned to its home/away)
   const mostCommon = (preds: any[], mh: number) => {
-    if (!preds?.length) return { score: null as string | null, result: null as "HOME" | "DRAW" | "AWAY" | null };
+    if (!preds?.length) return { score: null as string | null, scoreCount: 0, result: null as "HOME" | "DRAW" | "AWAY" | null, resultCount: 0 };
     const scoreCount = new Map<string, number>();
     const resultCount = { HOME: 0, DRAW: 0, AWAY: 0 };
     for (const p of preds) {
@@ -439,7 +439,7 @@ app.get("/api/live", async () => {
     let score: string | null = null, sc = 0;
     for (const [k, c] of scoreCount) if (c > sc) { score = k; sc = c; }
     const result = (["HOME", "DRAW", "AWAY"] as const).reduce((a, b) => (resultCount[b] > resultCount[a] ? b : a));
-    return { score, result };
+    return { score, scoreCount: sc, result, resultCount: resultCount[result] };
   };
 
   // ESPN live enrichment (minute + events), keyed by DB team-id pair
@@ -505,7 +505,9 @@ app.get("/api/live", async () => {
       homeScore: hg,
       awayScore: ag,
       mostCommonScore: mc.score,
+      mostCommonScoreCount: mc.scoreCount,
       mostCommonResult: mc.result,
+      mostCommonResultCount: mc.resultCount,
       events,
       board,
     };

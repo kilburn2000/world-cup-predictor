@@ -67,7 +67,7 @@ export default function FixtureDetail() {
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="text-right">
             <div className="flex items-center justify-end gap-2 font-display text-2xl text-cream">
-              {m.home ?? "TBD"} <span>{flagFor(m.home)}</span>
+              {m.home ?? "TBD"}<span>{flagFor(m.home)}</span>
             </div>
             {m.homeCode && <div className="mt-0.5 font-mono text-[11px] text-muted">{m.homeCode}</div>}
           </div>
@@ -76,7 +76,7 @@ export default function FixtureDetail() {
           </div>
           <div className="text-left">
             <div className="flex items-center gap-2 font-display text-2xl text-cream">
-              <span>{flagFor(m.away)}</span> {m.away ?? "TBD"}
+              <span>{flagFor(m.away)}</span>{m.away ?? "TBD"}
             </div>
             {m.awayCode && <div className="mt-0.5 font-mono text-[11px] text-muted">{m.awayCode}</div>}
           </div>
