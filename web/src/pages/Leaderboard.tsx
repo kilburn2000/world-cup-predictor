@@ -10,7 +10,7 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
       {has ? (
         <>
           <div className="mt-1 truncate font-display text-base text-cream">
-            {l!.name}{l!.others ? ` + ${l!.others} other${l!.others > 1 ? "s" : ""}` : ""}
+            {l!.others ? `${l!.others + 1} entrants` : l!.name}
           </div>
           <div className="font-mono text-[11px] text-gold">{l!.value} {l!.value === 1 ? unit : unitPlural ?? unit + "s"}</div>
         </>
