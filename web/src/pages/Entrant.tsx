@@ -115,7 +115,7 @@ export default function Entrant() {
       <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         <Stat label="Total points" value={me?.total ?? data.totals.total} accent />
         <Stat label="Overall position" value={overallPos} />
-        <Stat label="Knockout position" value={knockoutPos} />
+        <Stat label="Knockout" value={knockoutPos} />
         <Stat label="Week 1" value={me?.week1 ?? 0} />
         <Stat label="Week 2" value={me?.week2 ?? 0} />
         <Stat label="Week 3" value={me?.week3 ?? 0} />

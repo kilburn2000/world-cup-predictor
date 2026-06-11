@@ -4,8 +4,8 @@ import { flagFor } from "../flags.js";
 
 const TIER: Record<string, { label: string; bg: string; fg: string }> = {
   exact: { label: "Exact", bg: "rgba(201,168,106,0.18)", fg: "#c9a86a" },
-  diff: { label: "Goal diff", bg: "rgba(107,191,134,0.16)", fg: "#6bbf86" },
-  result: { label: "Result", bg: "rgba(141,147,136,0.18)", fg: "#b9bdb4" },
+  result: { label: "Result", bg: "rgba(107,191,134,0.16)", fg: "#6bbf86" },
+  diff: { label: "Partial", bg: "rgba(141,147,136,0.18)", fg: "#b9bdb4" },
   miss: { label: "No points", bg: "rgba(217,146,106,0.12)", fg: "#d9926a" },
 };
 
