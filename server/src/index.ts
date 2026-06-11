@@ -3,6 +3,10 @@ import { scryptSync, timingSafeEqual } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
 import { z } from "zod";
 import { DEFAULT_SCORING } from "@wc/shared";
 import { sql } from "./db/index.js";
@@ -647,6 +651,18 @@ app.patch("/api/admin/matches/:id", async (req: any, reply) => {
   await recomputeAll();
   return { ok: true };
 });
+
+// In production the same service serves the built React app. Registered after
+// all /api routes so they take precedence; everything else falls back to the
+// SPA's index.html for client-side routing.
+const webDist = join(dirname(fileURLToPath(import.meta.url)), "../../web/dist");
+if (existsSync(webDist)) {
+  await app.register(fastifyStatic, { root: webDist, wildcard: false });
+  app.setNotFoundHandler((req, reply) => {
+    if (req.raw.url?.startsWith("/api")) reply.code(404).send({ error: "not found" });
+    else reply.sendFile("index.html");
+  });
+}
 
 await app.listen({ port: PORT, host: "0.0.0.0" });
 startPoller();
