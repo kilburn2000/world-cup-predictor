@@ -1,0 +1,114 @@
+import { useEffect, useRef, useState } from "react";
+import { Routes, Route, NavLink, Navigate, useLocation } from "react-router-dom";
+import Leaderboard from "./pages/Leaderboard.js";
+import LiveScores from "./pages/LiveScores.js";
+import Fixtures from "./pages/Fixtures.js";
+import FixtureDetail from "./pages/FixtureDetail.js";
+import WCGroups from "./pages/WCGroups.js";
+import WCKnockout from "./pages/WCKnockout.js";
+import LiveTable from "./pages/LiveTable.js";
+import Scoring from "./pages/Scoring.js";
+import Upload from "./pages/Upload.js";
+import Entrant from "./pages/Entrant.js";
+import Players from "./pages/Players.js";
+import Trends from "./pages/Trends.js";
+import Admin from "./pages/Admin.js";
+import ManageEntrants from "./pages/ManageEntrants.js";
+import EditPredictions from "./pages/EditPredictions.js";
+import Loader from "./components/Loader.js";
+import LiveToasts from "./components/LiveToasts.js";
+import AuthGate from "./components/AuthGate.js";
+
+// Text nav item: gold text + short gold underline when active (matches design).
+const tab = ({ isActive }: { isActive: boolean }) =>
+  "shrink-0 whitespace-nowrap border-b-2 pb-0.5 text-sm transition-colors " +
+  (isActive ? "border-gold font-semibold text-cream" : "border-transparent text-muted hover:text-cream");
+
+// Admin: a separate rounded pill button.
+const adminBtn = ({ isActive }: { isActive: boolean }) =>
+  "shrink-0 whitespace-nowrap rounded-lg border px-3.5 py-1.5 text-sm transition-colors " +
+  (isActive ? "border-gold bg-gold-soft text-cream" : "border-line text-muted hover:border-gold hover:text-cream");
+
+function labelFor(pathname: string): string {
+  if (pathname === "/") return "Live Standings";
+  if (pathname.startsWith("/live")) return "Live Scores";
+  if (pathname.startsWith("/players")) return "Players";
+  if (pathname.startsWith("/trends")) return "Trends";
+  if (pathname.startsWith("/table")) return "Group Tables";
+  if (pathname.startsWith("/admin")) return "Admin";
+  if (pathname.startsWith("/manage")) return "Manage Entrants";
+  if (pathname.startsWith("/upload")) return "Add Entrant";
+  if (pathname.startsWith("/scoring")) return "Scoring";
+  if (pathname.endsWith("/edit")) return "Edit predictions";
+  if (pathname.startsWith("/entrant")) return "Entrant";
+  return "Whitey’s World Cup Sweepstake";
+}
+
+export default function App() {
+  const location = useLocation();
+  const [loading, setLoading] = useState(true);
+  const [label, setLabel] = useState("Whitey’s World Cup Sweepstake");
+  const firstLoad = useRef(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1100);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (firstLoad.current) {
+      firstLoad.current = false;
+      return;
+    }
+    setLabel(labelFor(location.pathname));
+    setLoading(true);
+    const t = setTimeout(() => setLoading(false), 2000);
+    return () => clearTimeout(t);
+  }, [location.pathname]);
+
+  return (
+    <div className="min-h-screen pb-20">
+      <LiveToasts />
+      <header className="sticky top-0 z-30 border-b border-line bg-pitch-950/75 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <NavLink to="/" className="flex items-center gap-3">
+            <img src="/whiteys-crest.png" alt="" className="h-[72px] w-[72px] shrink-0 object-contain sm:h-20 sm:w-20" />
+            <div>
+              <div className="font-display text-lg font-medium leading-none text-cream sm:text-xl whitespace-nowrap">Whitey’s World Cup</div>
+              <div className="mt-[3px] text-[10px] uppercase tracking-[1.8px] text-muted whitespace-nowrap">2026 Sweepstake</div>
+            </div>
+          </NavLink>
+          <nav className="-mx-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <NavLink to="/" className={tab} end>Standings</NavLink>
+            <NavLink to="/live/scores" className={tab({ isActive: location.pathname.startsWith("/live") })}>Live</NavLink>
+            <NavLink to="/trends" className={tab}>Trends</NavLink>
+            <NavLink to="/admin" className={adminBtn}>Admin</NavLink>
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        <Routes>
+          <Route path="/" element={<Leaderboard />} />
+          <Route path="/live" element={<Navigate to="/live/scores" replace />} />
+          <Route path="/live/scores" element={<LiveScores />} />
+          <Route path="/live/fixtures" element={<Fixtures />} />
+          <Route path="/live/fixtures/:id" element={<FixtureDetail />} />
+          <Route path="/live/groups" element={<WCGroups />} />
+          <Route path="/live/knockout" element={<WCKnockout />} />
+          <Route path="/players" element={<Players />} />
+          <Route path="/trends" element={<Trends />} />
+          <Route path="/entrant/:id" element={<Entrant />} />
+          <Route path="/entrant/:id/edit" element={<AuthGate><EditPredictions /></AuthGate>} />
+          <Route path="/table" element={<LiveTable />} />
+          <Route path="/admin" element={<AuthGate><Admin /></AuthGate>} />
+          <Route path="/upload" element={<AuthGate><Upload /></AuthGate>} />
+          <Route path="/scoring" element={<AuthGate><Scoring /></AuthGate>} />
+          <Route path="/manage" element={<AuthGate><ManageEntrants /></AuthGate>} />
+        </Routes>
+      </main>
+
+      {loading && <Loader label={label} />}
+    </div>
+  );
+}

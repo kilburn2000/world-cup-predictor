@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+drizzle/.migrations/
+
+# personal data — entrants' predictions, never commit
+photos/
+*.xlsx
+/Screenshot*.png
+
+# local-only backups / caches
+.reskin-backup-*/
+.cache/

@@ -1,0 +1,143 @@
+import { useParams, useLocation, Link } from "react-router-dom";
+import { useFixture } from "../api.js";
+import { flagFor } from "../flags.js";
+
+const TIER: Record<string, { label: string; bg: string; fg: string }> = {
+  exact: { label: "Exact", bg: "rgba(201,168,106,0.18)", fg: "#c9a86a" },
+  diff: { label: "Goal diff", bg: "rgba(107,191,134,0.16)", fg: "#6bbf86" },
+  result: { label: "Result", bg: "rgba(141,147,136,0.18)", fg: "#b9bdb4" },
+  miss: { label: "No points", bg: "rgba(217,146,106,0.12)", fg: "#d9926a" },
+};
+
+function initials(name: string) {
+  return name.split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
+}
+
+const STAGE: Record<string, string> = { GROUP: "Group", LAST_32: "Round of 32", LAST_16: "Round of 16", QF: "Quarter-final", SF: "Semi-final", THIRD_PLACE: "Third place", FINAL: "Final" };
+
+export default function FixtureDetail() {
+  const { id } = useParams();
+  const loc = useLocation();
+  const back = (loc.state as { from?: string; label?: string } | null) ?? {};
+  const backTo = back.from ?? "/live/fixtures";
+  const backLabel = back.label ?? "Fixtures";
+  const { data, isLoading, error } = useFixture(id!);
+
+  if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
+  if (error || !data) return <p className="text-down">Couldn’t load this fixture.</p>;
+
+  const m = data.match;
+  const stage = m.stage === "GROUP" && m.group ? `Group ${m.group}` : STAGE[m.stage] ?? m.stage;
+  const fmt = m.kickoff
+    ? new Date(m.kickoff).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }) + " BST"
+    : "";
+  const winners = data.board.filter((b) => b.points > 0).length;
+
+  // most common predicted scoreline
+  const pickCounts = new Map<string, number>();
+  for (const b of data.board) pickCounts.set(b.pick, (pickCounts.get(b.pick) ?? 0) + 1);
+  let topPick = "";
+  let topPickCount = 0;
+  for (const [p, c] of pickCounts) if (c > topPickCount) { topPick = p; topPickCount = c; }
+
+  // highest scorer(s) for this fixture
+  const maxPts = data.board.reduce((mx, b) => Math.max(mx, b.points), 0);
+  const topScorers = data.board.filter((b) => b.points === maxPts);
+  const scorerLabel =
+    topScorers.length === 1
+      ? topScorers[0].name
+      : `${topScorers[0].name} + ${topScorers.length - 1} other${topScorers.length - 1 > 1 ? "s" : ""}`;
+
+  return (
+    <div className="fl-enter mx-auto max-w-2xl">
+      <div className="mb-3 text-[11px] uppercase tracking-[1.8px]">
+        <Link to={backTo} className="text-muted hover:text-cream">← {backLabel}</Link>
+      </div>
+
+      <div className="fl-card mb-5 px-5 py-5">
+        <div className="mb-3 flex items-center justify-between text-[11px] uppercase tracking-[1px] text-muted">
+          <span>{stage}</span>
+          <span>{m.status === "IN_PLAY" ? "Live" : m.status === "FINISHED" ? "Full time" : fmt}</span>
+        </div>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <div className="text-right">
+            <div className="flex items-center justify-end gap-2 font-display text-2xl text-cream">
+              {m.home ?? "TBD"} <span>{flagFor(m.home)}</span>
+            </div>
+            {m.homeCode && <div className="mt-0.5 font-mono text-[11px] text-muted">{m.homeCode}</div>}
+          </div>
+          <div className="font-mono text-3xl text-cream">
+            {data.played ? `${m.homeScore}–${m.awayScore}` : <span className="text-xl text-muted">v</span>}
+          </div>
+          <div className="text-left">
+            <div className="flex items-center gap-2 font-display text-2xl text-cream">
+              <span>{flagFor(m.away)}</span> {m.away ?? "TBD"}
+            </div>
+            {m.awayCode && <div className="mt-0.5 font-mono text-[11px] text-muted">{m.awayCode}</div>}
+          </div>
+        </div>
+      </div>
+
+      {data.board.length > 0 && (
+        <div className="mb-5 grid grid-cols-2 gap-3">
+          <div className="fl-card p-4">
+            <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most common prediction</div>
+            <div className="mt-1 font-mono text-2xl text-cream">{topPick ? topPick.replace("-", "–") : "–"}</div>
+            <div className="text-[11px] text-muted">{topPickCount} {topPickCount === 1 ? "entrant" : "entrants"}</div>
+          </div>
+          <div className="fl-card p-4">
+            <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most points</div>
+            {data.played && maxPts > 0 ? (
+              <>
+                <div className="mt-1 truncate font-display text-lg text-cream">{scorerLabel}</div>
+                <div className="font-mono text-[11px] text-gold">+{maxPts} pts</div>
+              </>
+            ) : (
+              <div className="mt-1 text-sm text-muted">{data.played ? "No one scored" : "Not played yet"}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="font-display text-lg text-cream">Points this game</h2>
+        {data.board.length > 0 && (
+          <span className="text-[12px] text-muted">
+            {data.played ? <><span className="font-mono text-gold">{winners}</span> scored</> : "predictions"}
+          </span>
+        )}
+      </div>
+
+      {data.board.length === 0 ? (
+        <p className="fl-card px-5 py-8 text-center text-[13px] text-muted">
+          {m.stage === "GROUP"
+            ? "No predictions for this fixture."
+            : "Knockout games aren’t scored per-game — they count toward each entrant’s progression points."}
+        </p>
+      ) : (
+        <div className="fl-card overflow-hidden">
+          <div className="grid grid-cols-[30px_1fr_54px_88px_46px] items-center px-4 py-2 text-[10px] uppercase tracking-[1.5px] text-muted">
+            <div>#</div><div>Entrant</div><div className="text-center">Pick</div><div className="text-center">Outcome</div><div className="text-right">Pts</div>
+          </div>
+          {data.board.map((b, i) => {
+            const t = TIER[b.tier];
+            return (
+              <Link key={b.entrantId} to={`/entrant/${b.entrantId}`} className="grid grid-cols-[30px_1fr_54px_88px_46px] items-center border-t border-line px-4 py-2.5 transition-colors hover:bg-gold-soft">
+                <div className="font-mono text-xs text-muted">{i + 1}</div>
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">{initials(b.name)}</div>
+                  <div className="text-[13.5px] text-cream">{b.name}</div>
+                </div>
+                <div className="text-center font-mono text-[13px]">{b.pick}</div>
+                <div className="text-center">
+                  {data.played && <span className="rounded px-2 py-0.5 font-mono text-[10.5px]" style={{ background: t.bg, color: t.fg }}>{t.label}</span>}
+                </div>
+                <div className="text-right font-mono text-base" style={{ color: data.played ? t.fg : "#8d9388" }}>{data.played ? `+${b.points}` : "–"}</div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
