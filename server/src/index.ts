@@ -92,6 +92,25 @@ app.get("/api/leaderboard", async () => {
   return rows;
 });
 
+// Fun stats for the standings — leaders by various measures, with ties as
+// "name + N others".
+app.get("/api/stats", async () => {
+  const rows = (await sql`
+    select e.name,
+      count(*) filter (where (s.breakdown->>'exact')::boolean)::int as exact_cnt,
+      count(*) filter (where (s.breakdown->>'outcome')::boolean)::int as outcome_cnt
+    from entrants e
+    left join scores s on s.entrant_id = e.id and s.kind = 'MATCH'
+    group by e.id, e.name
+  `) as any[];
+  const leader = (key: string) => {
+    const max = rows.reduce((mx, r) => Math.max(mx, r[key]), 0);
+    const names = rows.filter((r) => r[key] === max && max > 0).map((r) => r.name).sort();
+    return { value: max, name: names[0] ?? null, others: Math.max(0, names.length - 1) };
+  };
+  return { mostExact: leader("exact_cnt"), mostResults: leader("outcome_cnt") };
+});
+
 // Knockout competition group tables: each entrant is scored ONLY on their own
 // World Cup group's fixtures (entrant Group A ⇒ WC Group A games, etc.), split by
 // matchday (Week 1/2/3) + total. Ranked by total; top 2 qualify.

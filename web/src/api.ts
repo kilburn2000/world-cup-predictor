@@ -49,6 +49,18 @@ export interface EntrantGroup {
 export const useGroups = () =>
   useQuery({ queryKey: ["groups"], queryFn: () => get<EntrantGroup[]>("/api/groups") });
 
+export interface StatLeader {
+  value: number;
+  name: string | null;
+  others: number;
+}
+export interface Stats {
+  mostExact: StatLeader;
+  mostResults: StatLeader;
+}
+export const useStats = () =>
+  useQuery({ queryKey: ["stats"], queryFn: () => get<Stats>("/api/stats") });
+
 export const useTable = () =>
   useQuery({ queryKey: ["table"], queryFn: () => get<GroupTable[]>("/api/table") });
 
