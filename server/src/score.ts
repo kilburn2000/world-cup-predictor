@@ -97,11 +97,12 @@ export async function recomputeAll(): Promise<number> {
     }
   }
 
-  // NOTE: knockout SCORELINE scoring (outcome + each team's goals + exact, like a
-  // group game) is still to be wired in pending the rules — for now the knockout
-  // award is the team-in-position bonus above (cfg.knockoutTeam). The Final is
-  // just another round in PROGRESSION, so a separate final/third winner bonus is
-  // intentionally gone.
+  // KNOCKOUT RULES (confirmed): each tie is scored like a group game — outcome +
+  // each team's goals + exact bonus (up to 5) — PLUS cfg.knockoutTeam per
+  // correctly-positioned team (2 a tie → up to +2), so up to 7 total. The
+  // per-match scoreline+position scoring above replaces the old progression once
+  // the knockout bracket resolves; the team-in-position bonus uses cfg.knockoutTeam
+  // (currently applied set-wise as a stopgap until the R32 fixtures are drawn).
 
   return written;
 }

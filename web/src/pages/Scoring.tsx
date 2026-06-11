@@ -95,7 +95,11 @@ export default function Scoring() {
         <h3 className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[1.5px] text-gold">
           Knockouts
         </h3>
-        <NumberRow label="Correct team in position" hint="extra, for placing a team in the right knockout slot" value={cfg.knockoutTeam} onChange={(v) => set("knockoutTeam", v)} />
+        <p className="mb-2 text-[12px] text-muted">
+          A knockout tie is scored the same as a group game (up to {cfg.outcome + cfg.teamGoals * 2 + cfg.exactBonus}),
+          plus the bonus below per correctly-placed team — up to {cfg.outcome + cfg.teamGoals * 2 + cfg.exactBonus + cfg.knockoutTeam * 2} in total.
+        </p>
+        <NumberRow label="Correct team in position" hint="per team you place in the right slot (2 a tie)" value={cfg.knockoutTeam} onChange={(v) => set("knockoutTeam", v)} />
       </div>
 
       <button onClick={save} disabled={saving} className="btn-gold w-full py-3.5 text-sm">

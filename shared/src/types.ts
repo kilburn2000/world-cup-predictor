@@ -44,7 +44,7 @@ export const DEFAULT_SCORING: ScoringConfig = {
   outcome: 1,
   teamGoals: 1,
   exactBonus: 2,
-  knockoutTeam: 2,
+  knockoutTeam: 1, // per correctly-positioned team (2 teams a tie → up to +2, total up to 7)
 };
 
 export interface GroupScoreBreakdown {
