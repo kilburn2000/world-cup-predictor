@@ -30,7 +30,7 @@ const adminBtn = () =>
 
 function labelFor(pathname: string): string {
   if (pathname === "/") return "Live Standings";
-  if (pathname.startsWith("/live")) return "Live Scores";
+  if (pathname.startsWith("/live")) return "Stats";
   if (pathname.startsWith("/players")) return "Players";
   if (pathname.startsWith("/table")) return "Group Tables";
   if (pathname.startsWith("/admin")) return "Admin";
@@ -78,7 +78,7 @@ export default function App() {
           </NavLink>
           <nav className="-mx-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <NavLink to="/" className={tab} end>Standings</NavLink>
-            <NavLink to="/live/scores" className={tab({ isActive: location.pathname.startsWith("/live") })}>Live</NavLink>
+            <NavLink to="/live/scores" className={tab({ isActive: location.pathname.startsWith("/live") })}>Stats</NavLink>
             <NavLink to="/admin" className={adminBtn}>Admin</NavLink>
           </nav>
         </div>
