@@ -102,29 +102,72 @@ function Knockout() {
   );
 }
 
+type Phase = "week1" | "week2" | "week3" | "r32";
+
+// Leaderboard showing only one phase's points (and ranked by them).
+function PhaseBoard({ phase }: { phase: Phase }) {
+  const { data, isLoading, error } = useLeaderboard();
+  if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
+  if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
+  const rows = [...(data ?? [])].sort((a, b) => b[phase] - a[phase] || a.name.localeCompare(b.name));
+  const cols = "grid grid-cols-[36px_1fr_52px] items-center gap-1";
+  return (
+    <div className="fl-card overflow-hidden">
+      <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
+        <div>#</div><div>Entrant</div><div className="text-right">Pts</div>
+      </div>
+      {rows.map((e, i) => (
+        <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft"}>
+          <div className="font-mono text-xs">
+            {i < 3 && e[phase] > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
+          </div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-cream">{e.name}</span>
+            {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
+          </div>
+          <div className="text-right font-mono text-sm font-semibold text-cream">{e[phase]}</div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+type Tab = "overall" | "knockout" | Phase;
+const TABS: { key: Tab; label: string }[] = [
+  { key: "overall", label: "Overall" },
+  { key: "knockout", label: "Knockout" },
+  { key: "week1", label: "Week 1" },
+  { key: "week2", label: "Week 2" },
+  { key: "week3", label: "Week 3" },
+  { key: "r32", label: "Round of 32" },
+];
+const TITLES: Record<Tab, string> = {
+  overall: "Overall", knockout: "Knockout competition",
+  week1: "Week 1", week2: "Week 2", week3: "Week 3", r32: "Round of 32",
+};
+
 export default function Leaderboard() {
-  const [tab, setTab] = useState<"overall" | "knockout">("overall");
+  const [tab, setTab] = useState<Tab>("overall");
+  const sub =
+    tab === "overall" ? "The main competition — every entrant ranked on all their predictions across the whole tournament."
+    : tab === "knockout" ? "A second competition: entrant groups, scored on each player’s own World Cup group, top two into the bracket."
+    : `Points scored in ${TITLES[tab]} only.`;
 
   return (
     <div className="fl-enter">
       <div className="mb-5">
         <div className="text-[11px] uppercase tracking-[1.8px] text-gold">Standings</div>
-        <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">
-          {tab === "overall" ? "Overall" : "Knockout competition"}
-        </h1>
-        <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted">
-          {tab === "overall"
-            ? "The main competition — every entrant ranked on all their predictions across the whole tournament."
-            : "A second competition: entrant groups, scored on each player’s own World Cup group, top two into the bracket."}
-        </p>
+        <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">{TITLES[tab]}</h1>
+        <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted">{sub}</p>
       </div>
 
-      <div className="mb-5 flex gap-2">
-        <button className={subTab(tab === "overall")} onClick={() => setTab("overall")}>Overall</button>
-        <button className={subTab(tab === "knockout")} onClick={() => setTab("knockout")}>Knockout</button>
+      <div className="mb-5 flex flex-wrap gap-2">
+        {TABS.map((t) => (
+          <button key={t.key} className={subTab(tab === t.key)} onClick={() => setTab(t.key)}>{t.label}</button>
+        ))}
       </div>
 
-      {tab === "overall" ? <Overall /> : <Knockout />}
+      {tab === "overall" ? <Overall /> : tab === "knockout" ? <Knockout /> : <PhaseBoard phase={tab} />}
     </div>
   );
 }
