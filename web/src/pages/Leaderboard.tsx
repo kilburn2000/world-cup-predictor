@@ -12,7 +12,7 @@ function StatCard({ label, l, unit }: { label: string; l?: StatLeader; unit: str
           <div className="mt-1 truncate font-display text-base text-cream">
             {l!.name}{l!.others ? ` + ${l!.others} other${l!.others > 1 ? "s" : ""}` : ""}
           </div>
-          <div className="font-mono text-[11px] text-gold">{l!.value} {unit}</div>
+          <div className="font-mono text-[11px] text-gold">{l!.value} {unit}{l!.value === 1 ? "" : "s"}</div>
         </>
       ) : (
         <div className="mt-1 text-sm text-muted">None yet</div>
@@ -65,8 +65,8 @@ function Overall() {
   return (
     <>
     <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <StatCard label="Most correct scores" l={stats?.mostExact} unit="exact" />
-      <StatCard label="Most correct results" l={stats?.mostResults} unit="results" />
+      <StatCard label="Most correct scores" l={stats?.mostExact} unit="exact score" />
+      <StatCard label="Most correct results" l={stats?.mostResults} unit="result" />
     </div>
     <div className="fl-card overflow-hidden">
       <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
