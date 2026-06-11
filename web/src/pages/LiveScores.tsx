@@ -187,19 +187,14 @@ function MatchCard({ m }: { m: LiveMatch }) {
           </button>
           {show && (
             <div className="px-5 pb-5 sm:px-6">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="font-display text-base text-cream">
-                  {ft ? "Final" : "If it ends"} {m.home} {m.homeScore}–{m.awayScore} {m.away}
-                </div>
-                <div className="text-[11.5px] text-muted">
-                  <span className="font-mono text-gold">{winners}</span> entrants ·{" "}
-                  {ft ? "points awarded" : "points in play"}
-                  {leaders.length > 0 && (
-                    <>
-                      {" "}· leaders <span className="text-cream">{leaders.join(", ")}</span>
-                    </>
-                  )}
-                </div>
+              <div className="mb-3 text-[11.5px] text-muted">
+                <span className="font-mono text-gold">{winners}</span> entrants ·{" "}
+                {ft ? "points awarded" : "points in play"}
+                {leaders.length > 0 && (
+                  <>
+                    {" "}· leaders <span className="text-cream">{leaders.join(", ")}</span>
+                  </>
+                )}
               </div>
               <div className="grid grid-cols-[30px_1fr_54px_56px] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_56px_104px_52px]">
                 <div>#</div>
