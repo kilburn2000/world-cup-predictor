@@ -78,17 +78,18 @@ app.get("/api/admin/check", async (req: any, reply) => {
 app.get("/api/leaderboard", async () => {
   const rows = await sql`
     select e.id as "entrantId", e.name, e.name_incomplete as "nameIncomplete",
-           coalesce(sum(s.points), 0)::int as total
+           e.entrant_group as "group", coalesce(sum(s.points), 0)::int as total
     from entrants e
     left join scores s on s.entrant_id = e.id
-    group by e.id, e.name, e.name_incomplete
+    group by e.id, e.name, e.name_incomplete, e.entrant_group
     order by total desc, e.name asc
   `;
   return rows;
 });
 
-// Entrant group tables: each group's members with their World Cup group-stage
-// points split by matchday (Week 1/2/3) + total. Ranked by total; top 2 qualify.
+// Knockout competition group tables: each entrant is scored ONLY on their own
+// World Cup group's fixtures (entrant Group A ⇒ WC Group A games, etc.), split by
+// matchday (Week 1/2/3) + total. Ranked by total; top 2 qualify.
 app.get("/api/groups", async () => {
   const cfg = await loadConfig();
   const rows = (await sql`
@@ -96,18 +97,20 @@ app.get("/api/groups", async () => {
            coalesce(sum(case when m.matchday = 1 then s.points end), 0)::int as week1,
            coalesce(sum(case when m.matchday = 2 then s.points end), 0)::int as week2,
            coalesce(sum(case when m.matchday = 3 then s.points end), 0)::int as week3,
-           coalesce(sum(s.points), 0)::int as total
+           coalesce(sum(case when m.id is not null then s.points end), 0)::int as total
     from entrants e
     left join scores s on s.entrant_id = e.id and s.kind = 'MATCH'
-    left join matches m on m.id = split_part(s.ref, ':', 2)::int and m.stage = 'GROUP'
+    left join matches m on m.id = split_part(s.ref, ':', 2)::int
+                       and m.stage = 'GROUP' and m.group_name = e.entrant_group
     where e.entrant_group is not null
     group by e.id, e.name, e.name_incomplete, e.entrant_group
   `) as any[];
+  const entrantGroup = new Map(rows.map((r) => [r.entrantId, r.grp]));
 
-  // add provisional points from group matches currently IN PLAY (so the table
-  // shifts live during games, on top of the confirmed finished-match points)
+  // provisional points from IN-PLAY group games — but still only the entrant's
+  // own WC group counts toward their knockout-competition score.
   const liveMatches = await sql`
-    select id, matchday, home_team_id mh, home_goals hg, away_goals ag
+    select id, matchday, group_name grp, home_team_id mh, home_goals hg, away_goals ag
     from matches
     where stage = 'GROUP' and status = 'IN_PLAY' and home_goals is not null and away_goals is not null
   `;
@@ -122,6 +125,7 @@ app.get("/api/groups", async () => {
     for (const p of preds as any[]) {
       const m = byMatch.get(p.match_id);
       if (!m) continue;
+      if (entrantGroup.get(p.entrant_id) !== m.grp) continue; // only your own WC group
       const predH = p.ph === m.mh ? p.phg : p.pag;
       const predA = p.ph === m.mh ? p.pag : p.phg;
       const pts = scoreGroupMatch(predH, predA, m.hg, m.ag, cfg).points;

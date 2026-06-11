@@ -24,10 +24,10 @@ const tab = ({ isActive }: { isActive: boolean }) =>
   "shrink-0 whitespace-nowrap border-b-2 pb-0.5 text-sm transition-colors " +
   (isActive ? "border-gold font-semibold text-cream" : "border-transparent text-muted hover:text-cream");
 
-// Admin: a separate rounded pill button.
-const adminBtn = ({ isActive }: { isActive: boolean }) =>
-  "shrink-0 whitespace-nowrap rounded-lg border px-3.5 py-1.5 text-sm transition-colors " +
-  (isActive ? "border-gold bg-gold-soft text-cream" : "border-line text-muted hover:border-gold hover:text-cream");
+// Admin: a gold pill that goes hollow (outline only) on hover.
+const adminBtn = () =>
+  "shrink-0 whitespace-nowrap rounded-lg border border-gold bg-gold px-3.5 py-1.5 text-sm font-semibold " +
+  "text-pitch-950 transition-colors hover:bg-transparent hover:text-gold";
 
 function labelFor(pathname: string): string {
   if (pathname === "/") return "Live Standings";
