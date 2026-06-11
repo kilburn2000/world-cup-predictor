@@ -43,17 +43,6 @@ function BallIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-function EventIcon({ type }: { type: LiveEvent["type"] }) {
-  if (type === "goal") return <BallIcon />;
-  if (type === "yellow")
-    return <span className="inline-block h-[15px] w-[11px] rounded-sm" style={{ background: "#e3c558" }} />;
-  if (type === "red")
-    return <span className="inline-block h-[15px] w-[11px] rounded-sm" style={{ background: "#d9534f" }} />;
-  return (
-    <span className="rounded border border-line px-1 font-mono text-[8px] tracking-wide text-muted">VAR</span>
-  );
-}
-
 /** Derive the match phase + status pill from status/minute/events. */
 function phaseOf(m: LiveMatch) {
   const goals = m.events.filter((e) => e.type === "goal");
@@ -160,28 +149,6 @@ function MatchCard({ m }: { m: LiveMatch }) {
           </div>
         </div>
       </div>
-
-      {/* key events */}
-      {m.events.length > 0 && (
-        <div className="flex flex-col gap-2.5 border-b border-line px-5 py-3.5 sm:px-6">
-          <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Key events</div>
-          {[...m.events]
-            .sort((a, b) => b.minute - a.minute)
-            .map((e, i) => (
-              <div key={i} className="flex items-center gap-3 text-[13px]">
-                <span className="w-8 shrink-0 font-mono text-[11px] text-muted">{e.minute}'</span>
-                <span className="flex w-[18px] shrink-0 justify-center">
-                  <EventIcon type={e.type} />
-                </span>
-                <span className="w-8 shrink-0 font-mono text-[10px] text-muted">
-                  {e.team === "home" ? m.homeCode : m.awayCode}
-                </span>
-                {e.player && <span className="text-cream">{e.player}</span>}
-                {e.detail && <span className="text-xs text-muted">— {e.detail}</span>}
-              </div>
-            ))}
-        </div>
-      )}
 
       {/* upcoming: no board yet, just the kickoff */}
       {m.status === "SCHEDULED" ? (
