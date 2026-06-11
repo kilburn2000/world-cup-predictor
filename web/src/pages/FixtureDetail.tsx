@@ -41,14 +41,6 @@ export default function FixtureDetail() {
   let topPickCount = 0;
   for (const [p, c] of pickCounts) if (c > topPickCount) { topPick = p; topPickCount = c; }
 
-  // highest scorer(s) for this fixture
-  const maxPts = data.board.reduce((mx, b) => Math.max(mx, b.points), 0);
-  const topScorers = data.board.filter((b) => b.points === maxPts);
-  const scorerLabel =
-    topScorers.length === 1
-      ? topScorers[0].name
-      : `${topScorers[0].name} + ${topScorers.length - 1} other${topScorers.length - 1 > 1 ? "s" : ""}`;
-
   // most common predicted result (outcome)
   const resultCounts = { home: 0, draw: 0, away: 0 };
   for (const b of data.board) {
@@ -92,7 +84,7 @@ export default function FixtureDetail() {
       </div>
 
       {data.board.length > 0 && (
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mb-5 grid grid-cols-2 gap-3">
           <div className="fl-card p-4">
             <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most common score</div>
             <div className="mt-1 font-mono text-2xl text-cream">{topPick ? topPick.replace("-", "–") : "–"}</div>
@@ -102,17 +94,6 @@ export default function FixtureDetail() {
             <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most common result</div>
             <div className="mt-1 truncate font-display text-lg text-cream">{topResultLabel}</div>
             <div className="text-[11px] text-muted">{topResultCount} {topResultCount === 1 ? "entrant" : "entrants"}</div>
-          </div>
-          <div className="fl-card p-4">
-            <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most points</div>
-            {data.played && maxPts > 0 ? (
-              <>
-                <div className="mt-1 truncate font-display text-lg text-cream">{scorerLabel}</div>
-                <div className="font-mono text-[11px] text-gold">+{maxPts} pts</div>
-              </>
-            ) : (
-              <div className="mt-1 text-sm text-muted">{data.played ? "No one scored" : "Not played yet"}</div>
-            )}
           </div>
         </div>
       )}
