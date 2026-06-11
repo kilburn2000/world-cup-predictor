@@ -77,38 +77,26 @@ export default function Scoring() {
       </div>
       <h1 className="font-display text-3xl font-medium text-cream">Scoring settings</h1>
       <p className="mb-6 mt-1 text-sm text-muted">
-        Points awarded for each outcome (defaults mirror the entry spreadsheet). Saving re-scores
-        everyone instantly.
+        Points stack per game (Team A = home, Team B = away). A perfect 2–0 prediction on a 2–0 result
+        = {cfg.outcome} + {cfg.teamGoals} + {cfg.teamGoals} + {cfg.exactBonus} = {cfg.outcome + cfg.teamGoals * 2 + cfg.exactBonus}.
+        Saving re-scores everyone instantly.
       </p>
 
       <div className="fl-card mb-4 p-5">
         <h3 className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[1.5px] text-gold">
-          Group match (stack)
+          Per match (stacks)
         </h3>
-        <NumberRow label="Correct outcome (W/D/L)" value={cfg.outcome} onChange={(v) => set("outcome", v)} />
-        <NumberRow label="Correct goal difference" value={cfg.goalDifference} onChange={(v) => set("goalDifference", v)} />
-        <NumberRow label="Exact score" value={cfg.exact} onChange={(v) => set("exact", v)} />
-        <NumberRow label="“Many goals” approximation" hint="close guess on a high-scoring game" value={cfg.manyGoals} onChange={(v) => set("manyGoals", v)} />
+        <NumberRow label="Correct outcome" hint="Team A win / Team B win / draw" value={cfg.outcome} onChange={(v) => set("outcome", v)} />
+        <NumberRow label="Each team's goals correct" hint="awarded separately for Team A and Team B" value={cfg.teamGoals} onChange={(v) => set("teamGoals", v)} />
+        <NumberRow label="Exact score bonus" hint="when the whole score is right" value={cfg.exactBonus} onChange={(v) => set("exactBonus", v)} />
       </div>
 
       <div className="fl-card mb-4 p-5">
         <h3 className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[1.5px] text-gold">
           Knockouts
         </h3>
-        <NumberRow label="Correct team in a round" hint="per team reaching each knockout round" value={cfg.knockoutTeam} onChange={(v) => set("knockoutTeam", v)} />
-        <NumberRow label="Final / Third-place winner" value={cfg.finalThird} onChange={(v) => set("finalThird", v)} />
+        <NumberRow label="Correct team in position" hint="extra, for placing a team in the right knockout slot" value={cfg.knockoutTeam} onChange={(v) => set("knockoutTeam", v)} />
       </div>
-
-      <details className="fl-card mb-4 p-5">
-        <summary className="cursor-pointer font-mono text-[10px] font-semibold uppercase tracking-[1.5px] text-muted">
-          “Many goals” thresholds
-        </summary>
-        <div className="mt-2">
-          <NumberRow label="High-scoring draw min (each)" value={cfg.manyGoalsDrawMin} onChange={(v) => set("manyGoalsDrawMin", v)} />
-          <NumberRow label="Large goal-difference min" value={cfg.largeGdMin} onChange={(v) => set("largeGdMin", v)} />
-          <NumberRow label="Large total-goals min" value={cfg.largeSumMin} onChange={(v) => set("largeSumMin", v)} />
-        </div>
-      </details>
 
       <button onClick={save} disabled={saving} className="btn-gold w-full py-3.5 text-sm">
         {saving ? "Saving…" : "Save & re-score"}

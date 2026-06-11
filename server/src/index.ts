@@ -22,14 +22,9 @@ import { startPoller } from "./poller.js";
 
 const ScoringConfigSchema = z.object({
   outcome: z.number().int().min(0).max(1000),
-  goalDifference: z.number().int().min(0).max(1000),
-  exact: z.number().int().min(0).max(1000),
-  manyGoals: z.number().int().min(0).max(1000),
+  teamGoals: z.number().int().min(0).max(1000),
+  exactBonus: z.number().int().min(0).max(1000),
   knockoutTeam: z.number().int().min(0).max(1000),
-  finalThird: z.number().int().min(0).max(1000),
-  manyGoalsDrawMin: z.number().int().min(0).max(20),
-  largeGdMin: z.number().int().min(0).max(20),
-  largeSumMin: z.number().int().min(0).max(20),
 });
 
 const PORT = Number(process.env.PORT ?? 8790);
@@ -396,7 +391,7 @@ app.get("/api/live", async () => {
           const predH = p.ph === m.mh ? p.phg : p.pag;
           const predA = p.ph === m.mh ? p.pag : p.phg;
           const b = scoreGroupMatch(predH, predA, hg, ag, cfg);
-          const tier = b.exact ? "exact" : b.goalDifference ? "diff" : b.outcome ? "result" : "miss";
+          const tier = b.exact ? "exact" : b.outcome ? "result" : (b.homeGoals || b.awayGoals) ? "diff" : "miss";
           return { entrantId: p.eid, name: p.name, pick: `${predH}-${predA}`, points: b.points, tier };
         })
         .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
@@ -492,7 +487,7 @@ app.get("/api/fixtures/:id", async (req: any, reply) => {
         const predH = p.ph === m.mh ? p.phg : p.pag;
         const predA = p.ph === m.mh ? p.pag : p.phg;
         const b = played ? scoreGroupMatch(predH, predA, m.hg ?? 0, m.ag ?? 0, cfg) : null;
-        const tier = b ? (b.exact ? "exact" : b.goalDifference ? "diff" : b.outcome ? "result" : "miss") : "miss";
+        const tier = b ? (b.exact ? "exact" : b.outcome ? "result" : (b.homeGoals || b.awayGoals) ? "diff" : "miss") : "miss";
         return { entrantId: p.eid, name: p.name, pick: `${predH}-${predA}`, points: b ? b.points : 0, tier };
       })
       .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));

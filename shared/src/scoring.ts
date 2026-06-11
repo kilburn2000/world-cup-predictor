@@ -17,29 +17,12 @@ export function sameMatchup(a: Scoreline, b: Scoreline): boolean {
   return x[0] === y[0] && x[1] === y[1];
 }
 
-// The "many goals — good approximation" consolation (PrSettings S-column formula):
-// on a big-goal-difference game, a high-scoring draw, or a high total-goals game,
-// award the bonus if the prediction was within 1.
-function manyGoalsBonus(
-  predH: number,
-  predA: number,
-  actH: number,
-  actA: number,
-  outcomeCorrect: boolean,
-  cfg: ScoringConfig,
-): boolean {
-  const actGd = actH - actA;
-  const predGd = predH - predA;
-  if (Math.abs(actGd) >= cfg.largeGdMin) return Math.abs(actGd - predGd) <= 1;
-  if (outcomeCorrect && actH === actA && actH >= cfg.manyGoalsDrawMin)
-    return Math.abs(predH - actH) <= 1;
-  if (outcomeCorrect && actH + actA >= cfg.largeSumMin)
-    return Math.abs(predH - actH) + Math.abs(predA - actA) <= 1;
-  return false;
-}
-
-// Score a GROUP-stage match. Predicted + actual goals are already aligned to the
-// fixed home/away of the fixture. Components stack additively.
+// Score a match. Predicted + actual goals are already aligned to the fixture's
+// home/away (Team A = home, Team B = away). Components stack additively:
+//   +outcome    correct result (A win / B win / draw)
+//   +teamGoals  Team A's goal count exactly right
+//   +teamGoals  Team B's goal count exactly right
+//   +exactBonus the whole score is exact
 export function scoreGroupMatch(
   predH: number,
   predA: number,
@@ -50,17 +33,17 @@ export function scoreGroupMatch(
   const outcome =
     outcomeOf({ homeTeamId: 0, awayTeamId: 1, homeGoals: predH, awayGoals: predA }) ===
     outcomeOf({ homeTeamId: 0, awayTeamId: 1, homeGoals: actH, awayGoals: actA });
-  const goalDifference = predH - predA === actH - actA;
-  const exact = predH === actH && predA === actA;
-  const manyGoals = manyGoalsBonus(predH, predA, actH, actA, outcome, cfg);
+  const homeGoals = predH === actH;
+  const awayGoals = predA === actA;
+  const exact = homeGoals && awayGoals;
 
   const points =
     (outcome ? cfg.outcome : 0) +
-    (goalDifference ? cfg.goalDifference : 0) +
-    (exact ? cfg.exact : 0) +
-    (manyGoals ? cfg.manyGoals : 0);
+    (homeGoals ? cfg.teamGoals : 0) +
+    (awayGoals ? cfg.teamGoals : 0) +
+    (exact ? cfg.exactBonus : 0);
 
-  return { points, outcome, goalDifference, exact, manyGoals };
+  return { points, outcome, homeGoals, awayGoals, exact };
 }
 
 // Knockout "team progression": every team an entrant predicted to reach a round

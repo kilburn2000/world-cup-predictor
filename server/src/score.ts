@@ -97,33 +97,11 @@ export async function recomputeAll(): Promise<number> {
     }
   }
 
-  // --- Final + Third-place winners ---
-  const [finalM] = await sql`select winner_team_id from matches where stage = 'FINAL' and winner_team_id is not null`;
-  const [thirdM] = await sql`select winner_team_id from matches where stage = 'THIRD_PLACE' and winner_team_id is not null`;
-  if (finalM || thirdM) {
-    for (const e of entrants as any[]) {
-      let pts = 0;
-      if (finalM) {
-        const [fp] = await sql`select pred_home_team_id, pred_away_team_id, pred_home_goals, pred_away_goals from predictions where entrant_id=${e.id} and bracket_slot='FINAL'`;
-        const predWinner = pickWinner(fp);
-        if (predWinner && predWinner === finalM.winner_team_id) pts += cfg.finalThird;
-      }
-      if (thirdM) {
-        const [tp] = await sql`select pred_home_team_id, pred_away_team_id, pred_home_goals, pred_away_goals from predictions where entrant_id=${e.id} and bracket_slot='THIRD'`;
-        const predWinner = pickWinner(tp);
-        if (predWinner && predWinner === thirdM.winner_team_id) pts += cfg.finalThird;
-      }
-      await upsertScore(e.id, "FINALTHIRD", "ft:winners", pts, { points: pts });
-      written++;
-    }
-  }
+  // NOTE: knockout SCORELINE scoring (outcome + each team's goals + exact, like a
+  // group game) is still to be wired in pending the rules — for now the knockout
+  // award is the team-in-position bonus above (cfg.knockoutTeam). The Final is
+  // just another round in PROGRESSION, so a separate final/third winner bonus is
+  // intentionally gone.
 
   return written;
-}
-
-function pickWinner(p: any): number | null {
-  if (!p) return null;
-  if (p.pred_home_goals > p.pred_away_goals) return p.pred_home_team_id;
-  if (p.pred_home_goals < p.pred_away_goals) return p.pred_away_team_id;
-  return null; // a drawn prediction has no decided winner in Entry To Copy
 }

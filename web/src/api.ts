@@ -50,14 +50,9 @@ export const useTable = () =>
 
 export interface ScoringConfig {
   outcome: number;
-  goalDifference: number;
-  exact: number;
-  manyGoals: number;
+  teamGoals: number;
+  exactBonus: number;
   knockoutTeam: number;
-  finalThird: number;
-  manyGoalsDrawMin: number;
-  largeGdMin: number;
-  largeSumMin: number;
 }
 
 export const useScoringConfig = () =>

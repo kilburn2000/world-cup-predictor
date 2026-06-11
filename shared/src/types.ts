@@ -27,35 +27,30 @@ export interface Scoreline {
 // Mirrors the entry spreadsheet's scoring (template "hb v3.6"). All point values
 // are tunable from the Scoring page; the thresholds drive the "many goals"
 // consolation bonus.
+// The sweepstake scoring. Per match (Team A = home, Team B = away):
+//   correct outcome (+outcome), Team A goals exactly right (+teamGoals),
+//   Team B goals exactly right (+teamGoals), whole score exact (+exactBonus).
+// e.g. predicting 2-0 and it finishes 2-0 = 1 + 1 + 1 + 2 = 5.
+// Knockout: an extra +knockoutTeam for correctly placing a team in its position.
+// All point values are tunable from the Scoring page.
 export interface ScoringConfig {
-  outcome: number; // correct Win/Draw/Loss
-  goalDifference: number; // correct goal difference
-  exact: number; // exact score (stacks with outcome + goalDifference)
-  manyGoals: number; // "good approximation" consolation on high-scoring games
-  knockoutTeam: number; // per team correctly predicted to reach a knockout round
-  finalThird: number; // correctly predicting the Final / Third-place winners
-  // Thresholds for the "many goals" bonus (PrSettings M6/M7/M8).
-  manyGoalsDrawMin: number; // high-scoring-draw threshold
-  largeGdMin: number; // large goal-difference threshold
-  largeSumMin: number; // large total-goals threshold
+  outcome: number; // correct result: Team A win / Team B win / draw
+  teamGoals: number; // per team whose exact goal count you predicted (home & away each)
+  exactBonus: number; // bonus when the entire score is exact
+  knockoutTeam: number; // knockout: correct team in the right position
 }
 
 export const DEFAULT_SCORING: ScoringConfig = {
-  outcome: 5,
-  goalDifference: 5,
-  exact: 10,
-  manyGoals: 3,
-  knockoutTeam: 10,
-  finalThird: 10,
-  manyGoalsDrawMin: 4,
-  largeGdMin: 4,
-  largeSumMin: 8,
+  outcome: 1,
+  teamGoals: 1,
+  exactBonus: 2,
+  knockoutTeam: 2,
 };
 
 export interface GroupScoreBreakdown {
   points: number;
-  outcome: boolean;
-  goalDifference: boolean;
-  exact: boolean;
-  manyGoals: boolean;
+  outcome: boolean; // correct result
+  homeGoals: boolean; // Team A goal count correct
+  awayGoals: boolean; // Team B goal count correct
+  exact: boolean; // whole score correct
 }
