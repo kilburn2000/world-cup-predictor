@@ -425,6 +425,23 @@ app.get("/api/live", async () => {
     predsByMatch.get(p.mid)!.push(p);
   }
 
+  // most-common predicted score + result for a match (aligned to its home/away)
+  const mostCommon = (preds: any[], mh: number) => {
+    if (!preds?.length) return { score: null as string | null, result: null as "HOME" | "DRAW" | "AWAY" | null };
+    const scoreCount = new Map<string, number>();
+    const resultCount = { HOME: 0, DRAW: 0, AWAY: 0 };
+    for (const p of preds) {
+      const h = p.ph === mh ? p.phg : p.pag;
+      const a = p.ph === mh ? p.pag : p.phg;
+      scoreCount.set(`${h}-${a}`, (scoreCount.get(`${h}-${a}`) ?? 0) + 1);
+      resultCount[h > a ? "HOME" : h < a ? "AWAY" : "DRAW"]++;
+    }
+    let score: string | null = null, sc = 0;
+    for (const [k, c] of scoreCount) if (c > sc) { score = k; sc = c; }
+    const result = (["HOME", "DRAW", "AWAY"] as const).reduce((a, b) => (resultCount[b] > resultCount[a] ? b : a));
+    return { score, result };
+  };
+
   // ESPN live enrichment (minute + events), keyed by DB team-id pair
   const espnByPair = new Map<string, { espn: any; homeId: number }>();
   try {
@@ -470,6 +487,8 @@ app.get("/api/live", async () => {
       period = liveNow ? enrich.espn.period : null;
     }
 
+    const mc = m.stage === "GROUP" ? mostCommon(predsByMatch.get(m.id) ?? [], m.mh) : { score: null, result: null };
+
     return {
       id: m.id,
       home: m.home,
@@ -485,6 +504,8 @@ app.get("/api/live", async () => {
       period,
       homeScore: hg,
       awayScore: ag,
+      mostCommonScore: mc.score,
+      mostCommonResult: mc.result,
       events,
       board,
     };

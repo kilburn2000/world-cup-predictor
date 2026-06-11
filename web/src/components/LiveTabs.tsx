@@ -7,10 +7,10 @@ const sub = ({ isActive }: { isActive: boolean }) =>
 export default function LiveTabs() {
   return (
     <div className="mb-6 flex flex-wrap gap-2">
-      <NavLink to="/live/scores" end className={sub}>Today’s Games</NavLink>
-      <NavLink to="/live/fixtures" className={sub}>All Fixtures &amp; Results</NavLink>
-      <NavLink to="/live/groups" className={sub}>Groups</NavLink>
-      <NavLink to="/live/knockout" className={sub}>Knockout</NavLink>
+      <NavLink to="/stats/scores" end className={sub}>Today’s Games</NavLink>
+      <NavLink to="/stats/fixtures" className={sub}>All Fixtures &amp; Results</NavLink>
+      <NavLink to="/stats/groups" className={sub}>Groups</NavLink>
+      <NavLink to="/stats/knockout" className={sub}>Knockout</NavLink>
     </div>
   );
 }

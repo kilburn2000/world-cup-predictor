@@ -267,6 +267,8 @@ export interface LiveMatch {
   period?: number | null;
   homeScore: number;
   awayScore: number;
+  mostCommonScore?: string | null;
+  mostCommonResult?: "HOME" | "DRAW" | "AWAY" | null;
   events: LiveEvent[];
   /** entrants ranked by points they'd win if it ended at the current score. */
   board: LiveBoardRow[];

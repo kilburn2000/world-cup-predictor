@@ -20,7 +20,7 @@ export default function FixtureDetail() {
   const { id } = useParams();
   const loc = useLocation();
   const back = (loc.state as { from?: string; label?: string } | null) ?? {};
-  const backTo = back.from ?? "/live/fixtures";
+  const backTo = back.from ?? "/stats/fixtures";
   const backLabel = back.label ?? "Fixtures";
   const { data, isLoading, error } = useFixture(id!);
 
@@ -116,7 +116,7 @@ export default function FixtureDetail() {
       ) : (
         <div className="fl-card overflow-hidden">
           <div className="grid grid-cols-[28px_minmax(0,1fr)_46px_108px_42px] items-center px-4 py-2 text-[10px] uppercase tracking-[1.5px] text-muted">
-            <div>#</div><div>Entrant</div><div className="text-center">Pick</div><div className="text-center">Scored</div><div className="text-right">Pts</div>
+            <div>#</div><div>Entrant</div><div className="text-center">Prediction</div><div className="text-center">Scored</div><div className="text-right">Pts</div>
           </div>
           {data.board.map((b, i) => {
             const t = TIER[b.tier];

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { useLiveMatches, type LiveMatch, type LiveBoardRow, type LiveEvent } from "../api.js";
 import { flagFor } from "../flags.js";
 import LiveTabs from "../components/LiveTabs.js";
@@ -87,8 +87,8 @@ function MatchCard({ m }: { m: LiveMatch }) {
   const leaders = m.board
     .filter((b) => b.points === topPts && topPts > 0)
     .map((b) => b.name.split(" ")[0]);
-  const board = m.board.slice(0, 10);
-  const rest = Math.max(0, m.board.length - 10);
+  const board = m.board; // show ALL predictions when expanded
+  const [show, setShow] = useState(false);
 
   return (
     <div className="fl-card overflow-hidden">
@@ -151,70 +151,86 @@ function MatchCard({ m }: { m: LiveMatch }) {
         </div>
       </div>
 
-      {/* upcoming: no board yet, just the kickoff */}
+      {/* most common — always shown under the score */}
+      {m.mostCommonScore && (
+        <div className="flex items-center justify-center gap-1.5 border-b border-line px-5 py-2.5 text-[11.5px] text-muted sm:px-6">
+          <span className="text-[9px] uppercase tracking-wide">Most predicted</span>
+          <span className="font-mono text-cream">{m.mostCommonScore.replace("-", "–")}</span>
+          <span>·</span>
+          {m.mostCommonResult === "DRAW" ? (
+            <span>draw</span>
+          ) : (
+            <span className="inline-flex items-center gap-1">
+              {flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}
+              {(m.mostCommonResult === "HOME" ? m.home : m.away)} win
+            </span>
+          )}
+        </div>
+      )}
+
       {m.status === "SCHEDULED" ? (
-        <div className="px-5 pb-5 pt-4 text-center text-[13px] text-muted sm:px-6">
+        <div className="px-5 py-4 text-center text-[13px] text-muted sm:px-6">
           Kicks off {m.kickoff ? new Date(m.kickoff).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "today"} · predictions locked
         </div>
       ) : (
-      <div className="px-5 pb-5 pt-4 sm:px-6">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="font-display text-base text-cream">
-            {ft ? "Final" : "If it ends"} {m.home} {m.homeScore}–{m.awayScore} {m.away}
-          </div>
-          <div className="text-[11.5px] text-muted">
-            <span className="font-mono text-gold">{winners}</span> entrants ·{" "}
-            {ft ? "points awarded" : "points in play"}
-            {leaders.length > 0 && (
-              <>
-                {" "}· leaders <span className="text-cream">{leaders.join(", ")}</span>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="grid grid-cols-[30px_1fr_54px_56px] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_56px_104px_52px]">
-          <div>#</div>
-          <div>Entrant</div>
-          <div className="text-center">Pick</div>
-          <div className="hidden text-center sm:block">Scored</div>
-          <div className="text-right">Pts</div>
-        </div>
-        {board.map((b, i) => {
-          const t = TIER[b.tier];
-          return (
-            <div
-              key={b.entrantId}
-              className="grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg border-t border-line px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]"
-            >
-              <div className="font-mono text-xs text-muted">{i + 1}</div>
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
-                  {initials(b.name)}
+        <>
+          <button
+            onClick={() => setShow((v) => !v)}
+            className="block w-full px-5 py-2.5 text-center text-[11.5px] uppercase tracking-wide text-muted transition-colors hover:text-cream sm:px-6"
+          >
+            {show ? "Hide predictions ▴" : "Show predictions ▾"}
+          </button>
+          {show && (
+            <div className="px-5 pb-5 sm:px-6">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="font-display text-base text-cream">
+                  {ft ? "Final" : "If it ends"} {m.home} {m.homeScore}–{m.awayScore} {m.away}
                 </div>
-                <div className="text-[13.5px] text-cream">{b.name}</div>
+                <div className="text-[11.5px] text-muted">
+                  <span className="font-mono text-gold">{winners}</span> entrants ·{" "}
+                  {ft ? "points awarded" : "points in play"}
+                  {leaders.length > 0 && (
+                    <>
+                      {" "}· leaders <span className="text-cream">{leaders.join(", ")}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="text-center font-mono text-[13px]">{b.pick}</div>
-              <div className="hidden justify-center sm:flex">
-                <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+              <div className="grid grid-cols-[30px_1fr_54px_56px] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_56px_104px_52px]">
+                <div>#</div>
+                <div>Entrant</div>
+                <div className="text-center">Prediction</div>
+                <div className="hidden text-center sm:block">Scored</div>
+                <div className="text-right">Pts</div>
               </div>
-              <div className="text-right font-mono text-base" style={{ color: t.fg }}>
-                +{b.points}
-              </div>
+              {board.map((b, i) => {
+                const t = TIER[b.tier];
+                return (
+                  <div
+                    key={b.entrantId}
+                    className="grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg border-t border-line px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]"
+                  >
+                    <div className="font-mono text-xs text-muted">{i + 1}</div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
+                        {initials(b.name)}
+                      </div>
+                      <div className="text-[13.5px] text-cream">{b.name}</div>
+                    </div>
+                    <div className="text-center font-mono text-[13px]">{b.pick}</div>
+                    <div className="hidden justify-center sm:flex">
+                      <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+                    </div>
+                    <div className="text-right font-mono text-base" style={{ color: t.fg }}>
+                      +{b.points}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-        {rest > 0 && (
-          <div className="pt-3 text-center text-[11.5px] text-muted">+ {rest} more entrants</div>
-        )}
-      </div>
+          )}
+        </>
       )}
-      <Link
-        to={`/live/fixtures/${m.id}`}
-        state={{ from: "/live/scores", label: "Live Scores" }}
-        className="block border-t border-line px-5 py-2.5 text-center text-[12.5px] text-gold transition-colors hover:bg-gold-soft"
-      >
-        Points breakdown →
-      </Link>
     </div>
   );
 }
@@ -241,7 +257,7 @@ export default function LiveScores() {
             No matches in play
           </div>
         )}
-        <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">Live Scores</h1>
+        <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">Today’s Games</h1>
         <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted">
           Today’s fixtures and every result so far. For matches in play, each entrant’s points update
           live with the score.

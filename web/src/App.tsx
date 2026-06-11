@@ -30,7 +30,7 @@ const adminBtn = () =>
 
 function labelFor(pathname: string): string {
   if (pathname === "/") return "Live Standings";
-  if (pathname.startsWith("/live")) return "Stats";
+  if (pathname.startsWith("/stats")) return "Stats";
   if (pathname.startsWith("/players")) return "Players";
   if (pathname.startsWith("/table")) return "Group Tables";
   if (pathname.startsWith("/admin")) return "Admin";
@@ -78,7 +78,7 @@ export default function App() {
           </NavLink>
           <nav className="-mx-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <NavLink to="/" className={tab} end>Standings</NavLink>
-            <NavLink to="/live/scores" className={tab({ isActive: location.pathname.startsWith("/live") })}>Stats</NavLink>
+            <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
             <NavLink to="/admin" className={adminBtn}>Admin</NavLink>
           </nav>
         </div>
@@ -87,12 +87,13 @@ export default function App() {
       <main className="mx-auto max-w-5xl px-4 py-8">
         <Routes>
           <Route path="/" element={<Leaderboard />} />
-          <Route path="/live" element={<Navigate to="/live/scores" replace />} />
-          <Route path="/live/scores" element={<LiveScores />} />
-          <Route path="/live/fixtures" element={<Fixtures />} />
-          <Route path="/live/fixtures/:id" element={<FixtureDetail />} />
-          <Route path="/live/groups" element={<WCGroups />} />
-          <Route path="/live/knockout" element={<WCKnockout />} />
+          <Route path="/stats" element={<Navigate to="/stats/scores" replace />} />
+          <Route path="/stats/scores" element={<LiveScores />} />
+          <Route path="/stats/fixtures" element={<Fixtures />} />
+          <Route path="/stats/fixtures/:id" element={<FixtureDetail />} />
+          <Route path="/stats/groups" element={<WCGroups />} />
+          <Route path="/stats/knockout" element={<WCKnockout />} />
+          <Route path="/live/*" element={<Navigate to="/stats/scores" replace />} />
           <Route path="/players" element={<Players />} />
           <Route path="/entrant/:id" element={<Entrant />} />
           <Route path="/entrant/:id/edit" element={<AuthGate><EditPredictions /></AuthGate>} />

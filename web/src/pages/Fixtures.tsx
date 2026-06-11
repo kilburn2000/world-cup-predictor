@@ -43,7 +43,7 @@ export default function Fixtures() {
     <div className="fl-enter">
       <LiveTabs />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-medium text-cream">Fixtures &amp; results</h1>
+        <h1 className="font-display text-3xl font-medium text-cream">All Fixtures &amp; Results</h1>
         <button
           onClick={() => setShowFinished((v) => !v)}
           className={"rounded-lg border px-3.5 py-1.5 text-sm transition-colors " + (showFinished ? "border-gold bg-gold-soft text-cream" : "border-line text-muted hover:text-cream")}
@@ -70,8 +70,8 @@ export default function Fixtures() {
               return (
                 <Link
                   key={f.id}
-                  to={`/live/fixtures/${f.id}`}
-                  state={{ from: "/live/fixtures", label: "Fixtures" }}
+                  to={`/stats/fixtures/${f.id}`}
+                  state={{ from: "/stats/fixtures", label: "Fixtures" }}
                   className="grid grid-cols-[52px_1fr_auto_1fr_44px] items-center gap-2 border-t border-line px-4 py-2.5 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft sm:grid-cols-[52px_1fr_auto_1fr_50px_70px_44px]"
                 >
                   <div className="font-mono text-[11px] text-muted">{f.kickoff ? londonTime(f.kickoff) : "–"}</div>

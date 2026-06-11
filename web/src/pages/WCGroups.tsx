@@ -26,7 +26,7 @@ export default function WCGroups() {
   return (
     <div className="fl-enter">
       <LiveTabs />
-      <h1 className="mb-1 font-display text-3xl font-medium text-cream">Group tables</h1>
+      <h1 className="mb-1 font-display text-3xl font-medium text-cream">Groups</h1>
       <p className="mb-6 text-[13px] text-muted">
         The real World Cup groups. Top two qualify automatically; the best third-placed teams also go through.
       </p>
