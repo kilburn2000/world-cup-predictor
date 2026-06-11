@@ -108,7 +108,26 @@ app.get("/api/stats", async () => {
     const names = rows.filter((r) => r[key] === max && max > 0).map((r) => r.name).sort();
     return { value: max, name: names[0] ?? null, others: Math.max(0, names.length - 1) };
   };
-  return { mostExact: leader("exact_cnt"), mostResults: leader("outcome_cnt") };
+
+  // longest run of consecutive exact-score predictions (matches in chronological order)
+  const seq = (await sql`
+    select s.entrant_id as eid, e.name, (s.breakdown->>'exact')::boolean as exact
+    from scores s
+    join entrants e on e.id = s.entrant_id
+    join matches m on s.kind = 'MATCH' and m.id = split_part(s.ref, ':', 2)::int and m.status = 'FINISHED'
+    order by s.entrant_id, m.kickoff_utc, m.id
+  `) as any[];
+  const streak = new Map<number, { name: string; cur: number; max: number }>();
+  for (const r of seq) {
+    let st = streak.get(r.eid);
+    if (!st) streak.set(r.eid, (st = { name: r.name, cur: 0, max: 0 }));
+    if (r.exact) { st.cur++; if (st.cur > st.max) st.max = st.cur; } else st.cur = 0;
+  }
+  const maxStreak = [...streak.values()].reduce((mx, s) => Math.max(mx, s.max), 0);
+  const streakNames = [...streak.values()].filter((s) => s.max === maxStreak && maxStreak > 0).map((s) => s.name).sort();
+  const longestExactStreak = { value: maxStreak, name: streakNames[0] ?? null, others: Math.max(0, streakNames.length - 1) };
+
+  return { mostExact: leader("exact_cnt"), mostResults: leader("outcome_cnt"), longestExactStreak };
 });
 
 // Knockout competition group tables: each entrant is scored ONLY on their own
