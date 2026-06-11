@@ -164,14 +164,14 @@ function MatchCard({ m }: { m: LiveMatch }) {
           <span>·</span>
           <span className="inline-flex items-center gap-1">
             {m.mostCommonResult === "DRAW" ? (
-              "draw"
+              <span>draw</span>
             ) : (
               <>
-                {flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}
-                {(m.mostCommonResult === "HOME" ? m.home : m.away)} win
+                <span>{flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}</span>
+                <span>{(m.mostCommonResult === "HOME" ? m.home : m.away)} win</span>
               </>
             )}
-            {" "}{frac(m.mostCommonResultCount, m.mostCommonTotal)}
+            <span>{frac(m.mostCommonResultCount, m.mostCommonTotal)}</span>
           </span>
         </div>
       )}

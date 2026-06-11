@@ -11,6 +11,8 @@ const londonTime = (iso: string) =>
 
 const STAGE: Record<string, string> = { LAST_32: "R32", LAST_16: "R16", QF: "QF", SF: "SF", THIRD_PLACE: "3rd", FINAL: "Final" };
 const stageLabel = (f: Fixture) => (f.stage === "GROUP" ? (f.group ? `Group ${f.group}` : "Group") : STAGE[f.stage] ?? f.stage);
+const frac = (n?: number, total?: number) =>
+  `${n ?? 0}/${total ?? 0} (${total ? Math.round(((n ?? 0) / total) * 100) : 0}%)`;
 
 function Team({ name, align }: { name: string | null; align: "left" | "right" }) {
   const cls = "flex items-center gap-1.5 min-w-0 " + (align === "right" ? "justify-end" : "");
@@ -59,7 +61,7 @@ export default function Fixtures() {
         <div key={g.date} className="mb-6">
           <h2 className="mb-2 text-[11px] uppercase tracking-[1.8px] text-gold">{g.date}</h2>
           <div className="fl-card overflow-hidden">
-            <div className="hidden border-b border-line px-4 py-1.5 text-[9px] uppercase tracking-wide text-muted sm:grid sm:grid-cols-[52px_1fr_auto_1fr_50px_70px_44px] sm:gap-2">
+            <div className="hidden border-b border-line px-4 py-1.5 text-[9px] uppercase tracking-wide text-muted sm:grid sm:grid-cols-[52px_1fr_auto_1fr_58px_74px_44px] sm:gap-2">
               <div /><div /><div /><div />
               <div className="col-span-2 text-center">Most predicted</div>
               <div />
@@ -72,7 +74,7 @@ export default function Fixtures() {
                   key={f.id}
                   to={`/stats/fixtures/${f.id}`}
                   state={{ from: "/stats/fixtures", label: "Fixtures" }}
-                  className="grid grid-cols-[52px_1fr_auto_1fr_44px] items-center gap-2 border-t border-line px-4 py-2.5 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft sm:grid-cols-[52px_1fr_auto_1fr_50px_70px_44px]"
+                  className="grid grid-cols-[52px_1fr_auto_1fr_44px] items-center gap-2 border-t border-line px-4 py-2.5 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft sm:grid-cols-[52px_1fr_auto_1fr_58px_74px_44px]"
                 >
                   <div className="font-mono text-[11px] text-muted">{f.kickoff ? londonTime(f.kickoff) : "–"}</div>
                   <Team name={f.home} align="right" />
@@ -84,20 +86,24 @@ export default function Fixtures() {
                     )}
                   </div>
                   <Team name={f.away} align="left" />
-                  <div className="hidden text-center font-mono text-[12px] text-cream sm:block">
-                    {f.mostCommonScore ? f.mostCommonScore.replace("-", "–") : "–"}
+                  <div className="hidden text-center sm:block">
+                    <div className="font-mono text-[12px] text-cream">{f.mostCommonScore ? f.mostCommonScore.replace("-", "–") : "–"}</div>
+                    {f.mostCommonScore && <div className="text-[8px] leading-tight text-muted">{frac(f.mostCommonScoreCount, f.mostCommonTotal)}</div>}
                   </div>
-                  <div className="hidden items-center justify-center gap-1 font-mono text-[10px] text-muted sm:flex">
-                    {f.mostCommonResult === "DRAW" ? (
-                      "Draw"
-                    ) : f.mostCommonResult ? (
-                      <>
-                        <span>{flagFor(f.mostCommonResult === "HOME" ? f.home : f.away)}</span>
-                        <span>{f.mostCommonResult === "HOME" ? f.homeCode : f.awayCode}</span>
-                      </>
-                    ) : (
-                      "–"
-                    )}
+                  <div className="hidden text-center sm:block">
+                    <div className="flex items-center justify-center gap-1 font-mono text-[10px] text-muted">
+                      {f.mostCommonResult === "DRAW" ? (
+                        "Draw"
+                      ) : f.mostCommonResult ? (
+                        <>
+                          <span>{flagFor(f.mostCommonResult === "HOME" ? f.home : f.away)}</span>
+                          <span>{f.mostCommonResult === "HOME" ? f.homeCode : f.awayCode}</span>
+                        </>
+                      ) : (
+                        "–"
+                      )}
+                    </div>
+                    {f.mostCommonResult && <div className="text-[8px] leading-tight text-muted">{frac(f.mostCommonResultCount, f.mostCommonTotal)}</div>}
                   </div>
                   <div className="text-right">
                     {live ? (

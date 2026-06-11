@@ -533,25 +533,30 @@ app.get("/api/fixtures", async () => {
     from predictions p join matches m on m.id = p.match_id
     where p.scope = 'MATCH'
   `;
-  const agg = new Map<number, { score: Map<string, number>; result: { HOME: number; DRAW: number; AWAY: number } }>();
+  const agg = new Map<number, { score: Map<string, number>; result: { HOME: number; DRAW: number; AWAY: number }; total: number }>();
   for (const p of preds as any[]) {
     const h = p.ph === p.mh ? p.phg : p.pag; // align to the fixture's home/away
     const a = p.ph === p.mh ? p.pag : p.phg;
     let g = agg.get(p.mid);
-    if (!g) agg.set(p.mid, (g = { score: new Map(), result: { HOME: 0, DRAW: 0, AWAY: 0 } }));
+    if (!g) agg.set(p.mid, (g = { score: new Map(), result: { HOME: 0, DRAW: 0, AWAY: 0 }, total: 0 }));
     g.score.set(`${h}-${a}`, (g.score.get(`${h}-${a}`) ?? 0) + 1);
     g.result[h > a ? "HOME" : h < a ? "AWAY" : "DRAW"]++;
+    g.total++;
   }
   const modeScore = (s: Map<string, number>) => {
-    let best: string | null = null, bc = 0;
-    for (const [k, c] of s) if (c > bc) { best = k; bc = c; }
-    return best;
+    let key: string | null = null, count = 0;
+    for (const [k, c] of s) if (c > count) { key = k; count = c; }
+    return { key, count };
   };
-  const modeResult = (r: { HOME: number; DRAW: number; AWAY: number }) =>
-    (["HOME", "DRAW", "AWAY"] as const).reduce((a, b) => (r[b] > r[a] ? b : a));
+  const modeResult = (r: { HOME: number; DRAW: number; AWAY: number }) => {
+    const key = (["HOME", "DRAW", "AWAY"] as const).reduce((a, b) => (r[b] > r[a] ? b : a));
+    return { key, count: r[key] };
+  };
 
   return (rows as any[]).map((m) => {
     const g = agg.get(m.id);
+    const ms = g ? modeScore(g.score) : { key: null, count: 0 };
+    const mr = g ? modeResult(g.result) : { key: null as "HOME" | "DRAW" | "AWAY" | null, count: 0 };
     return {
       id: m.id,
       stage: m.stage,
@@ -565,8 +570,11 @@ app.get("/api/fixtures", async () => {
       awayCode: m.away_code,
       homeScore: m.hg,
       awayScore: m.ag,
-      mostCommonScore: g ? modeScore(g.score) : null,
-      mostCommonResult: g ? modeResult(g.result) : null,
+      mostCommonScore: ms.key,
+      mostCommonScoreCount: ms.count,
+      mostCommonResult: mr.key,
+      mostCommonResultCount: mr.count,
+      mostCommonTotal: g?.total ?? 0,
     };
   });
 });
