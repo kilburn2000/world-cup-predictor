@@ -79,6 +79,9 @@ function phaseOf(m: LiveMatch) {
   };
 }
 
+const frac = (n?: number, total?: number) =>
+  `${n ?? 0}/${total ?? 0} (${total ? Math.round(((n ?? 0) / total) * 100) : 0}%)`;
+
 function MatchCard({ m }: { m: LiveMatch }) {
   const ph = phaseOf(m);
   const ft = m.status === "FINISHED";
@@ -156,7 +159,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
         <div className="flex flex-wrap items-center justify-center gap-1.5 border-b border-line px-5 py-2.5 text-[11.5px] text-muted sm:px-6">
           <span className="text-[9px] uppercase tracking-wide">Most predicted</span>
           <span>
-            <span className="font-mono text-cream">{m.mostCommonScore.replace("-", "–")}</span> ({m.mostCommonScoreCount})
+            <span className="font-mono text-cream">{m.mostCommonScore.replace("-", "–")}</span> {frac(m.mostCommonScoreCount, m.mostCommonTotal)}
           </span>
           <span>·</span>
           <span className="inline-flex items-center gap-1">
@@ -168,7 +171,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
                 {(m.mostCommonResult === "HOME" ? m.home : m.away)} win
               </>
             )}
-            {" "}({m.mostCommonResultCount})
+            {" "}{frac(m.mostCommonResultCount, m.mostCommonTotal)}
           </span>
         </div>
       )}

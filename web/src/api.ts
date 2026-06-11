@@ -271,6 +271,7 @@ export interface LiveMatch {
   mostCommonScoreCount?: number;
   mostCommonResult?: "HOME" | "DRAW" | "AWAY" | null;
   mostCommonResultCount?: number;
+  mostCommonTotal?: number;
   events: LiveEvent[];
   /** entrants ranked by points they'd win if it ended at the current score. */
   board: LiveBoardRow[];
