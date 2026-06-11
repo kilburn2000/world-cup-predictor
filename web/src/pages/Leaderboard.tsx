@@ -41,13 +41,16 @@ function Overall() {
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const rows = data ?? [];
+  const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_44px] items-center gap-1";
   return (
     <div className="fl-card overflow-hidden">
-      <div className="grid grid-cols-[36px_1fr_40px_52px] items-center gap-1 px-4 py-2 text-[9px] uppercase tracking-wide text-muted">
-        <div>#</div><div>Entrant</div><div className="text-center">Grp</div><div className="text-right">Pts</div>
+      <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
+        <div>#</div><div>Entrant</div>
+        <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div>
+        <div className="text-center">R32</div><div className="text-right">Pts</div>
       </div>
       {rows.map((e, i) => (
-        <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className="grid grid-cols-[36px_1fr_40px_52px] items-center gap-1 border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft">
+        <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft"}>
           <div className="font-mono text-xs">
             {i < 3 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
           </div>
@@ -55,7 +58,10 @@ function Overall() {
             <span className="truncate text-cream">{e.name}</span>
             {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
           </div>
-          <div className="text-center font-mono text-[10px] text-muted">{e.group ?? "–"}</div>
+          <div className="text-center font-mono text-[11px] text-muted">{e.week1 || "–"}</div>
+          <div className="text-center font-mono text-[11px] text-muted">{e.week2 || "–"}</div>
+          <div className="text-center font-mono text-[11px] text-muted">{e.week3 || "–"}</div>
+          <div className="text-center font-mono text-[11px] text-muted">{e.r32 || "–"}</div>
           <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
         </Link>
       ))}

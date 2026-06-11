@@ -11,7 +11,10 @@ export interface LeaderboardRow {
   name: string;
   total: number;
   nameIncomplete?: boolean;
-  group?: string | null;
+  week1: number;
+  week2: number;
+  week3: number;
+  r32: number;
   /** Optional (sent once the snapshot backend is enabled). */
   rank?: number;
   /** prev rank − current rank. Positive = climbed. */

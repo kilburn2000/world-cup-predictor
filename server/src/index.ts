@@ -78,10 +78,15 @@ app.get("/api/admin/check", async (req: any, reply) => {
 app.get("/api/leaderboard", async () => {
   const rows = await sql`
     select e.id as "entrantId", e.name, e.name_incomplete as "nameIncomplete",
-           e.entrant_group as "group", coalesce(sum(s.points), 0)::int as total
+           coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 1 then s.points end), 0)::int as week1,
+           coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 2 then s.points end), 0)::int as week2,
+           coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 3 then s.points end), 0)::int as week3,
+           coalesce(sum(case when m.stage = 'LAST_32' then s.points end), 0)::int as r32,
+           coalesce(sum(s.points), 0)::int as total
     from entrants e
     left join scores s on s.entrant_id = e.id
-    group by e.id, e.name, e.name_incomplete, e.entrant_group
+    left join matches m on s.ref like 'match:%' and m.id = split_part(s.ref, ':', 2)::int
+    group by e.id, e.name, e.name_incomplete
     order by total desc, e.name asc
   `;
   return rows;
