@@ -80,8 +80,8 @@ export default function App() {
           </NavLink>
           <nav className="-mx-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <NavLink to="/" className={tab} end>Standings</NavLink>
-            <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
             <NavLink to="/prizes" className={tab}>Prizes</NavLink>
+            <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
             <NavLink to="/admin" className={adminBtn}>Admin</NavLink>
           </nav>
         </div>
