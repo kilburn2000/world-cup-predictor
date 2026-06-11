@@ -49,6 +49,18 @@ export default function FixtureDetail() {
       ? topScorers[0].name
       : `${topScorers[0].name} + ${topScorers.length - 1} other${topScorers.length - 1 > 1 ? "s" : ""}`;
 
+  // most common predicted result (outcome)
+  const resultCounts = { home: 0, draw: 0, away: 0 };
+  for (const b of data.board) {
+    const [ph, pa] = b.pick.split("-").map(Number);
+    if (ph > pa) resultCounts.home++;
+    else if (ph < pa) resultCounts.away++;
+    else resultCounts.draw++;
+  }
+  const topResultKey = (["home", "draw", "away"] as const).reduce((a, b) => (resultCounts[b] > resultCounts[a] ? b : a));
+  const topResultLabel = topResultKey === "draw" ? "Draw" : `${topResultKey === "home" ? m.home : m.away} win`;
+  const topResultCount = resultCounts[topResultKey];
+
   return (
     <div className="fl-enter mx-auto max-w-2xl">
       <div className="mb-3 text-[11px] uppercase tracking-[1.8px]">
@@ -80,11 +92,16 @@ export default function FixtureDetail() {
       </div>
 
       {data.board.length > 0 && (
-        <div className="mb-5 grid grid-cols-2 gap-3">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="fl-card p-4">
             <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most common prediction</div>
             <div className="mt-1 font-mono text-2xl text-cream">{topPick ? topPick.replace("-", "–") : "–"}</div>
             <div className="text-[11px] text-muted">{topPickCount} {topPickCount === 1 ? "entrant" : "entrants"}</div>
+          </div>
+          <div className="fl-card p-4">
+            <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most common result</div>
+            <div className="mt-1 truncate font-display text-lg text-cream">{topResultLabel}</div>
+            <div className="text-[11px] text-muted">{topResultCount} {topResultCount === 1 ? "entrant" : "entrants"}</div>
           </div>
           <div className="fl-card p-4">
             <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most points</div>
