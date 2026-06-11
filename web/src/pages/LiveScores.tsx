@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useLiveMatches, type LiveMatch, type LiveBoardRow, type LiveEvent } from "../api.js";
 import { flagFor } from "../flags.js";
 import LiveTabs from "../components/LiveTabs.js";
+import ScoredChips from "../components/ScoredChips.js";
 
 function initials(name: string) {
   return name.split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
@@ -171,11 +172,11 @@ function MatchCard({ m }: { m: LiveMatch }) {
             )}
           </div>
         </div>
-        <div className="grid grid-cols-[30px_1fr_54px_56px] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_60px_92px_56px]">
+        <div className="grid grid-cols-[30px_1fr_54px_56px] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_56px_104px_52px]">
           <div>#</div>
           <div>Entrant</div>
           <div className="text-center">Pick</div>
-          <div className="hidden text-center sm:block">Outcome</div>
+          <div className="hidden text-center sm:block">Scored</div>
           <div className="text-right">Pts</div>
         </div>
         {board.map((b, i) => {
@@ -183,7 +184,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
           return (
             <div
               key={b.entrantId}
-              className="grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg border-t border-line px-3 py-2.5 sm:grid-cols-[34px_1fr_60px_92px_56px]"
+              className="grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg border-t border-line px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]"
             >
               <div className="font-mono text-xs text-muted">{i + 1}</div>
               <div className="flex items-center gap-2.5">
@@ -193,13 +194,8 @@ function MatchCard({ m }: { m: LiveMatch }) {
                 <div className="text-[13.5px] text-cream">{b.name}</div>
               </div>
               <div className="text-center font-mono text-[13px]">{b.pick}</div>
-              <div className="hidden text-center sm:block">
-                <span
-                  className="rounded px-2 py-0.5 font-mono text-[10.5px]"
-                  style={{ background: t.bg, color: t.fg }}
-                >
-                  {t.label}
-                </span>
+              <div className="hidden justify-center sm:flex">
+                <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
               </div>
               <div className="text-right font-mono text-base" style={{ color: t.fg }}>
                 +{b.points}

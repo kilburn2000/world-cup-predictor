@@ -72,7 +72,7 @@ export default function App() {
       <header className="sticky top-0 z-30 border-b border-line bg-pitch-950/75 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <NavLink to="/" className="flex items-center gap-3">
-            <img src="/whiteys-crest.png" alt="" className="h-[72px] w-[72px] shrink-0 object-contain sm:h-20 sm:w-20" />
+            <img src="/whiteys-crest.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain sm:h-28 sm:w-28" />
             <div>
               <div className="font-display text-lg font-medium leading-none text-cream sm:text-xl whitespace-nowrap">World Cup 2026</div>
               <div className="mt-[3px] text-[10px] uppercase tracking-[1.8px] text-muted whitespace-nowrap">Sweepstake</div>

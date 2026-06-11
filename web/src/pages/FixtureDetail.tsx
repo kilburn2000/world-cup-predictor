@@ -1,6 +1,7 @@
 import { useParams, useLocation, Link } from "react-router-dom";
 import { useFixture } from "../api.js";
 import { flagFor } from "../flags.js";
+import ScoredChips from "../components/ScoredChips.js";
 
 const TIER: Record<string, { label: string; bg: string; fg: string }> = {
   exact: { label: "Exact", bg: "rgba(201,168,106,0.18)", fg: "#c9a86a" },
@@ -116,21 +117,23 @@ export default function FixtureDetail() {
         </p>
       ) : (
         <div className="fl-card overflow-hidden">
-          <div className="grid grid-cols-[30px_1fr_54px_88px_46px] items-center px-4 py-2 text-[10px] uppercase tracking-[1.5px] text-muted">
-            <div>#</div><div>Entrant</div><div className="text-center">Pick</div><div className="text-center">Outcome</div><div className="text-right">Pts</div>
+          <div className="grid grid-cols-[28px_minmax(0,1fr)_46px_108px_42px] items-center px-4 py-2 text-[10px] uppercase tracking-[1.5px] text-muted">
+            <div>#</div><div>Entrant</div><div className="text-center">Pick</div><div className="text-center">Scored</div><div className="text-right">Pts</div>
           </div>
           {data.board.map((b, i) => {
             const t = TIER[b.tier];
             return (
-              <Link key={b.entrantId} to={`/entrant/${b.entrantId}`} className="grid grid-cols-[30px_1fr_54px_88px_46px] items-center border-t border-line px-4 py-2.5 transition-colors hover:bg-gold-soft">
+              <Link key={b.entrantId} to={`/entrant/${b.entrantId}`} className="grid grid-cols-[28px_minmax(0,1fr)_46px_108px_42px] items-center border-t border-line px-4 py-2.5 transition-colors hover:bg-gold-soft">
                 <div className="font-mono text-xs text-muted">{i + 1}</div>
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">{initials(b.name)}</div>
                   <div className="text-[13.5px] text-cream">{b.name}</div>
                 </div>
                 <div className="text-center font-mono text-[13px]">{b.pick}</div>
-                <div className="text-center">
-                  {data.played && <span className="rounded px-2 py-0.5 font-mono text-[10.5px]" style={{ background: t.bg, color: t.fg }}>{t.label}</span>}
+                <div className="flex justify-center">
+                  {data.played && (
+                    <ScoredChips pick={b.pick} hs={m.homeScore ?? 0} as={m.awayScore ?? 0} homeCode={m.homeCode ?? ""} awayCode={m.awayCode ?? ""} />
+                  )}
                 </div>
                 <div className="text-right font-mono text-base" style={{ color: data.played ? t.fg : "#8d9388" }}>{data.played ? `+${b.points}` : "–"}</div>
               </Link>
