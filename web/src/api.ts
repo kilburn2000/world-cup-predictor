@@ -58,6 +58,7 @@ export interface Stats {
   mostExact: StatLeader;
   mostResults: StatLeader;
   longestExactStreak: StatLeader;
+  longestResultStreak: StatLeader;
 }
 export const useStats = () =>
   useQuery({ queryKey: ["stats"], queryFn: () => get<Stats>("/api/stats") });
