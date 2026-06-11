@@ -74,8 +74,8 @@ export default function App() {
           <NavLink to="/" className="flex items-center gap-3">
             <img src="/whiteys-crest.png" alt="" className="h-[72px] w-[72px] shrink-0 object-contain sm:h-20 sm:w-20" />
             <div>
-              <div className="font-display text-lg font-medium leading-none text-cream sm:text-xl whitespace-nowrap">Whitey’s World Cup</div>
-              <div className="mt-[3px] text-[10px] uppercase tracking-[1.8px] text-muted whitespace-nowrap">2026 Sweepstake</div>
+              <div className="font-display text-lg font-medium leading-none text-cream sm:text-xl whitespace-nowrap">World Cup 2026</div>
+              <div className="mt-[3px] text-[10px] uppercase tracking-[1.8px] text-muted whitespace-nowrap">Sweepstake</div>
             </div>
           </NavLink>
           <nav className="-mx-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
