@@ -54,7 +54,7 @@ export default function Home() {
       // Hold the loader a beat so the transition reads as a deliberate sign-in,
       // not an instant flicker. By the time it clears, `me` (and the dashboard)
       // are loaded underneath.
-      setTimeout(() => setSigningIn(false), 1300);
+      setTimeout(() => setSigningIn(false), 3000);
     } catch (err: any) {
       setError(err.message);
       setSigningIn(false);

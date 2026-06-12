@@ -66,9 +66,12 @@ export default function App() {
   const firstLoad = useRef(true);
 
   const handleLogout = async () => {
+    setLabel("Signing you out");
+    setLoading(true);
     await logout();
     await qc.invalidateQueries({ queryKey: ["me"] });
     navigate("/");
+    setTimeout(() => setLoading(false), 3000);
   };
 
   useEffect(() => {
@@ -86,7 +89,7 @@ export default function App() {
     }
     setLabel(labelFor(location.pathname));
     setLoading(true);
-    const t = setTimeout(() => setLoading(false), 2000);
+    const t = setTimeout(() => setLoading(false), 3000);
     return () => clearTimeout(t);
   }, [location.pathname]);
 
