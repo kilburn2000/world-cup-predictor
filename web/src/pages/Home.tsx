@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { login, useMe } from "../auth.js";
 import EntrantSummary from "../components/EntrantSummary.js";
+import Loader from "../components/Loader.js";
 
 export default function Home() {
   const { data: me, isLoading } = useMe();
@@ -10,10 +11,13 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
 
   if (isLoading)
     return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
+
+  // Pulsating crest overlay while we sign in and swap in the dashboard.
+  if (signingIn) return <Loader label="Signing you in" />;
 
   // Signed in with an entrant: their personalised dashboard.
   if (me?.entrantId) {
@@ -42,15 +46,18 @@ export default function Home() {
   // Signed out: login form with a personalisation pitch.
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
+    setSigningIn(true);
     try {
       await login(email.trim(), password);
       await qc.invalidateQueries({ queryKey: ["me"] });
+      // Hold the loader a beat so the transition reads as a deliberate sign-in,
+      // not an instant flicker. By the time it clears, `me` (and the dashboard)
+      // are loaded underneath.
+      setTimeout(() => setSigningIn(false), 1300);
     } catch (err: any) {
       setError(err.message);
-    } finally {
-      setBusy(false);
+      setSigningIn(false);
     }
   }
 
@@ -71,8 +78,8 @@ export default function Home() {
           <div className="mb-1.5 text-[10px] uppercase tracking-[1.5px] text-muted">Password</div>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="fl-input" placeholder="••••••••" />
         </div>
-        <button type="submit" disabled={busy || !email || !password} className="btn-gold py-3 text-sm">
-          {busy ? "Signing in…" : "Sign in"}
+        <button type="submit" disabled={signingIn || !email || !password} className="btn-gold py-3 text-sm">
+          {signingIn ? "Signing in…" : "Sign in"}
         </button>
         {error && <p className="text-center text-[13px] text-down">{error}</p>}
         <a href="mailto:[redacted]?subject=World%20Cup%20password%20reset" className="text-center text-[12px] text-muted hover:text-cream">
