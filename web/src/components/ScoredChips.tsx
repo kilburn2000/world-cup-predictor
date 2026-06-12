@@ -19,12 +19,10 @@ export default function ScoredChips({
   const awayOk = pa === as;
   if (homeOk && awayOk) return <Chip label="Exact" tone="gold" />;
   const resultOk = Math.sign(ph - pa) === Math.sign(hs - as);
-  // team-goal chips are green when they come with a correct result, otherwise neutral
-  const teamTone = resultOk ? "green" : "team";
   const chips = [];
   if (resultOk) chips.push(<Chip key="r" label="Result" tone="green" />);
-  if (homeOk) chips.push(<Chip key="h" label={`${homeCode} ${hs}`} tone={teamTone} />);
-  if (awayOk) chips.push(<Chip key="a" label={`${awayCode} ${as}`} tone={teamTone} />);
+  if (homeOk) chips.push(<Chip key="h" label={`${homeCode} ${hs}`} tone="green" />);
+  if (awayOk) chips.push(<Chip key="a" label={`${awayCode} ${as}`} tone="green" />);
   if (!chips.length) return <Chip label="No Score" tone="red" />;
   return <div className="flex flex-wrap justify-center gap-1">{chips}</div>;
 }
