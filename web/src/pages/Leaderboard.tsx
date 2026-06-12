@@ -8,6 +8,19 @@ import { useMe } from "../auth.js";
 // Gold "you" badge for the logged-in entrant's own row.
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
+// Standard competition ranking: ties share a position (the first shows the
+// number, the rest "="), and the next distinct value skips. Consensus rows don't
+// occupy a position. `list` must already be sorted desc by `value`.
+function rankLabeller<T>(list: T[], value: (t: T) => number, isConsensus: (t: T) => boolean = () => false) {
+  const reals = list.filter((x) => !isConsensus(x));
+  return (e: T): string => {
+    const rank = 1 + reals.filter((x) => value(x) > value(e)).length;
+    if (isConsensus(e)) return String(rank);
+    const idx = reals.indexOf(e);
+    return idx > 0 && value(reals[idx - 1]) === value(e) ? "=" : String(rank);
+  };
+}
+
 // Pick country code -> country name flagFor() understands.
 const SCORER_COUNTRY: Record<string, string> = {
   POR: "Portugal", ENG: "England", NED: "Netherlands", BRA: "Brazil", ARG: "Argentina",
@@ -41,7 +54,7 @@ function LiveDot() {
   return <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />;
 }
 
-function GroupRow({ e, started, myId }: { e: GroupEntrant; started?: PhasesStarted; myId?: number | null }) {
+function GroupRow({ e, started, myId, label }: { e: GroupEntrant; started?: PhasesStarted; myId?: number | null; label: string }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
@@ -49,9 +62,9 @@ function GroupRow({ e, started, myId }: { e: GroupEntrant; started?: PhasesStart
     >
       <div className="font-mono text-xs">
         {e.qualifying ? (
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{e.rank}</span>
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span>
         ) : (
-          <span className="pl-1.5 text-muted">{e.rank}</span>
+          <span className="pl-1.5 text-muted">{label}</span>
         )}
       </div>
       <div className="flex min-w-0 items-center gap-1.5">
@@ -87,15 +100,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => b.total - a.total || a.name.localeCompare(b.name),
   );
-  // Standard competition ranking: ties share a position; the first of a tied
-  // group shows the number, the rest show "=". The next distinct total skips.
-  const reals = list.filter((x) => !x.consensus);
-  const rankLabel = (e: Row): string => {
-    const rank = 1 + reals.filter((x) => x.total > e.total).length;
-    if (e.consensus) return String(rank);
-    const idx = reals.indexOf(e);
-    return idx > 0 && reals[idx - 1].total === e.total ? "=" : String(rank);
-  };
+  const rankLabel = rankLabeller(list, (e) => e.total, (e) => !!e.consensus);
   return (
     <>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -166,22 +171,25 @@ function Knockout() {
         The <span className="text-gold">top two</span> in each group qualify for the knockout bracket.
       </p>
       <div className="grid gap-4 lg:grid-cols-2">
-        {data.map((g) => (
-          <div key={g.group} className="fl-card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-line px-4 py-3">
-              <div className="font-display text-lg text-cream">Group {g.group}</div>
-              <div className="grid grid-cols-[34px_34px_34px_44px] gap-1 text-[9px] uppercase tracking-wide text-muted">
-                <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div><div className="text-right">Pts</div>
+        {data.map((g) => {
+          const rankLabel = rankLabeller(g.entrants, (e) => e.total);
+          return (
+            <div key={g.group} className="fl-card overflow-hidden">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3">
+                <div className="font-display text-lg text-cream">Group {g.group}</div>
+                <div className="grid grid-cols-[34px_34px_34px_44px] gap-1 text-[9px] uppercase tracking-wide text-muted">
+                  <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div><div className="text-right">Pts</div>
+                </div>
               </div>
+              {g.entrants.map((e, i) => (
+                <div key={e.entrantId}>
+                  <GroupRow e={e} started={started} myId={me?.entrantId} label={rankLabel(e)} />
+                  {i === 1 && <div className="border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
+                </div>
+              ))}
             </div>
-            {g.entrants.map((e, i) => (
-              <div key={e.entrantId}>
-                <GroupRow e={e} started={started} myId={me?.entrantId} />
-                {i === 1 && <div className="border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
-              </div>
-            ))}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </>
   );
@@ -199,15 +207,17 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => b[phase] - a[phase] || a.name.localeCompare(b.name),
   );
+  const rankLabel = rankLabeller(list, (e) => e[phase], (e) => !!e.consensus);
   return (
     <div className="fl-card overflow-hidden">
       <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
         <div>#</div><div>Entrant</div><div className="text-right">Pts</div>
       </div>
-      {list.map((e, i) =>
-        e.consensus ? (
+      {list.map((e) => {
+        const label = rankLabel(e);
+        return e.consensus ? (
           <div key="everyone" className={cols + " border-t border-line bg-gold-soft px-4 py-2.5 text-[13px]"}>
-            <div className="pl-1.5 font-mono text-xs text-gold">{i + 1}</div>
+            <div className="pl-1.5 font-mono text-xs text-gold">{label}</div>
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="truncate font-medium text-gold">👥 {e.name}</span>
               <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
@@ -217,7 +227,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
         ) : (
           <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
             <div className="font-mono text-xs">
-              {i < 3 && e[phase] > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
+              {label !== "=" && Number(label) <= 3 && e[phase] > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="pl-1.5 text-muted">{label}</span>}
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="truncate text-cream">{e.name}</span>
@@ -226,8 +236,8 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             </div>
             <div className="text-right font-mono text-sm font-semibold text-cream">{e[phase]}</div>
           </Link>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -239,6 +249,7 @@ function TopScorers() {
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the top scorer table.</p>;
   const list = data ?? [];
+  const rankLabel = rankLabeller(list, (e) => e.total);
   const cols = "grid grid-cols-[28px_1fr_auto] items-center gap-2";
   return (
     <>
@@ -246,14 +257,16 @@ function TopScorers() {
         <div className={cols + " border-b border-line px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div>#</div><div>Entrant &amp; players</div><div className="text-right">Goals</div>
         </div>
-        {list.map((e, i) => (
+        {list.map((e) => {
+          const label = rankLabel(e);
+          return (
           <Link
             key={e.entrantId}
             to={`/entrant/${e.entrantId}`}
             className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
           >
             <div className="font-mono text-xs">
-              {i < 3 && e.total > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
+              {label !== "=" && Number(label) <= 3 && e.total > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="pl-1.5 text-muted">{label}</span>}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-[13.5px] text-cream">
@@ -274,7 +287,8 @@ function TopScorers() {
             </div>
             <div className="text-right font-mono text-lg font-semibold text-cream">{e.total}</div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </>
   );
@@ -310,6 +324,15 @@ export default function Leaderboard() {
   const setTab = (t: Tab) => navigate(`/standings/${TAB_SLUG[t]}`);
   const [showConsensus, setShowConsensus] = useState(false);
   const { data: consensus } = useConsensus();
+  const { data: started } = usePhasesStarted();
+  // Week / R32 tabs only appear once a game in that period has kicked off.
+  const visibleTabs = TABS.filter((t) =>
+    t.key === "week1" ? started?.week1
+    : t.key === "week2" ? started?.week2
+    : t.key === "week3" ? started?.week3
+    : t.key === "r32" ? started?.r32
+    : true,
+  );
   const consensusTab = tab !== "knockout" && tab !== "topscorer";
   const everyone = showConsensus && consensusTab ? consensus ?? null : null;
 
@@ -334,7 +357,7 @@ export default function Leaderboard() {
             className="flex-1"
             value={tab}
             onChange={(v) => setTab(v as Tab)}
-            options={TABS.map((t) => ({ value: t.key, label: t.label }))}
+            options={visibleTabs.map((t) => ({ value: t.key, label: t.label }))}
           />
           {consensusTab && (
             <button
@@ -351,7 +374,7 @@ export default function Leaderboard() {
         </div>
         {/* Desktop: full pill row. */}
         <div className="hidden flex-wrap items-center gap-2 sm:flex">
-          {TABS.map((t) => (
+          {visibleTabs.map((t) => (
             <button key={t.key} className={subTab(tab === t.key)} onClick={() => setTab(t.key)}>{t.label}</button>
           ))}
           {consensusTab && (
