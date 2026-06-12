@@ -33,6 +33,12 @@ const adminBtn = () =>
   "shrink-0 whitespace-nowrap rounded-lg border border-gold bg-gold px-3.5 py-1.5 text-sm font-semibold " +
   "text-pitch-950 transition-colors hover:bg-transparent hover:text-gold";
 
+// Sign out: an outlined pill - reads as a button but stays quieter than the
+// solid-gold admin button so the two don't compete.
+const signOutBtn = () =>
+  "shrink-0 whitespace-nowrap rounded-lg border border-line px-3.5 py-1.5 text-sm text-muted " +
+  "transition-colors hover:border-gold hover:text-cream";
+
 // Mobile dropdown row: full-width tappable item.
 const mobileItem = ({ isActive }: { isActive: boolean }) =>
   "rounded-lg px-3 py-2.5 text-sm transition-colors " +
@@ -125,12 +131,12 @@ export default function App() {
               <NavLink to="/standings/overall" className={tab({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={tab}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
-              {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={tab}>My predictions</NavLink>}
+              {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={tab}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={adminBtn}>Admin</NavLink>}
               {me ? (
-                <button onClick={handleLogout} className={tab({ isActive: false })}>Sign out</button>
+                <button onClick={handleLogout} className={signOutBtn()}>Sign Out</button>
               ) : (
-                <NavLink to="/" className={adminBtn}>Sign in</NavLink>
+                <NavLink to="/" className={adminBtn}>Sign In</NavLink>
               )}
             </nav>
           </div>
@@ -142,12 +148,12 @@ export default function App() {
               <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={() => mobileItem({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
-              {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={mobileItem}>My predictions</NavLink>}
+              {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={mobileItem}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={mobileItem}>Admin</NavLink>}
               {me ? (
-                <button onClick={handleLogout} className="rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Sign out</button>
+                <button onClick={handleLogout} className="rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Sign Out</button>
               ) : (
-                <NavLink to="/" className={mobileItem}>Sign in</NavLink>
+                <NavLink to="/" className={mobileItem}>Sign In</NavLink>
               )}
             </nav>
           )}
