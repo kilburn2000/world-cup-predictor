@@ -49,6 +49,17 @@ export interface EntrantGroup {
 export const useGroups = () =>
   useQuery({ queryKey: ["groups"], queryFn: () => get<EntrantGroup[]>("/api/groups") });
 
+export interface Consensus {
+  name: string;
+  week1: number;
+  week2: number;
+  week3: number;
+  r32: number;
+  total: number;
+}
+export const useConsensus = () =>
+  useQuery({ queryKey: ["consensus"], queryFn: () => get<Consensus>("/api/consensus") });
+
 export interface StatLeader {
   value: number;
   name: string | null;

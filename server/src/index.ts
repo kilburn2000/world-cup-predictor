@@ -134,6 +134,59 @@ app.get("/api/leaderboard", async () => {
   return rows;
 });
 
+// The "Everyone" consensus: a virtual entrant who, for every game, picks the
+// most-predicted scoreline (and most-predicted result for the outcome point),
+// scored live. Not a real entrant — only shown as a toggle-on comparison in the
+// standings, never in stats or prizes.
+app.get("/api/consensus", async () => {
+  const cfg = await loadConfig();
+  const matches = (await sql`
+    select id, matchday, home_team_id mh, home_goals hg, away_goals ag
+    from matches
+    where stage = 'GROUP' and status in ('FINISHED', 'IN_PLAY') and home_goals is not null and away_goals is not null
+  `) as any[];
+  const out = { name: "Everyone", week1: 0, week2: 0, week3: 0, r32: 0, total: 0 };
+  if (!matches.length) return out;
+
+  const ids = matches.map((m) => m.id);
+  const byMatch = new Map(matches.map((m) => [m.id, m]));
+  const preds = (await sql`
+    select match_id mid, pred_home_team_id ph, pred_home_goals phg, pred_away_goals pag
+    from predictions where scope = 'MATCH' and match_id in ${sql(ids)}
+  `) as any[];
+  const agg = new Map<number, { score: Map<string, number>; res: { HOME: number; DRAW: number; AWAY: number } }>();
+  for (const p of preds) {
+    const m = byMatch.get(p.mid);
+    if (!m) continue;
+    const h = p.ph === m.mh ? p.phg : p.pag;
+    const a = p.ph === m.mh ? p.pag : p.phg;
+    let g = agg.get(p.mid);
+    if (!g) agg.set(p.mid, (g = { score: new Map(), res: { HOME: 0, DRAW: 0, AWAY: 0 } }));
+    g.score.set(`${h}-${a}`, (g.score.get(`${h}-${a}`) ?? 0) + 1);
+    g.res[h > a ? "HOME" : h < a ? "AWAY" : "DRAW"]++;
+  }
+
+  const wk = [0, 0, 0, 0];
+  for (const m of matches) {
+    const g = agg.get(m.id);
+    if (!g) continue;
+    let bestScore = "0-0", bc = 0;
+    for (const [k, c] of g.score) if (c > bc) { bestScore = k; bc = c; }
+    const [ch, ca] = bestScore.split("-").map(Number);
+    const cRes = (["HOME", "DRAW", "AWAY"] as const).reduce((x, y) => (g.res[y] > g.res[x] ? y : x));
+    const actRes = m.hg > m.ag ? "HOME" : m.hg < m.ag ? "AWAY" : "DRAW";
+    let pts = 0;
+    if (cRes === actRes) pts += cfg.outcome;
+    if (ch === m.hg) pts += cfg.teamGoals;
+    if (ca === m.ag) pts += cfg.teamGoals;
+    if (ch === m.hg && ca === m.ag) pts += cfg.exactBonus;
+    wk[m.matchday] += pts;
+  }
+  out.week1 = wk[1]; out.week2 = wk[2]; out.week3 = wk[3];
+  out.total = wk[1] + wk[2] + wk[3];
+  return out;
+});
+
 // Fun stats for the standings — leaders by various measures, with ties as
 // "name + N others".
 app.get("/api/stats", async () => {

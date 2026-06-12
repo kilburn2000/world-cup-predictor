@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useGroups, useLeaderboard, useStats, type GroupEntrant, type StatLeader } from "../api.js";
+import { useGroups, useLeaderboard, useStats, useConsensus, type GroupEntrant, type StatLeader, type Consensus } from "../api.js";
 
 function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeader; unit: string; unitPlural?: string }) {
   const has = l && l.name && l.value > 0;
@@ -55,44 +55,64 @@ const subTab = (active: boolean) =>
   "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
   (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
-function Overall() {
+type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; total: number; nameIncomplete?: boolean; consensus?: boolean };
+const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, total: c.total, consensus: true });
+
+function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: stats } = useStats();
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
-  const rows = data ?? [];
   const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_44px] items-center gap-1";
+  const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
+    (a, b) => b.total - a.total || a.name.localeCompare(b.name),
+  );
   return (
     <>
-    <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard label="Most correct scores" l={stats?.mostExact} unit="exact score" />
-      <StatCard label="Most correct results" l={stats?.mostResults} unit="result" />
-      <StatCard label="Longest exact streak" l={stats?.longestExactStreak} unit="in a row" unitPlural="in a row" />
-      <StatCard label="Longest result streak" l={stats?.longestResultStreak} unit="in a row" unitPlural="in a row" />
-    </div>
-    <div className="fl-card overflow-hidden">
-      <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div>#</div><div>Entrant</div>
-        <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div>
-        <div className="text-center">R32</div><div className="text-right">Pts</div>
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Most correct scores" l={stats?.mostExact} unit="exact score" />
+        <StatCard label="Most correct results" l={stats?.mostResults} unit="result" />
+        <StatCard label="Longest exact streak" l={stats?.longestExactStreak} unit="in a row" unitPlural="in a row" />
+        <StatCard label="Longest result streak" l={stats?.longestResultStreak} unit="in a row" unitPlural="in a row" />
       </div>
-      {rows.map((e, i) => (
-        <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft"}>
-          <div className="font-mono text-xs">
-            {i < 3 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
-          </div>
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-cream">{e.name}</span>
-            {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
-          </div>
-          <div className="text-center font-mono text-[11px] text-muted">{e.week1 || "–"}</div>
-          <div className="text-center font-mono text-[11px] text-muted">{e.week2 || "–"}</div>
-          <div className="text-center font-mono text-[11px] text-muted">{e.week3 || "–"}</div>
-          <div className="text-center font-mono text-[11px] text-muted">{e.r32 || "–"}</div>
-          <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
-        </Link>
-      ))}
-    </div>
+      <div className="fl-card overflow-hidden">
+        <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
+          <div>#</div><div>Entrant</div>
+          <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div>
+          <div className="text-center">R32</div><div className="text-right">Pts</div>
+        </div>
+        {list.map((e, i) =>
+          e.consensus ? (
+            <div key="everyone" className={cols + " border-t border-line bg-gold-soft px-4 py-2.5 text-[13px]"}>
+              <div className="pl-1.5 font-mono text-xs text-gold">{i + 1}</div>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate font-medium text-gold">👥 {e.name}</span>
+                <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
+              </div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{e.week1 || "–"}</div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{e.week2 || "–"}</div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{e.week3 || "–"}</div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{e.r32 || "–"}</div>
+              <div className="text-right font-mono text-sm font-semibold text-gold">{e.total}</div>
+            </div>
+          ) : (
+            <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft"}>
+              <div className="font-mono text-xs">
+                {i < 3 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
+              </div>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate text-cream">{e.name}</span>
+                {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
+              </div>
+              <div className="text-center font-mono text-[11px] text-muted">{e.week1 || "–"}</div>
+              <div className="text-center font-mono text-[11px] text-muted">{e.week2 || "–"}</div>
+              <div className="text-center font-mono text-[11px] text-muted">{e.week3 || "–"}</div>
+              <div className="text-center font-mono text-[11px] text-muted">{e.r32 || "–"}</div>
+              <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
+            </Link>
+          ),
+        )}
+      </div>
     </>
   );
 }
@@ -132,30 +152,42 @@ function Knockout() {
 
 type Phase = "week1" | "week2" | "week3" | "r32";
 
-// Leaderboard showing only one phase's points (and ranked by them).
-function PhaseBoard({ phase }: { phase: Phase }) {
+function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
-  const rows = [...(data ?? [])].sort((a, b) => b[phase] - a[phase] || a.name.localeCompare(b.name));
   const cols = "grid grid-cols-[36px_1fr_52px] items-center gap-1";
+  const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
+    (a, b) => b[phase] - a[phase] || a.name.localeCompare(b.name),
+  );
   return (
     <div className="fl-card overflow-hidden">
       <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
         <div>#</div><div>Entrant</div><div className="text-right">Pts</div>
       </div>
-      {rows.map((e, i) => (
-        <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft"}>
-          <div className="font-mono text-xs">
-            {i < 3 && e[phase] > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
+      {list.map((e, i) =>
+        e.consensus ? (
+          <div key="everyone" className={cols + " border-t border-line bg-gold-soft px-4 py-2.5 text-[13px]"}>
+            <div className="pl-1.5 font-mono text-xs text-gold">{i + 1}</div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate font-medium text-gold">👥 {e.name}</span>
+              <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
+            </div>
+            <div className="text-right font-mono text-sm font-semibold text-gold">{e[phase]}</div>
           </div>
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-cream">{e.name}</span>
-            {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
-          </div>
-          <div className="text-right font-mono text-sm font-semibold text-cream">{e[phase]}</div>
-        </Link>
-      ))}
+        ) : (
+          <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft"}>
+            <div className="font-mono text-xs">
+              {i < 3 && e[phase] > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate text-cream">{e.name}</span>
+              {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
+            </div>
+            <div className="text-right font-mono text-sm font-semibold text-cream">{e[phase]}</div>
+          </Link>
+        ),
+      )}
     </div>
   );
 }
@@ -176,6 +208,11 @@ const TITLES: Record<Tab, string> = {
 
 export default function Leaderboard() {
   const [tab, setTab] = useState<Tab>("overall");
+  const [showConsensus, setShowConsensus] = useState(false);
+  const { data: consensus } = useConsensus();
+  const consensusTab = tab !== "knockout";
+  const everyone = showConsensus && consensusTab ? consensus ?? null : null;
+
   const sub =
     tab === "overall" ? "The main competition — every entrant ranked on all their predictions across the whole tournament."
     : tab === "knockout" ? "A second competition: entrant groups, scored on each player’s own World Cup group, top two into the bracket."
@@ -189,13 +226,25 @@ export default function Leaderboard() {
         <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted">{sub}</p>
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         {TABS.map((t) => (
           <button key={t.key} className={subTab(tab === t.key)} onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
+        {consensusTab && (
+          <button
+            onClick={() => setShowConsensus((v) => !v)}
+            title="Score a pretend entrant who always picks the crowd's most-predicted scoreline"
+            className={
+              "ml-auto rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
+              (showConsensus ? "border border-gold bg-gold-soft text-cream" : "border border-line text-muted hover:text-cream")
+            }
+          >
+            {showConsensus ? "✓ " : ""}👥 Everyone
+          </button>
+        )}
       </div>
 
-      {tab === "overall" ? <Overall /> : tab === "knockout" ? <Knockout /> : <PhaseBoard phase={tab} />}
+      {tab === "overall" ? <Overall everyone={everyone} /> : tab === "knockout" ? <Knockout /> : <PhaseBoard phase={tab} everyone={everyone} />}
     </div>
   );
 }
