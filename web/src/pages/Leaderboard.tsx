@@ -96,7 +96,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
-  const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_40px_44px] items-center gap-1";
+  const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_52px_44px] items-center gap-1";
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => b.total - a.total || a.name.localeCompare(b.name),
   );
@@ -113,7 +113,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
         <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div>#</div><div>Entrant</div>
           <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div>
-          <div className="text-center">R32</div><div className="text-center" title="Exact scorelines">✓</div><div className="text-right">Pts</div>
+          <div className="text-center">R32</div><div className="text-center leading-tight">Exact Scores</div><div className="text-right">Pts</div>
         </div>
         {list.map((e) => {
           const label = rankLabel(e);
