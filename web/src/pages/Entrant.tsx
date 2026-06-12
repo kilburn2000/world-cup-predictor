@@ -11,6 +11,12 @@ const ordinal = (n: number) => {
 };
 const gbp = (n: number) => "£" + n.toLocaleString("en-GB");
 
+// Pick country code -> country name flagFor() understands.
+const SCORER_COUNTRY: Record<string, string> = {
+  POR: "Portugal", ENG: "England", NED: "Netherlands", BRA: "Brazil", ARG: "Argentina",
+  SPA: "Spain", FRA: "France", COL: "Colombia", GER: "Germany", NOR: "Norway",
+};
+
 // Position label among `all` values; ties are prefixed "Joint" (e.g. Joint 3rd).
 function posLabel(value: number, all: number[]): string {
   const rank = 1 + all.filter((v) => v > value).length;
@@ -172,6 +178,18 @@ export default function Entrant() {
           <div className="text-[11px] uppercase tracking-[1.5px] text-muted">Entrant</div>
           <div className="mt-0.5 font-display text-3xl text-cream">{data.entrant.name}</div>
           <div className="mt-1 font-mono text-sm text-gold">{overallPos} overall</div>
+          {ts && ts.players.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
+              <span className="text-[10px] uppercase tracking-[1px]">Top scorer picks</span>
+              {ts.players.map((p) => (
+                <span key={p.name} className="inline-flex items-center gap-1">
+                  <span className="text-cream">{p.name}</span>
+                  <span>{flagFor(SCORER_COUNTRY[p.country] ?? p.country)}</span>
+                  <span className="font-mono text-gold">{p.goals}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-6">
           <div className="text-right">
