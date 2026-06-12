@@ -36,7 +36,7 @@ const adminBtn = () =>
 // Sign out: an outlined pill - reads as a button but stays quieter than the
 // solid-gold admin button so the two don't compete.
 const signOutBtn = () =>
-  "shrink-0 whitespace-nowrap rounded-lg border border-line px-3.5 py-1.5 text-sm text-muted " +
+  "shrink-0 cursor-pointer whitespace-nowrap rounded-lg border border-line px-3.5 py-1.5 text-sm text-muted " +
   "transition-colors hover:border-gold hover:text-cream";
 
 // Mobile dropdown row: full-width tappable item.
@@ -151,7 +151,7 @@ export default function App() {
               {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={mobileItem}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={mobileItem}>Admin</NavLink>}
               {me ? (
-                <button onClick={handleLogout} className="rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Sign Out</button>
+                <button onClick={handleLogout} className="cursor-pointer rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Sign Out</button>
               ) : (
                 <NavLink to="/" className={mobileItem}>Sign In</NavLink>
               )}
