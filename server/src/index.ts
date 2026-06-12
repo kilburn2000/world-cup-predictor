@@ -74,9 +74,39 @@ app.get("/api/admin/check", async (req: any, reply) => {
   return { ok: true };
 });
 
-// Live leaderboard for the (single) default league.
+// Provisional points from group matches IN PLAY right now — so everything moves
+// mid-game. Returns entrantId -> list of their in-play games with the breakdown.
+async function inPlayProvisional() {
+  const cfg = await loadConfig();
+  const liveMatches = (await sql`
+    select id, matchday, group_name grp, home_team_id mh, home_goals hg, away_goals ag, kickoff_utc
+    from matches where stage = 'GROUP' and status = 'IN_PLAY' and home_goals is not null and away_goals is not null
+  `) as any[];
+  const map = new Map<number, { matchday: number; group: string; kickoff: any; points: number; exact: boolean; outcome: boolean }[]>();
+  if (!liveMatches.length) return map;
+  const ids = liveMatches.map((m) => m.id);
+  const byMatch = new Map(liveMatches.map((m) => [m.id, m]));
+  const preds = (await sql`
+    select entrant_id, match_id, pred_home_team_id ph, pred_home_goals phg, pred_away_goals pag
+    from predictions where scope = 'MATCH' and match_id in ${sql(ids)}
+  `) as any[];
+  for (const p of preds) {
+    const m = byMatch.get(p.match_id);
+    if (!m) continue;
+    const predH = p.ph === m.mh ? p.phg : p.pag;
+    const predA = p.ph === m.mh ? p.pag : p.phg;
+    const b = scoreGroupMatch(predH, predA, m.hg, m.ag, cfg);
+    const arr = map.get(p.entrant_id) ?? [];
+    arr.push({ matchday: m.matchday, group: m.grp, kickoff: m.kickoff_utc, points: b.points, exact: b.exact, outcome: b.outcome });
+    map.set(p.entrant_id, arr);
+  }
+  return map;
+}
+
+// Live leaderboard for the (single) default league. Includes in-play provisional
+// points so the overall standings (and everything built on them) move mid-game.
 app.get("/api/leaderboard", async () => {
-  const rows = await sql`
+  const rows = (await sql`
     select e.id as "entrantId", e.name, e.name_incomplete as "nameIncomplete",
            coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 1 then s.points end), 0)::int as week1,
            coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 2 then s.points end), 0)::int as week2,
@@ -87,8 +117,20 @@ app.get("/api/leaderboard", async () => {
     left join scores s on s.entrant_id = e.id
     left join matches m on s.ref like 'match:%' and m.id = split_part(s.ref, ':', 2)::int
     group by e.id, e.name, e.name_incomplete
-    order by total desc, e.name asc
-  `;
+  `) as any[];
+
+  const live = await inPlayProvisional();
+  if (live.size) {
+    for (const r of rows) {
+      for (const g of live.get(r.entrantId) ?? []) {
+        r.total += g.points;
+        if (g.matchday === 1) r.week1 += g.points;
+        else if (g.matchday === 2) r.week2 += g.points;
+        else if (g.matchday === 3) r.week3 += g.points;
+      }
+    }
+  }
+  rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   return rows;
 });
 
@@ -96,13 +138,23 @@ app.get("/api/leaderboard", async () => {
 // "name + N others".
 app.get("/api/stats", async () => {
   const rows = (await sql`
-    select e.name,
+    select e.id as eid, e.name,
       count(*) filter (where (s.breakdown->>'exact')::boolean)::int as exact_cnt,
       count(*) filter (where (s.breakdown->>'outcome')::boolean)::int as outcome_cnt
     from entrants e
     left join scores s on s.entrant_id = e.id and s.kind = 'MATCH'
     group by e.id, e.name
   `) as any[];
+
+  // fold in IN-PLAY games so the stats move mid-game too
+  const live = await inPlayProvisional();
+  for (const r of rows) {
+    for (const g of live.get(r.eid) ?? []) {
+      if (g.exact) r.exact_cnt++;
+      if (g.outcome) r.outcome_cnt++;
+    }
+  }
+
   const leader = (key: string) => {
     const max = rows.reduce((mx, r) => Math.max(mx, r[key]), 0);
     const names = rows.filter((r) => r[key] === max && max > 0).map((r) => r.name).sort();
@@ -126,6 +178,15 @@ app.get("/api/stats", async () => {
     if (!st) streak.set(r.eid, (st = { name: r.name, exCur: 0, exMax: 0, reCur: 0, reMax: 0 }));
     if (r.exact) { st.exCur++; if (st.exCur > st.exMax) st.exMax = st.exCur; } else st.exCur = 0;
     if (r.outcome) { st.reCur++; if (st.reCur > st.reMax) st.reMax = st.reCur; } else st.reCur = 0;
+  }
+  // extend each entrant's run with their IN-PLAY games (latest by kickoff)
+  for (const [eid, games] of live) {
+    let st = streak.get(eid);
+    if (!st) streak.set(eid, (st = { name: rows.find((r) => r.eid === eid)?.name ?? "", exCur: 0, exMax: 0, reCur: 0, reMax: 0 }));
+    for (const g of [...games].sort((a, b) => (a.kickoff < b.kickoff ? -1 : 1))) {
+      if (g.exact) { st.exCur++; if (st.exCur > st.exMax) st.exMax = st.exCur; } else st.exCur = 0;
+      if (g.outcome) { st.reCur++; if (st.reCur > st.reMax) st.reMax = st.reCur; } else st.reCur = 0;
+    }
   }
   const streakLeader = (key: "exMax" | "reMax") => {
     const vals = [...streak.values()];

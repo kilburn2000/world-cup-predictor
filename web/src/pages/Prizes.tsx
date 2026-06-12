@@ -43,9 +43,14 @@ export default function Prizes() {
   const phaseHolder = (field: Field) =>
     field === "r16" ? "Not played yet" : field === "knockout" ? "Not decided yet" : weeklyLeader(field);
 
-  // competition ranking from the top, for the overall placings
-  const rankOf = (e: { total: number }) => 1 + rows.filter((o) => o.total > e.total).length;
-  const overallHolder = (place: number) => holderText(rows.filter((e) => rankOf(e) === place).map((e) => e.name));
+  // who's currently contesting a given overall position. rows arrive sorted by
+  // total; everyone tied on that position's total is in contention for it (so a
+  // big tie at the top shows the same group across 1st–10th).
+  const overallHolder = (place: number) => {
+    if (rows.length < place) return "—";
+    const t = rows[place - 1].total;
+    return holderText(rows.filter((e) => e.total === t).map((e) => e.name));
+  };
   const minTotal = rows.length ? Math.min(...rows.map((e) => e.total)) : null;
   const lastHolder = minTotal === null ? "—" : holderText(rows.filter((e) => e.total === minTotal).map((e) => e.name));
 
