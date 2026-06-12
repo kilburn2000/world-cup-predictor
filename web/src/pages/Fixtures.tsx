@@ -48,7 +48,7 @@ function FixtureTable({ items }: { items: Fixture[] }) {
           ) : f.mostCommonResult ? (
             <span className="inline-flex items-center gap-1">
               <span>{flagFor(f.mostCommonResult === "HOME" ? f.home : f.away)}</span>
-              <span>{f.mostCommonResult === "HOME" ? f.homeCode : f.awayCode}</span>
+              <span className="text-cream">{f.mostCommonResult === "HOME" ? f.homeCode : f.awayCode}</span>
             </span>
           ) : null;
         return (
@@ -90,7 +90,7 @@ function FixtureTable({ items }: { items: Fixture[] }) {
                   </>
                 ) : (
                   <>
-                    <div className="flex items-center justify-center gap-1 font-mono text-[10px] text-muted">{resultChip ?? "–"}</div>
+                    <div className="flex items-center justify-center gap-1 font-mono text-[12px] text-muted">{resultChip ?? "–"}</div>
                     {f.mostCommonResult && <div className="text-[8px] leading-tight text-muted">{numPct(f.mostCommonResultCount, f.mostCommonTotal)}</div>}
                   </>
                 )}
