@@ -4,6 +4,7 @@ import {
   scoreGroupMatch,
   type ScoringConfig,
 } from "@wc/shared";
+import { resolveBracket } from "./wc.js";
 
 export async function loadConfig(): Promise<ScoringConfig> {
   try {
@@ -28,6 +29,10 @@ async function upsertScore(entrantId: number, kind: string, ref: string, points:
 export async function recomputeAll(): Promise<number> {
   const cfg = await loadConfig();
   let written = 0;
+
+  // Resolve the knockout bracket first (assign slots, draw actual teams into
+  // ties as group + knockout results land) so the scoring below sees fresh teams.
+  await resolveBracket();
 
   // Full recompute: clear all scores first so stale rows (e.g. a result that was
   // reverted) don't linger.

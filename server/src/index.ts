@@ -882,10 +882,26 @@ app.post("/api/admin/recompute", async (req: any, reply) => {
 app.patch("/api/admin/matches/:id", async (req: any, reply) => {
   if (!requireAdmin(req, reply)) return;
   const id = Number(req.params.id);
-  const { homeGoals, awayGoals, status } = req.body ?? {};
+  const { homeGoals, awayGoals, status, winnerTeamId } = req.body ?? {};
   await sql`
     update matches set home_goals = ${homeGoals ?? null}, away_goals = ${awayGoals ?? null},
-      status = ${status ?? "FINISHED"}, result_overridden = true
+      status = ${status ?? "FINISHED"}, winner_team_id = ${winnerTeamId ?? null}, result_overridden = true
+    where id = ${id}
+  `;
+  await recomputeAll();
+  return { ok: true };
+});
+
+// Manually set the two teams in a knockout fixture. Needed for the third-placed
+// R32 slots (FIFA's best-thirds assignment is a published lookup, not derivable
+// from standings) and as a correction tool. The bracket resolver owns the
+// deterministic sides; it never overwrites a third-place side set here.
+app.patch("/api/admin/matches/:id/teams", async (req: any, reply) => {
+  if (!requireAdmin(req, reply)) return;
+  const id = Number(req.params.id);
+  const { homeTeamId, awayTeamId } = req.body ?? {};
+  await sql`
+    update matches set home_team_id = ${homeTeamId ?? null}, away_team_id = ${awayTeamId ?? null}
     where id = ${id}
   `;
   await recomputeAll();

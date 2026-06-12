@@ -136,6 +136,91 @@ const LATER: { match: number; round: string; a: Src; b: Src }[] = [
   { match: 104, round: "Final", a: { type: "mw", m: 101 }, b: { type: "mw", m: 102 } },
 ];
 
+// --- Bracket resolver: fill the real knockout fixtures with actual teams ---
+// The DB knockout fixture ids ARE the FIFA match numbers (73–104), so the slot
+// label is derived directly from the id and matches what entrants predicted.
+function slotForMatch(id: number): string | null {
+  if (id >= 73 && id <= 88) return `R32-${id - 72}`;
+  if (id >= 89 && id <= 96) return `R16-${id - 88}`;
+  if (id >= 97 && id <= 100) return `QF-${id - 96}`;
+  if (id === 101 || id === 102) return `SF-${id - 100}`;
+  if (id === 103) return "THIRD";
+  if (id === 104) return "FINAL";
+  return null;
+}
+
+const ALL_KO: { match: number; a: Src; b: Src }[] = [
+  ...R32,
+  ...LATER.map(({ match, a, b }) => ({ match, a, b })),
+];
+
+// Assign bracket slots and resolve actual teams into the knockout fixtures as
+// results come in. Deterministic + idempotent; safe to run on every recompute.
+//  - winner/runner-up sides resolve from our own group standings once a group is
+//    fully played (decided);
+//  - "winner/loser of match N" sides resolve from that tie's actual result
+//    (explicit winner_team_id wins, else the higher score; a draw with no
+//    recorded winner — i.e. an un-entered shootout — stays unresolved);
+//  - third-placed sides are NOT touched here (admin assigns those, since FIFA's
+//    best-thirds slotting is a published lookup, not derivable from standings).
+// Deterministic sides are owned by the resolver and overwritten/cleared to track
+// corrections; third sides are preserved.
+export async function resolveBracket(): Promise<void> {
+  // 1. Ensure every knockout fixture carries its bracket slot.
+  for (const { match } of ALL_KO) {
+    const slot = slotForMatch(match);
+    if (slot) await sql`update matches set bracket_slot = ${slot} where id = ${match} and bracket_slot is distinct from ${slot}`;
+  }
+
+  // 2. Group winners / runners-up (only once a group is decided).
+  const standings = await computeGroupStandings();
+  const pos = new Map<string, { winner?: StandingRow; runnerUp?: StandingRow; decided: boolean }>();
+  for (const g of standings) pos.set(g.group, { winner: g.table[0], runnerUp: g.table[1], decided: g.decided });
+
+  // 3. Knockout fixtures in memory, ascending so later rounds see resolved earlier ones.
+  const ko = (await sql`
+    select id, home_team_id, away_team_id, home_goals, away_goals, winner_team_id, status
+    from matches where stage <> 'GROUP' order by id
+  `) as any[];
+  const byId = new Map<number, any>(ko.map((m) => [m.id, m]));
+
+  const winnerOf = (id: number): number | null => {
+    const m = byId.get(id);
+    if (!m || m.status !== "FINISHED") return null;
+    if (m.winner_team_id) return m.winner_team_id;
+    if (m.home_goals == null || m.away_goals == null || m.home_goals === m.away_goals) return null;
+    return m.home_goals > m.away_goals ? m.home_team_id : m.away_team_id;
+  };
+  const loserOf = (id: number): number | null => {
+    const m = byId.get(id);
+    const w = winnerOf(id);
+    if (!m || !w || !m.home_team_id || !m.away_team_id) return null;
+    return w === m.home_team_id ? m.away_team_id : m.home_team_id;
+  };
+  const resolveSrc = (s: Src): number | null => {
+    if (s.type === "w") { const p = pos.get(s.g); return p?.decided ? p.winner?.teamId ?? null : null; }
+    if (s.type === "ru") { const p = pos.get(s.g); return p?.decided ? p.runnerUp?.teamId ?? null : null; }
+    if (s.type === "third") return null; // admin-assigned
+    if (s.type === "mw") return winnerOf(s.m);
+    if (s.type === "ml") return loserOf(s.m);
+    return null;
+  };
+
+  // 4. Apply, in ascending order.
+  const bySrc = new Map(ALL_KO.map((m) => [m.match, m]));
+  for (const m of ko) {
+    const src = bySrc.get(m.id);
+    if (!src) continue;
+    let h = m.home_team_id, a = m.away_team_id, changed = false;
+    if (src.a.type !== "third") { const v = resolveSrc(src.a); if (v !== m.home_team_id) { h = v; changed = true; } }
+    if (src.b.type !== "third") { const v = resolveSrc(src.b); if (v !== m.away_team_id) { a = v; changed = true; } }
+    if (changed) {
+      await sql`update matches set home_team_id = ${h}, away_team_id = ${a} where id = ${m.id}`;
+      m.home_team_id = h; m.away_team_id = a; // keep fresh for downstream winnerOf
+    }
+  }
+}
+
 export async function buildKnockout() {
   const standings = await computeGroupStandings();
   const pos = new Map<string, { winner?: StandingRow; runnerUp?: StandingRow; decided: boolean }>();
