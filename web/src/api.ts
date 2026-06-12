@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useDemoMatches } from "./demo.js";
+import { useDemoMatches, useDemoLeaderboard, useDemoGroups, useDemoTopScorer } from "./demo.js";
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
@@ -28,8 +28,11 @@ export interface GroupTable {
   rows: { teamId: number; name: string; played: number; points: number; gd: number }[];
 }
 
-export const useLeaderboard = () =>
-  useQuery({ queryKey: ["leaderboard"], queryFn: () => get<LeaderboardRow[]>("/api/leaderboard"), refetchInterval: 15_000 });
+export const useLeaderboard = () => {
+  const demo = useDemoLeaderboard();
+  const q = useQuery({ queryKey: ["leaderboard"], queryFn: () => get<LeaderboardRow[]>("/api/leaderboard"), refetchInterval: 15_000, enabled: demo == null });
+  return demo ? ({ ...q, data: demo, isLoading: false, isError: false, error: null } as typeof q) : q;
+};
 
 export interface GroupEntrant {
   entrantId: number;
@@ -47,8 +50,11 @@ export interface EntrantGroup {
   group: string;
   entrants: GroupEntrant[];
 }
-export const useGroups = () =>
-  useQuery({ queryKey: ["groups"], queryFn: () => get<EntrantGroup[]>("/api/groups"), refetchInterval: 15_000 });
+export const useGroups = () => {
+  const demo = useDemoGroups();
+  const q = useQuery({ queryKey: ["groups"], queryFn: () => get<EntrantGroup[]>("/api/groups"), refetchInterval: 15_000, enabled: demo == null });
+  return demo ? ({ ...q, data: demo, isLoading: false, isError: false, error: null } as typeof q) : q;
+};
 
 export interface Consensus {
   name: string;
@@ -89,8 +95,11 @@ export interface TopScorerRow {
   players: ScorerPick[];
   total: number;
 }
-export const useTopScorer = () =>
-  useQuery({ queryKey: ["top-scorer"], queryFn: () => get<TopScorerRow[]>("/api/top-scorer"), refetchInterval: 10_000 });
+export const useTopScorer = () => {
+  const demo = useDemoTopScorer();
+  const q = useQuery({ queryKey: ["top-scorer"], queryFn: () => get<TopScorerRow[]>("/api/top-scorer"), refetchInterval: 10_000, enabled: demo == null });
+  return demo ? ({ ...q, data: demo, isLoading: false, isError: false, error: null } as typeof q) : q;
+};
 
 export interface AdminScorerPlayer {
   id: number;

@@ -1,25 +1,19 @@
 import { useEffect, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useDemoMatches, setDemoMatches } from "../demo.js";
-import type { LiveMatch, LiveEvent, LiveTier } from "../api.js";
+import { useMe } from "../auth.js";
+import { useDemoMatches, setDemo, type DemoSnapshot } from "../demo.js";
+import type { LiveMatch, LiveEvent, LiveTier, LeaderboardRow, EntrantGroup, TopScorerRow } from "../api.js";
 
 // Type "demo" anywhere (outside a text field) to play a ~30s scripted England v
-// Croatia match: kick-off, four goals, half-time and full-time - driving the real
-// toasts, the live score card, the Your-prediction line and the predictions board.
+// Croatia match (Group L, matchday 1). It runs in place - stay on any page and
+// watch it react: the toasts fire, the live score card animates, and because it
+// also rewrites the standings on each goal, every stat card and table (overall,
+// week 1, knockout Group L, top scorer) updates live too. Kane scores twice, so
+// the four entrants who picked him climb the top-scorer table.
 
 const MYPICK = "2-1";
-const BOARD_PICKS = [
-  { entrantId: 990001, name: "[redacted]", pick: "1-1" },
-  { entrantId: 990002, name: "[redacted]", pick: "2-0" },
-  { entrantId: 990003, name: "[redacted]", pick: "3-1" },
-  { entrantId: 990004, name: "[redacted]", pick: "0-1" },
-  { entrantId: 990005, name: "Sarah Jones", pick: "1-0" },
-  { entrantId: 990006, name: "Tom Reed", pick: "2-2" },
-];
+const PICKS = ["1-1", "2-0", "0-1", "1-0", "3-1", "2-2", "0-0", "1-2", "3-2", "2-1"];
 
-// Simplified scorer for the demo: exact = 5, correct result = 2, +1 per team's
-// goals nailed - enough to colour the chips and points realistically.
 function scorePick(pick: string, hs: number, as: number): { points: number; tier: LiveTier } {
   const [ph, pa] = pick.split("-").map(Number);
   if (ph === hs && pa === as) return { points: 5, tier: "exact" };
@@ -35,8 +29,8 @@ function scorePick(pick: string, hs: number, as: number): { points: number; tier
 const G = (minute: number, team: "home" | "away", player: string): LiveEvent => ({ minute, type: "goal", team, player });
 const g1 = G(23, "home", "Harry Kane");
 const g2 = G(39, "away", "Andrej Kramarić");
-const g3 = G(67, "home", "Jude Bellingham");
-const g4 = G(78, "home", "Bukayo Saka");
+const g3 = G(67, "home", "Harry Kane");
+const g4 = G(78, "home", "Jude Bellingham");
 
 interface Step {
   at: number;
@@ -64,75 +58,133 @@ const TIMELINE: Step[] = [
   { at: 31000, end: true },
 ];
 
-function buildMatch(s: Step): LiveMatch {
-  const hs = s.hs ?? 0;
-  const as = s.as ?? 0;
-  const live = s.status === "IN_PLAY" || s.status === "FINISHED";
-  const board = BOARD_PICKS.map((b) => {
-    const sc = live ? scorePick(b.pick, hs, as) : null;
-    return { entrantId: b.entrantId, name: b.name, pick: b.pick, points: sc ? sc.points : null, tier: sc ? sc.tier : null };
+const demoGoals = (player: string, events: LiveEvent[]) =>
+  events.filter((e) => e.type === "goal" && e.player && e.player.toLowerCase().includes(player.toLowerCase())).length;
+
+interface Ctx {
+  baseLb: LeaderboardRow[];
+  baseGroups: EntrantGroup[];
+  baseTop: TopScorerRow[];
+  pickMap: Map<number, string>;
+  myId: number;
+}
+
+function buildSnapshot(step: Step, ctx: Ctx): DemoSnapshot {
+  const { baseLb, baseGroups, baseTop, pickMap } = ctx;
+  const hs = step.hs ?? 0;
+  const as = step.as ?? 0;
+  const live = step.status === "IN_PLAY" || step.status === "FINISHED";
+  const events = step.events ?? [];
+  const pickOf = (id: number) => pickMap.get(id) ?? "0-0";
+
+  const board = baseLb.map((e) => {
+    const pick = pickOf(e.entrantId);
+    const sc = live ? scorePick(pick, hs, as) : null;
+    return { entrantId: e.entrantId, name: e.name, pick, points: sc ? sc.points : null, tier: sc ? sc.tier : null };
   }).sort((a, b) => (b.points ?? -1) - (a.points ?? -1));
 
   const counts: Record<string, number> = {};
-  for (const b of BOARD_PICKS) counts[b.pick] = (counts[b.pick] ?? 0) + 1;
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  for (const e of baseLb) counts[pickOf(e.entrantId)] = (counts[pickOf(e.entrantId)] ?? 0) + 1;
+  const topPick = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? ["2-1", 0];
   const my = live ? scorePick(MYPICK, hs, as) : null;
 
-  return {
+  const match: LiveMatch = {
     id: 990000,
     home: "England", away: "Croatia", homeCode: "ENG", awayCode: "CRO",
     stage: "GROUP", group: "L",
-    status: s.status ?? "IN_PLAY",
-    minute: s.minute ?? null,
-    half: s.half ?? null,
+    status: step.status ?? "IN_PLAY",
+    minute: step.minute ?? null,
+    half: step.half ?? null,
     homeScore: hs, awayScore: as,
     myPick: MYPICK, myPoints: my ? my.points : null, myTier: my ? my.tier : null,
-    mostCommonScore: top[0], mostCommonScoreCount: top[1],
-    mostCommonResult: null, mostCommonResultCount: 0, mostCommonTotal: BOARD_PICKS.length,
-    events: s.events ?? [],
-    board,
+    mostCommonScore: String(topPick[0]), mostCommonScoreCount: Number(topPick[1]),
+    mostCommonResult: null, mostCommonResultCount: 0, mostCommonTotal: baseLb.length || undefined,
+    events, board,
   };
+
+  const leaderboard = baseLb.length
+    ? baseLb.map((e) => {
+        const pts = live ? scorePick(pickOf(e.entrantId), hs, as).points : 0;
+        return { ...e, total: e.total + pts, week1: e.week1 + pts };
+      }).sort((a, b) => b.total - a.total)
+    : undefined;
+
+  // The demo game is WC Group L, so only entrant-group L is scored on it.
+  const groups = baseGroups.length
+    ? baseGroups.map((g) => {
+        if (g.group !== "L") return g;
+        const ents = g.entrants
+          .map((en) => {
+            const pts = live ? scorePick(pickOf(en.entrantId), hs, as).points : 0;
+            return { ...en, total: en.total + pts, week1: en.week1 + pts };
+          })
+          .sort((a, b) => b.total - a.total)
+          .map((en, i) => ({ ...en, qualifying: i < 2, rank: i + 1 }));
+        return { ...g, entrants: ents };
+      })
+    : undefined;
+
+  const topScorer = baseTop.length
+    ? baseTop.map((row) => {
+        let added = 0;
+        const players = row.players.map((p) => {
+          const extra = live ? demoGoals(p.name, events) : 0;
+          added += extra;
+          return { ...p, goals: p.goals + extra };
+        });
+        return { ...row, players, total: row.total + added };
+      }).sort((a, b) => b.total - a.total)
+    : undefined;
+
+  return { matches: [match], leaderboard, groups, topScorer };
 }
 
 export default function DemoController() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const qc = useQueryClient();
+  const { data: me } = useMe();
   const active = useDemoMatches() != null;
 
-  const navRef = useRef(navigate);
-  navRef.current = navigate;
-  const pathRef = useRef(location.pathname);
-  pathRef.current = location.pathname;
   const qcRef = useRef(qc);
   qcRef.current = qc;
+  const meRef = useRef(me);
+  meRef.current = me;
   const running = useRef(false);
 
   useEffect(() => {
     const timers: number[] = [];
 
-    const begin = () => {
+    const start = async () => {
+      if (running.current) return;
+      running.current = true;
+      const J = (p: string) => fetch(p).then((r) => r.json());
+      let base: [LeaderboardRow[], EntrantGroup[], TopScorerRow[]];
+      try {
+        base = (await Promise.all([
+          qcRef.current.ensureQueryData({ queryKey: ["leaderboard"], queryFn: () => J("/api/leaderboard") }),
+          qcRef.current.ensureQueryData({ queryKey: ["groups"], queryFn: () => J("/api/groups") }),
+          qcRef.current.ensureQueryData({ queryKey: ["top-scorer"], queryFn: () => J("/api/top-scorer") }),
+        ])) as [LeaderboardRow[], EntrantGroup[], TopScorerRow[]];
+      } catch {
+        base = [[], [], []];
+      }
+      const [baseLb, baseGroups, baseTop] = base;
+      const myId = meRef.current?.entrantId ?? -1;
+      const pickMap = new Map<number, string>();
+      baseLb.forEach((e, i) => pickMap.set(e.entrantId, e.entrantId === myId ? MYPICK : PICKS[i % PICKS.length]));
+      const ctx: Ctx = { baseLb, baseGroups, baseTop, pickMap, myId };
+
       for (const step of TIMELINE) {
         timers.push(window.setTimeout(() => {
           if (step.end) {
-            setDemoMatches(null);
+            setDemo(null);
             running.current = false;
-            qcRef.current.invalidateQueries({ queryKey: ["live"] });
+            for (const k of [["leaderboard"], ["groups"], ["top-scorer"], ["live"]]) {
+              qcRef.current.invalidateQueries({ queryKey: k });
+            }
           } else {
-            setDemoMatches([buildMatch(step)]);
+            setDemo(buildSnapshot(step, ctx));
           }
         }, step.at));
-      }
-    };
-
-    const start = () => {
-      if (running.current) return;
-      running.current = true;
-      if (pathRef.current !== "/stats/scores") {
-        navRef.current("/stats/scores");
-        timers.push(window.setTimeout(begin, 3200)); // let the page-transition loader clear first
-      } else {
-        begin();
       }
     };
 
@@ -144,7 +196,7 @@ export default function DemoController() {
       buf = (buf + e.key.toLowerCase()).slice(-4);
       if (buf === "demo") {
         buf = "";
-        start();
+        void start();
       }
     };
 
