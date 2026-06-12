@@ -108,19 +108,10 @@ input[type="number"] { -moz-appearance: textfield; }
 @keyframes flFadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fl-enter { animation: flFadeUp 0.34s ease both; }
 
-/* live-event toast: rises from below on mobile (bottom-anchored), drops from
-   above on sm+ (top-anchored); settles with a slight bounce */
+/* live-event toast: drops in from above (top-anchored) with a slight bounce */
 @keyframes toastDrop {
   0% { opacity: 0; transform: translateY(-140%); }
   70% { opacity: 1; transform: translateY(6%); }
   100% { opacity: 1; transform: translateY(0); }
 }
-@keyframes toastRise {
-  0% { opacity: 0; transform: translateY(140%); }
-  70% { opacity: 1; transform: translateY(-6%); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-.toast-drop { animation: toastRise 0.5s cubic-bezier(0.2, 0.85, 0.25, 1) both; }
-@media (min-width: 640px) {
-  .toast-drop { animation: toastDrop 0.5s cubic-bezier(0.2, 0.85, 0.25, 1) both; }
-}
+.toast-drop { animation: toastDrop 0.5s cubic-bezier(0.2, 0.85, 0.25, 1) both; }

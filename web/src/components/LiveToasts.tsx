@@ -89,7 +89,7 @@ export default function LiveToasts() {
     t.highlight === null ? "text-pitch-950" : t.highlight === side ? "font-semibold text-pitch-950" : "text-pitch-950/45";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-[60] flex flex-col-reverse items-stretch gap-2 px-2 sm:bottom-auto sm:top-3 sm:flex-col sm:items-center sm:px-3">
+    <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-stretch gap-2 px-2 sm:items-center sm:px-3">
       {toasts.map((t) => (
         <div
           key={t.id}
