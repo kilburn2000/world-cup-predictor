@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { login, useMe } from "../auth.js";
 import EntrantSummary from "../components/EntrantSummary.js";
+import MiniStandings from "../components/MiniStandings.js";
 import Loader from "../components/Loader.js";
 
 export default function Home() {
@@ -24,6 +25,9 @@ export default function Home() {
     return (
       <div className="fl-enter">
         <EntrantSummary id={me.entrantId} />
+        <div className="mt-4">
+          <MiniStandings entrantId={me.entrantId} />
+        </div>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
           <Link to={`/entrant/${me.entrantId}`} className="btn-gold px-4 py-2 text-sm">View my full predictions</Link>
           <Link to="/standings/overall" className="text-sm text-muted hover:text-cream">Live standings →</Link>
