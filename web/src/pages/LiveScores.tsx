@@ -4,6 +4,7 @@ import { flagFor } from "../flags.js";
 import { useMe } from "../auth.js";
 import LiveTabs from "../components/LiveTabs.js";
 import ScoredChips from "../components/ScoredChips.js";
+import PointsPill from "../components/PointsPill.js";
 
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
@@ -166,7 +167,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
           {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
             <>
               <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
-              {m.myPoints != null && <span className="font-mono font-semibold text-gold">+{m.myPoints}</span>}
+              {m.myPoints != null && <PointsPill points={m.myPoints} />}
             </>
           )}
         </div>

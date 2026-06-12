@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { type Fixture } from "../api.js";
 import { flagFor } from "../flags.js";
 import ScoredChips from "./ScoredChips.js";
+import PointsPill from "./PointsPill.js";
 
 const londonTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
@@ -112,7 +113,7 @@ export default function FixtureTable({ items }: { items: Fixture[] }) {
                 {(done || live) && f.homeScore != null && f.awayScore != null && (
                   <>
                     <ScoredChips pick={f.myPick} hs={f.homeScore} as={f.awayScore} homeCode={f.homeCode ?? ""} awayCode={f.awayCode ?? ""} />
-                    {f.myPoints != null && <span className="font-mono font-semibold text-gold">+{f.myPoints}</span>}
+                    {f.myPoints != null && <PointsPill points={f.myPoints} />}
                   </>
                 )}
               </div>

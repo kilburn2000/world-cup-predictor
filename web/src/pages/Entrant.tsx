@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useWallchart, type WallchartMatch } from "../api.js";
 import { flagFor } from "../flags.js";
 import ScoredChips from "../components/ScoredChips.js";
+import PointsPill from "../components/PointsPill.js";
 import EntrantSummary from "../components/EntrantSummary.js";
 
 const MATCH_COLS = "grid grid-cols-[1fr_46px_1fr] items-center gap-1.5";
@@ -32,7 +33,7 @@ function MatchRow({ m }: { m: WallchartMatch }) {
           <span className="text-muted">Predicted</span>
           <span className="font-mono text-gold">{m.predHome}–{m.predAway}</span>
           <ScoredChips pick={`${m.predHome}-${m.predAway}`} hs={m.actualHome ?? 0} as={m.actualAway ?? 0} homeCode={m.homeCode ?? ""} awayCode={m.awayCode ?? ""} />
-          <span className="font-mono font-semibold text-gold">+{m.points ?? 0}</span>
+          <PointsPill points={m.points ?? 0} />
         </div>
       )}
     </div>
