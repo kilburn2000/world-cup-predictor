@@ -12,7 +12,7 @@ const ISO2: Record<string, string> = {
   jordan: "JO", mexico: "MX", morocco: "MA", netherlands: "NL", newzealand: "NZ",
   norway: "NO", panama: "PA", paraguay: "PY", portugal: "PT", qatar: "QA",
   saudiarabia: "SA", senegal: "SN", southafrica: "ZA", southkorea: "KR",
-  spain: "ES", sweden: "SE", switzerland: "CH", tunisia: "TN", turkey: "TR",
+  spain: "ES", sweden: "SE", switzerland: "CH", tunisia: "TN", turkey: "TR", trkiye: "TR",
   unitedstates: "US", uruguay: "UY", uzbekistan: "UZ",
 };
 

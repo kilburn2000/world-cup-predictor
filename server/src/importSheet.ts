@@ -10,7 +10,7 @@ const ALIAS: Record<string, string> = {
   [norm("Cape Verde")]: norm("Cape Verde Islands"),
   [norm("IR Iran")]: norm("Iran"),
   [norm("Rep. of Korea")]: norm("South Korea"),
-  [norm("Turkiye")]: norm("Turkey"),
+  [norm("Turkiye")]: norm("Türkiye"),
   [norm("USA")]: norm("United States"),
 };
 

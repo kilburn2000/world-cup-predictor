@@ -9,6 +9,7 @@ export const ESPN_ALIAS: Record<string, string> = {
   [norm("Côte d'Ivoire")]: norm("Ivory Coast"),
   [norm("USA")]: norm("United States"),
   [norm("Korea Republic")]: norm("South Korea"),
+  [norm("Turkey")]: norm("Türkiye"),
 };
 
 export async function dbNameMap(): Promise<Map<string, number>> {

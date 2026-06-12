@@ -128,7 +128,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
 
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="text-right">
-            <div className="flex items-center justify-end gap-2 font-display text-2xl leading-tight text-cream">
+            <div className="flex items-center justify-end gap-2 font-display text-base leading-tight text-cream sm:text-2xl">
               {m.home}<span className="align-middle">{flagFor(m.home)}</span>
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.homeCode}</div>
@@ -145,7 +145,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
             )}
           </div>
           <div className="text-left">
-            <div className="flex items-center gap-2 font-display text-2xl leading-tight text-cream">
+            <div className="flex items-center gap-2 font-display text-base leading-tight text-cream sm:text-2xl">
               <span className="align-middle">{flagFor(m.away)}</span>{m.away}
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.awayCode}</div>
