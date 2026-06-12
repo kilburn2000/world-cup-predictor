@@ -119,6 +119,7 @@ app.get("/api/leaderboard", async () => {
            coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 2 then s.points end), 0)::int as week2,
            coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 3 then s.points end), 0)::int as week3,
            coalesce(sum(case when m.stage = 'LAST_32' then s.points end), 0)::int as r32,
+           coalesce(sum(case when m.stage = 'GROUP' and coalesce((s.breakdown->>'exact')::boolean, false) then 1 else 0 end), 0)::int as "exactCount",
            coalesce(sum(s.points), 0)::int as total
     from entrants e
     left join scores s on s.entrant_id = e.id
@@ -131,6 +132,7 @@ app.get("/api/leaderboard", async () => {
     for (const r of rows) {
       for (const g of live.get(r.entrantId) ?? []) {
         r.total += g.points;
+        if (g.exact) r.exactCount += 1;
         if (g.matchday === 1) r.week1 += g.points;
         else if (g.matchday === 2) r.week2 += g.points;
         else if (g.matchday === 3) r.week3 += g.points;

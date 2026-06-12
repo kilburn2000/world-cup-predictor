@@ -16,6 +16,8 @@ export interface LeaderboardRow {
   week2: number;
   week3: number;
   r32: number;
+  /** number of exact group scorelines correctly predicted */
+  exactCount: number;
   /** Optional (sent once the snapshot backend is enabled). */
   rank?: number;
   /** prev rank − current rank. Positive = climbed. */

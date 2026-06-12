@@ -85,7 +85,7 @@ const subTab = (active: boolean) =>
   "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
   (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
-type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; total: number; nameIncomplete?: boolean; consensus?: boolean };
+type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; total: number; exactCount?: number; nameIncomplete?: boolean; consensus?: boolean };
 const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, total: c.total, consensus: true });
 
 function Overall({ everyone }: { everyone: Consensus | null }) {
@@ -96,7 +96,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
-  const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_44px] items-center gap-1";
+  const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_40px_44px] items-center gap-1";
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => b.total - a.total || a.name.localeCompare(b.name),
   );
@@ -113,7 +113,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
         <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div>#</div><div>Entrant</div>
           <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div>
-          <div className="text-center">R32</div><div className="text-right">Pts</div>
+          <div className="text-center">R32</div><div className="text-center" title="Exact scorelines">✓</div><div className="text-right">Pts</div>
         </div>
         {list.map((e) => {
           const label = rankLabel(e);
@@ -128,6 +128,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.week2, started?.week2)}</div>
               <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.week3, started?.week3)}</div>
               <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.r32, started?.r32)}</div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{e.exactCount ?? "–"}</div>
               <div className="text-right font-mono text-sm font-semibold text-gold">{e.total}</div>
             </div>
           ) : (
@@ -148,6 +149,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <div className="text-center font-mono text-[11px] text-muted">{cell(e.week2, started?.week2)}</div>
               <div className="text-center font-mono text-[11px] text-muted">{cell(e.week3, started?.week3)}</div>
               <div className="text-center font-mono text-[11px] text-muted">{cell(e.r32, started?.r32)}</div>
+              <div className="text-center font-mono text-[11px] text-muted">{e.exactCount ?? 0}</div>
               <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
             </Link>
           );
