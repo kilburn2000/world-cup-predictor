@@ -1,6 +1,14 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { useWallchart, useLeaderboard, useGroups, useWcGroups, useTopScorer, usePhasesStarted } from "../api.js";
 import { flagFor } from "../flags.js";
+
+const EyeIcon = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
 
 const ordinal = (n: number) => {
   const s = ["th", "st", "nd", "rd"];
@@ -26,9 +34,14 @@ const OVERALL_PRIZE: Record<number, number> = {
   1: 500, 2: 325, 3: 200, 4: 175, 5: 150, 6: 125, 7: 100, 8: 90, 9: 80, 10: 80,
 };
 
-function Stat({ label, value, pos, accent }: { label: string; value: ReactNode; pos?: string; accent?: boolean }) {
+function Stat({ label, value, pos, accent, to }: { label: string; value: ReactNode; pos?: string; accent?: boolean; to?: string }) {
   return (
-    <div className="fl-card px-3 py-3 text-center">
+    <div className="fl-card relative px-3 py-3 text-center">
+      {to && (
+        <Link to={to} aria-label={`View ${label}`} className="absolute right-1.5 top-1.5 text-muted transition-colors hover:text-gold">
+          <EyeIcon />
+        </Link>
+      )}
       <div className="font-mono text-base leading-tight" style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
       {pos && <div className="mt-1.5 text-[11px] text-gold">({pos})</div>}
       <div className="mt-1.5 text-[10px] uppercase tracking-[1px] text-muted">{label}</div>
@@ -39,7 +52,7 @@ function Stat({ label, value, pos, accent }: { label: string; value: ReactNode; 
 // The entrant header (avatar, name, overall position, top-scorer picks, total +
 // prize) and the six stat cards. Shared by the entrant detail page and the
 // personalised homepage.
-export default function EntrantSummary({ id, eyebrow = "Entrant" }: { id: string | number; eyebrow?: string }) {
+export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = true }: { id: string | number; eyebrow?: string; linkCards?: boolean }) {
   const { data, isLoading, error } = useWallchart(id);
   const { data: leaderboard } = useLeaderboard();
   const { data: groups } = useGroups();
@@ -132,7 +145,14 @@ export default function EntrantSummary({ id, eyebrow = "Entrant" }: { id: string
         <div className="min-w-[180px] flex-1">
           <div className="text-[11px] uppercase tracking-[1.5px] text-muted">{eyebrow}</div>
           <div className="mt-0.5 font-display text-3xl text-cream">{data.entrant.name}</div>
-          <div className="mt-1 font-mono text-sm text-gold">{overallPos} overall</div>
+          <div className="mt-1 flex items-center justify-center gap-1.5 font-mono text-sm text-gold sm:justify-start">
+            <span>{overallPos} overall</span>
+            {linkCards && (
+              <Link to="/standings/overall" aria-label="View overall standings" className="text-muted transition-colors hover:text-gold">
+                <EyeIcon />
+              </Link>
+            )}
+          </div>
           {ts && ts.players.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted sm:justify-start">
               <span className="text-[10px] uppercase tracking-[1px]">Top scorer picks</span>
@@ -161,12 +181,12 @@ export default function EntrantSummary({ id, eyebrow = "Entrant" }: { id: string
 
       {/* stat cards */}
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Knockout" {...knockout} />
-        <Stat label="Top scorer" {...tsCard} />
-        <Stat label="Week 1" {...phaseValue("week1")} />
-        <Stat label="Week 2" {...phaseValue("week2")} />
-        <Stat label="Week 3" {...phaseValue("week3")} />
-        <Stat label="Round of 32" {...phaseValue("r32")} />
+        <Stat label="Knockout" {...knockout} to={linkCards ? "/standings/knockout" : undefined} />
+        <Stat label="Top scorer" {...tsCard} to={linkCards ? "/standings/top-scorer" : undefined} />
+        <Stat label="Week 1" {...phaseValue("week1")} to={linkCards ? "/standings/week-1" : undefined} />
+        <Stat label="Week 2" {...phaseValue("week2")} to={linkCards ? "/standings/week-2" : undefined} />
+        <Stat label="Week 3" {...phaseValue("week3")} to={linkCards ? "/standings/week-3" : undefined} />
+        <Stat label="Round of 32" {...phaseValue("r32")} to={linkCards ? "/standings/round-of-32" : undefined} />
       </div>
     </>
   );
