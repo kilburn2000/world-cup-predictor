@@ -41,7 +41,7 @@ export default function MiniTable({ rows, entrantId, title, fullTo }: {
     <div className="fl-card overflow-hidden">
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
         <h4 className="font-display text-sm text-cream">{title}</h4>
-        <Link to={fullTo} className="text-[11px] text-gold hover:underline">Full table →</Link>
+        <Link to={fullTo} className="text-[11px] text-gold hover:underline">Full Table →</Link>
       </div>
       <div className="px-2 py-1">
         {window.map((row) => {
