@@ -155,7 +155,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
 
       {/* finished → who got it right; otherwise → the crowd's most-predicted */}
       {m.mostCommonScore && (
-        <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[11.5px] leading-none text-muted sm:px-6">
+        <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[11.5px] text-muted sm:px-6">
           {finished ? (
             <>
               <span className="text-[9px] uppercase tracking-wide">Got it right</span>
@@ -176,7 +176,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
                 ) : (
                   <>
                     <span>{flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}</span>
-                    <span>{(m.mostCommonResult === "HOME" ? m.home : m.away)} Win</span>
+                    <span>{(m.mostCommonResult === "HOME" ? m.homeCode : m.awayCode)} Win</span>
                   </>
                 )}
                 <span>{frac(m.mostCommonResultCount, m.mostCommonTotal)}</span>
@@ -192,7 +192,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
           <div className="space-y-1">
             {[...m.events].sort((a, b) => a.minute - b.minute).map((ev, i) => {
               const colour = ev.type === "goal" ? "#c9a86a" : "#d9534f";
-              const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
+              const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
               const team = ev.team === "home" ? m.home : m.away;
               return (
                 <div key={i} className="flex items-center gap-2 text-[12.5px]">

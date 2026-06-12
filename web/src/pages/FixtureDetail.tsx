@@ -89,7 +89,7 @@ export default function FixtureDetail() {
           <div className="space-y-1.5">
             {data.events.map((ev, i) => {
               const colour = ev.type === "goal" ? "#c9a86a" : "#d9534f";
-              const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
+              const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
               const team = ev.team === "home" ? m.home : m.away;
               return (
                 <div key={i} className="flex items-center gap-2.5 text-[13px]">
