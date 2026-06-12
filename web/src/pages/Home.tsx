@@ -34,10 +34,6 @@ export default function Home() {
           <MiniWeek entrantId={me.entrantId} />
           <MiniKnockout entrantId={me.entrantId} />
         </div>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
-          <Link to={`/entrant/${me.entrantId}`} className="btn-gold px-4 py-2 text-sm">View my full predictions</Link>
-          <Link to="/standings/overall" className="text-sm text-muted hover:text-cream">Live standings →</Link>
-        </div>
       </div>
     );
   }

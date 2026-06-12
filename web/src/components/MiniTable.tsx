@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link } from "react-router-dom";
 
 export interface MiniRow {
@@ -5,6 +6,8 @@ export interface MiniRow {
   name: string;
   nameIncomplete?: boolean;
   value: number;
+  /** True for rows above the qualification cut-off (knockout groups). */
+  qualifying?: boolean;
 }
 
 const YouBadge = () => (
@@ -44,25 +47,32 @@ export default function MiniTable({ rows, entrantId, title, fullTo }: {
         <Link to={fullTo} className="text-[11px] text-gold hover:underline">Full Table →</Link>
       </div>
       <div className="px-2 py-1">
-        {window.map((row) => {
+        {window.map((row, i) => {
           const you = row.entrantId === entrantId;
+          // Dashed gold line at the qualification cut-off: after the last
+          // qualifier, before the first non-qualifier.
+          const cutoff = row.qualifying && window[i + 1] && !window[i + 1].qualifying;
           return (
-            <Link
-              key={row.entrantId}
-              to={`/entrant/${row.entrantId}`}
-              className={
-                "grid grid-cols-[2.25rem_1fr_auto] items-center gap-2 rounded-lg px-2 py-2 text-[13px] transition-colors " +
-                (you ? "bg-gold-soft" : "hover:bg-gold-soft/50")
-              }
-            >
-              <span className="font-mono text-muted">{label(row)}</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-cream">
-                <span className="truncate">{row.name}</span>
-                {row.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
-                {you && <YouBadge />}
-              </span>
-              <span className="font-mono font-semibold text-gold">{row.value}</span>
-            </Link>
+            <Fragment key={row.entrantId}>
+              <Link
+                to={`/entrant/${row.entrantId}`}
+                className={
+                  "grid grid-cols-[2.25rem_1fr_auto] items-center gap-2 rounded-lg px-2 py-2 text-[13px] transition-colors " +
+                  (you ? "bg-gold-soft" : "hover:bg-gold-soft/50")
+                }
+              >
+                <span className="font-mono text-muted">{label(row)}</span>
+                <span className="flex min-w-0 items-center gap-1.5 text-cream">
+                  <span className="truncate">{row.name}</span>
+                  {row.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
+                  {you && <YouBadge />}
+                </span>
+                <span className="font-mono font-semibold text-gold">{row.value}</span>
+              </Link>
+              {cutoff && (
+                <div className="mx-2 my-1 border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />
+              )}
+            </Fragment>
           );
         })}
       </div>

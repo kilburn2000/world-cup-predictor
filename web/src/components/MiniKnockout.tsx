@@ -14,7 +14,7 @@ export default function MiniKnockout({ entrantId }: { entrantId: number }) {
       entrantId={entrantId}
       title={`Knockout: Group ${group.group}`}
       fullTo="/standings/knockout"
-      rows={group.entrants.map((e) => ({ entrantId: e.entrantId, name: e.name, nameIncomplete: e.nameIncomplete, value: e.total }))}
+      rows={group.entrants.map((e) => ({ entrantId: e.entrantId, name: e.name, nameIncomplete: e.nameIncomplete, value: e.total, qualifying: e.qualifying }))}
     />
   );
 }
