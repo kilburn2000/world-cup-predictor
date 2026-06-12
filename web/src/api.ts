@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useDemoMatches } from "./demo.js";
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
@@ -430,9 +431,16 @@ export const useWcKnockout = () =>
   useQuery({ queryKey: ["wc-knockout"], queryFn: () => get<{ rounds: KoRound[] }>("/api/wc-knockout"), refetchInterval: 30_000 });
 
 /** day: -1 yesterday, 0 today, +1 tomorrow. Polls every 15s. */
-export const useLiveMatches = (day = 0) =>
-  useQuery({
+export const useLiveMatches = (day = 0) => {
+  const demo = useDemoMatches();
+  const demoOn = demo != null && day === 0;
+  const q = useQuery({
     queryKey: ["live", day],
     queryFn: () => get<LiveMatch[]>(`/api/live?day=${day}`),
     refetchInterval: 10_000,
+    enabled: !demoOn,
   });
+  // During a demo, day-0 consumers (the toasts + today's scores) see the scripted
+  // feed; the real query is paused and resumes when the demo ends.
+  return demoOn ? ({ ...q, data: demo, isLoading: false, isError: false, error: null } as typeof q) : q;
+};

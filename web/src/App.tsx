@@ -21,6 +21,7 @@ import ManageEntrants from "./pages/ManageEntrants.js";
 import EditPredictions from "./pages/EditPredictions.js";
 import Loader from "./components/Loader.js";
 import LiveToasts from "./components/LiveToasts.js";
+import DemoController from "./components/DemoController.js";
 import AuthGate from "./components/AuthGate.js";
 
 // Text nav item: gold text + short gold underline when active (matches design).
@@ -101,6 +102,7 @@ export default function App() {
   return (
     <div className="min-h-screen pb-20">
       <LiveToasts />
+      <DemoController />
       <header className="sticky top-0 z-30 border-b border-line bg-pitch-950/75 backdrop-blur-md">
         <div className="mx-auto max-w-5xl px-4 py-3">
           <div className="relative flex items-center justify-between sm:gap-4">
