@@ -56,6 +56,7 @@ export default function Home() {
 
   return (
     <div className="fl-enter mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center">
+      <img src="/whiteys-crest.png" alt="" className="mb-1 h-28 w-28 shrink-0 object-contain" />
       <h1 className="text-balance text-center font-display text-3xl font-medium text-cream">Welcome to Whitey’s World Cup 2026 Sweepstake</h1>
       <p className="mx-auto mb-6 mt-2 max-w-md text-pretty text-center text-sm leading-relaxed text-muted">
         Sign in to see your personalised dashboard - your points, prize money won, position in every
@@ -74,6 +75,9 @@ export default function Home() {
           {busy ? "Signing in…" : "Sign in"}
         </button>
         {error && <p className="text-center text-[13px] text-down">{error}</p>}
+        <a href="mailto:[redacted]?subject=World%20Cup%20password%20reset" className="text-center text-[12px] text-muted hover:text-cream">
+          Forgot your password?
+        </a>
       </form>
       <p className="mt-4 text-center text-sm">
         <Link to="/standings/overall" className="text-gold hover:underline">Browse the standings →</Link>
