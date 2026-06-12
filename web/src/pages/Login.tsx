@@ -34,7 +34,7 @@ export default function Login() {
   return (
     <div className="fl-enter mx-auto max-w-sm">
       <h1 className="text-center font-display text-3xl font-medium text-cream">Sign in</h1>
-      <p className="mx-auto mb-6 mt-2 max-w-xs text-center text-sm leading-relaxed text-muted">
+      <p className="mx-auto mb-6 mt-2 max-w-xs text-pretty text-center text-sm leading-relaxed text-muted">
         Sign in to see your predictions and points across the site.
       </p>
       <form onSubmit={submit} className="fl-card flex flex-col gap-4 p-6">

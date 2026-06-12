@@ -57,7 +57,7 @@ export default function Home() {
   return (
     <div className="fl-enter mx-auto max-w-sm">
       <h1 className="text-center font-display text-3xl font-medium text-cream">Welcome</h1>
-      <p className="mx-auto mb-6 mt-2 max-w-xs text-center text-sm leading-relaxed text-muted">
+      <p className="mx-auto mb-6 mt-2 max-w-xs text-pretty text-center text-sm leading-relaxed text-muted">
         Sign in to see your personalised dashboard - your points, prize money won, position in every
         competition and your top-scorer picks. You can still browse the standings and stats without signing in.
       </p>
