@@ -94,10 +94,11 @@ export default function LiveToasts() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="toast-drop pointer-events-auto w-full overflow-hidden rounded-xl border border-line sm:max-w-sm"
-          style={{ background: "rgba(11,21,14,0.97)", boxShadow: "0 10px 34px rgba(0,0,0,0.5)", borderLeft: `3px solid ${t.accent}` }}
+          className="toast-drop pointer-events-auto flex w-full overflow-hidden rounded-xl border border-line sm:max-w-sm"
+          style={{ background: "rgba(11,21,14,0.97)", boxShadow: "0 10px 34px rgba(0,0,0,0.5)" }}
         >
-          <div className="flex flex-col gap-1 px-4 py-2.5">
+          <span className="w-1 shrink-0" style={{ background: t.accent }} aria-hidden />
+          <div className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-2.5">
             <div className="text-[10px] font-semibold uppercase tracking-[1.5px]" style={{ color: t.accent }}>{t.label}</div>
             <div className="flex items-center gap-1.5 text-[13.5px]">
               <span>{flagFor(t.home)}</span>
