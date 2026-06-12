@@ -39,7 +39,7 @@ function Stat({ label, value, pos, accent }: { label: string; value: ReactNode; 
 // The entrant header (avatar, name, overall position, top-scorer picks, total +
 // prize) and the six stat cards. Shared by the entrant detail page and the
 // personalised homepage.
-export default function EntrantSummary({ id }: { id: string | number }) {
+export default function EntrantSummary({ id, eyebrow = "Entrant" }: { id: string | number; eyebrow?: string }) {
   const { data, isLoading, error } = useWallchart(id);
   const { data: leaderboard } = useLeaderboard();
   const { data: groups } = useGroups();
@@ -130,7 +130,7 @@ export default function EntrantSummary({ id }: { id: string | number }) {
           {inits}
         </div>
         <div className="min-w-[180px] flex-1">
-          <div className="text-[11px] uppercase tracking-[1.5px] text-muted">Entrant</div>
+          <div className="text-[11px] uppercase tracking-[1.5px] text-muted">{eyebrow}</div>
           <div className="mt-0.5 font-display text-3xl text-cream">{data.entrant.name}</div>
           <div className="mt-1 font-mono text-sm text-gold">{overallPos} overall</div>
           {ts && ts.players.length > 0 && (

@@ -24,7 +24,7 @@ export default function Home() {
   if (me?.entrantId) {
     return (
       <div className="fl-enter">
-        <EntrantSummary id={me.entrantId} />
+        <EntrantSummary id={me.entrantId} eyebrow="Welcome Back" />
         <div className="mt-4">
           <MiniStandings entrantId={me.entrantId} />
         </div>
