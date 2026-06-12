@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "reac
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe, logout } from "./auth.js";
 import Login from "./pages/Login.js";
+import Home from "./pages/Home.js";
 import Leaderboard from "./pages/Leaderboard.js";
 import LiveScores from "./pages/LiveScores.js";
 import Fixtures from "./pages/Fixtures.js";
@@ -39,7 +40,8 @@ const mobileItem = ({ isActive }: { isActive: boolean }) =>
   (isActive ? "bg-gold-soft font-semibold text-cream" : "text-muted hover:bg-gold-soft hover:text-cream");
 
 function labelFor(pathname: string): string {
-  if (pathname === "/" || pathname.startsWith("/standings")) return "Live Standings";
+  if (pathname === "/") return "Whitey’s World Cup Sweepstake";
+  if (pathname.startsWith("/standings")) return "Live Standings";
   if (pathname.startsWith("/stats")) return "Stats";
   if (pathname.startsWith("/players")) return "Players";
   if (pathname.startsWith("/prizes")) return "Prizes";
@@ -117,7 +119,7 @@ export default function App() {
 
             {/* Desktop: inline nav. */}
             <nav className="hidden items-center gap-5 sm:flex">
-              <NavLink to="/standings/overall" className={tab({ isActive: location.pathname === "/" || location.pathname.startsWith("/standings") })}>Standings</NavLink>
+              <NavLink to="/standings/overall" className={tab({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={tab}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
               {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={tab}>My predictions</NavLink>}
@@ -133,7 +135,7 @@ export default function App() {
           {/* Mobile: dropdown nav panel. */}
           {menuOpen && (
             <nav className="mt-3 flex flex-col gap-1 border-t border-line pt-3 sm:hidden">
-              <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname === "/" || location.pathname.startsWith("/standings") })}>Standings</NavLink>
+              <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={() => mobileItem({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
               {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={mobileItem}>My predictions</NavLink>}
@@ -150,7 +152,7 @@ export default function App() {
 
       <main className="mx-auto max-w-5xl px-4 py-8">
         <Routes>
-          <Route path="/" element={<Navigate to="/standings/overall" replace />} />
+          <Route path="/" element={<Home />} />
           <Route path="/standings" element={<Navigate to="/standings/overall" replace />} />
           <Route path="/standings/:tab" element={<Leaderboard />} />
           <Route path="/stats" element={<Navigate to="/stats/scores" replace />} />
