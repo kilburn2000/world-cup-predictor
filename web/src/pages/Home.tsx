@@ -28,7 +28,7 @@ export default function Home() {
     return (
       <div className="fl-enter">
         <EntrantSummary id={me.entrantId} eyebrow="Welcome Back" />
-        <div className="mt-4 grid items-start gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid items-stretch gap-4 sm:grid-cols-2">
           <MiniStandings entrantId={me.entrantId} />
           <MiniTopScorer entrantId={me.entrantId} />
           <MiniWeek entrantId={me.entrantId} />

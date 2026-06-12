@@ -11,9 +11,9 @@ const YouBadge = () => (
   <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>
 );
 
-// A standings card windowed to 7 rows around the logged-in entrant: normally 3
-// above + you + 3 below, but clamped at the edges so the top of the table shows
-// you + the 6 below, and the bottom shows the 6 above + you.
+// A standings card windowed to 5 rows around the logged-in entrant: normally 2
+// above + you + 2 below, but clamped at the edges so the top of the table shows
+// you + the 4 below, and the bottom shows the 4 above + you.
 export default function MiniTable({ rows, entrantId, title, fullTo }: {
   rows: MiniRow[];
   entrantId: number;
@@ -26,8 +26,8 @@ export default function MiniTable({ rows, entrantId, title, fullTo }: {
   const idx = sorted.findIndex((r) => r.entrantId === entrantId);
   if (idx < 0) return null;
 
-  const N = 7;
-  const start = Math.min(Math.max(0, idx - 3), Math.max(0, sorted.length - N));
+  const N = 5;
+  const start = Math.min(Math.max(0, idx - 2), Math.max(0, sorted.length - N));
   const window = sorted.slice(start, start + N);
 
   // Position number with an "=" suffix when tied on value.
