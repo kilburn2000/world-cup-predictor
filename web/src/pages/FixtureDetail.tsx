@@ -32,7 +32,7 @@ export default function FixtureDetail() {
   const fmt = m.kickoff
     ? new Date(m.kickoff).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }) + " BST"
     : "";
-  const winners = data.board.filter((b) => b.points > 0).length;
+  const winners = data.board.filter((b) => (b.points ?? 0) > 0).length;
 
   // most common predicted scoreline
   const pickCounts = new Map<string, number>();
@@ -50,7 +50,7 @@ export default function FixtureDetail() {
     else resultCounts.draw++;
   }
   const topResultKey = (["home", "draw", "away"] as const).reduce((a, b) => (resultCounts[b] > resultCounts[a] ? b : a));
-  const topResultLabel = topResultKey === "draw" ? "Draw" : `${topResultKey === "home" ? m.home : m.away} win`;
+  const topResultLabel = topResultKey === "draw" ? "Draw" : `${topResultKey === "home" ? m.home : m.away} Win`;
   const topResultCount = resultCounts[topResultKey];
 
   return (
@@ -119,7 +119,7 @@ export default function FixtureDetail() {
             <div>#</div><div>Entrant</div><div className="text-center">Prediction</div><div className="text-center">Scored</div><div className="text-right">Pts</div>
           </div>
           {data.board.map((b, i) => {
-            const t = TIER[b.tier];
+            const t = b.tier ? TIER[b.tier] : null;
             return (
               <Link key={b.entrantId} to={`/entrant/${b.entrantId}`} className="grid grid-cols-[28px_minmax(0,1fr)_46px_108px_42px] items-center border-t border-line px-4 py-2.5 transition-colors hover:bg-gold-soft">
                 <div className="font-mono text-xs text-muted">{i + 1}</div>
@@ -133,7 +133,7 @@ export default function FixtureDetail() {
                     <ScoredChips pick={b.pick} hs={m.homeScore ?? 0} as={m.awayScore ?? 0} homeCode={m.homeCode ?? ""} awayCode={m.awayCode ?? ""} />
                   )}
                 </div>
-                <div className="text-right font-mono text-base" style={{ color: data.played ? t.fg : "#8d9388" }}>{data.played ? `+${b.points}` : "–"}</div>
+                <div className="text-right font-mono text-base" style={{ color: data.played ? (t?.fg ?? "#8d9388") : "#8d9388" }}>{data.played ? `+${b.points}` : "–"}</div>
               </Link>
             );
           })}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLiveMatches, type LiveMatch, type LiveBoardRow, type LiveEvent } from "../api.js";
 import { flagFor } from "../flags.js";
 import LiveTabs from "../components/LiveTabs.js";
@@ -20,7 +21,7 @@ function stageLabel(m: LiveMatch) {
   return STAGE_LABELS[m.stage] ?? m.stage;
 }
 
-const TIER: Record<LiveBoardRow["tier"], { label: string; bg: string; fg: string }> = {
+const TIER: Record<NonNullable<LiveBoardRow["tier"]>, { label: string; bg: string; fg: string }> = {
   exact: { label: "Exact", bg: "rgba(201,168,106,0.18)", fg: "#c9a86a" },
   result: { label: "Result", bg: "rgba(107,191,134,0.16)", fg: "#6bbf86" },
   diff: { label: "Partial", bg: "rgba(141,147,136,0.18)", fg: "#b9bdb4" },
@@ -83,13 +84,8 @@ const frac = (n?: number, total?: number) =>
 
 function MatchCard({ m }: { m: LiveMatch }) {
   const ph = phaseOf(m);
-  const ft = m.status === "FINISHED";
-  const winners = m.board.filter((b) => b.points > 0).length;
-  const topPts = m.board.length ? m.board[0].points : 0;
-  const leaders = m.board
-    .filter((b) => b.points === topPts && topPts > 0)
-    .map((b) => b.name.split(" ")[0]);
   const board = m.board; // all predictions
+  const [show, setShow] = useState(false);
 
   return (
     <div className="fl-card overflow-hidden">
@@ -162,11 +158,11 @@ function MatchCard({ m }: { m: LiveMatch }) {
           <span>·</span>
           <span className="inline-flex items-center gap-1">
             {m.mostCommonResult === "DRAW" ? (
-              <span>draw</span>
+              <span>Draw</span>
             ) : (
               <>
                 <span>{flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}</span>
-                <span>{(m.mostCommonResult === "HOME" ? m.home : m.away)} win</span>
+                <span>{(m.mostCommonResult === "HOME" ? m.home : m.away)} Win</span>
               </>
             )}
             <span>{frac(m.mostCommonResultCount, m.mostCommonTotal)}</span>
@@ -174,17 +170,16 @@ function MatchCard({ m }: { m: LiveMatch }) {
         </div>
       )}
 
-      {m.status !== "SCHEDULED" && (
-        <div className="px-5 pb-5 pt-2 sm:px-6">
-              <div className="mb-3 text-[11.5px] text-muted">
-                <span className="font-mono text-gold">{winners}</span> entrants ·{" "}
-                {ft ? "points awarded" : "points in play"}
-                {leaders.length > 0 && (
-                  <>
-                    {" "}· leaders <span className="text-cream">{leaders.join(", ")}</span>
-                  </>
-                )}
-              </div>
+      {board.length > 0 && (
+        <>
+          <button
+            onClick={() => setShow((v) => !v)}
+            className="block w-full px-5 py-2.5 text-center text-[11.5px] uppercase tracking-wide text-muted transition-colors hover:text-cream sm:px-6"
+          >
+            {show ? "Hide predictions ▴" : "Show predictions ▾"}
+          </button>
+          {show && (
+            <div className="px-5 pb-5 sm:px-6">
               <div className="grid grid-cols-[30px_1fr_54px_56px] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_56px_104px_52px]">
                 <div>#</div>
                 <div>Entrant</div>
@@ -193,7 +188,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
                 <div className="text-right">Pts</div>
               </div>
               {board.map((b, i) => {
-                const t = TIER[b.tier];
+                const t = b.tier ? TIER[b.tier] : null;
                 return (
                   <div
                     key={b.entrantId}
@@ -208,15 +203,17 @@ function MatchCard({ m }: { m: LiveMatch }) {
                     </div>
                     <div className="text-center font-mono text-[13px]">{b.pick}</div>
                     <div className="hidden justify-center sm:flex">
-                      <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+                      {b.points != null && <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />}
                     </div>
-                    <div className="text-right font-mono text-base" style={{ color: t.fg }}>
-                      +{b.points}
+                    <div className="text-right font-mono text-base" style={{ color: t?.fg ?? "#8d9388" }}>
+                      {b.points != null ? `+${b.points}` : "–"}
                     </div>
                   </div>
                 );
               })}
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

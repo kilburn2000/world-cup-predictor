@@ -523,17 +523,22 @@ app.get("/api/live", async () => {
     const ag = m.ag ?? 0;
     const scored = m.status === "IN_PLAY" || m.status === "FINISHED";
 
+    // board for every group fixture — points/tier once it's in play/finished,
+    // just the picks (points null) before kick-off.
     let board: any[] = [];
-    if (m.stage === "GROUP" && scored) {
-      board = (predsByMatch.get(m.id) ?? [])
-        .map((p) => {
-          const predH = p.ph === m.mh ? p.phg : p.pag;
-          const predA = p.ph === m.mh ? p.pag : p.phg;
+    if (m.stage === "GROUP") {
+      board = (predsByMatch.get(m.id) ?? []).map((p) => {
+        const predH = p.ph === m.mh ? p.phg : p.pag;
+        const predA = p.ph === m.mh ? p.pag : p.phg;
+        if (scored) {
           const b = scoreGroupMatch(predH, predA, hg, ag, cfg);
           const tier = b.exact ? "exact" : b.outcome ? "result" : (b.homeGoals || b.awayGoals) ? "diff" : "miss";
           return { entrantId: p.eid, name: p.name, pick: `${predH}-${predA}`, points: b.points, tier };
-        })
-        .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+        }
+        return { entrantId: p.eid, name: p.name, pick: `${predH}-${predA}`, points: null, tier: null };
+      });
+      if (scored) board.sort((a, b) => (b.points ?? 0) - (a.points ?? 0) || a.name.localeCompare(b.name));
+      else board.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     // attach ESPN minute/events, aligning event side to our home/away

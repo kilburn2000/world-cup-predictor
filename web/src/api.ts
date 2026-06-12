@@ -238,8 +238,8 @@ export interface LiveBoardRow {
   entrantId: number;
   name: string;
   pick: string; // "2-1"
-  points: number;
-  tier: LiveTier;
+  points: number | null; // null before kick-off
+  tier: LiveTier | null;
 }
 export interface LiveEvent {
   minute: number;
