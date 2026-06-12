@@ -125,8 +125,8 @@ export default function FixtureTable({ items }: { items: Fixture[] }) {
                 <span className="text-[8.5px] uppercase tracking-[1.5px] text-muted/70">{done ? "Got it right" : "Most predicted"}</span>
                 {done ? (
                   <>
-                    <span><span className="mr-2 font-mono text-cream">{f.exactCorrect ?? 0}</span>Exact ({pct(f.exactCorrect, f.mostCommonTotal)}%)</span>
-                    <span><span className="mr-2 font-mono text-cream">{f.resultCorrect ?? 0}</span>Result ({pct(f.resultCorrect, f.mostCommonTotal)}%)</span>
+                    <span><span className="mr-1.5 font-mono text-cream">{f.exactCorrect ?? 0}</span>Exact ({pct(f.exactCorrect, f.mostCommonTotal)}%)</span>
+                    <span><span className="mr-1.5 font-mono text-cream">{f.resultCorrect ?? 0}</span>Result ({pct(f.resultCorrect, f.mostCommonTotal)}%)</span>
                   </>
                 ) : (
                   <>
