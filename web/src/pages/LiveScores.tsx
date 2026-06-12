@@ -5,6 +5,7 @@ import { useMe } from "../auth.js";
 import LiveTabs from "../components/LiveTabs.js";
 import ScoredChips from "../components/ScoredChips.js";
 import PointsPill from "../components/PointsPill.js";
+import { longDate } from "../dates.js";
 
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
@@ -294,7 +295,7 @@ export default function LiveScores({ day = 0 }: { day?: number }) {
   const dayLabel = day === -1 ? "Yesterday" : day === 1 ? "Tomorrow" : "Today";
   // host-country (Pacific) date for the selected day
   const [hy, hmo, hd] = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).split("-").map(Number);
-  const dateLabel = new Date(hy, hmo - 1, hd + day).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+  const dateLabel = longDate(new Date(hy, hmo - 1, hd + day));
 
   return (
     <div className="fl-enter">

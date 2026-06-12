@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useFixtures, type Fixture } from "../api.js";
 import LiveTabs from "../components/LiveTabs.js";
 import FixtureTable from "../components/FixtureTable.js";
+import { longDate } from "../dates.js";
 
-const londonDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/London" });
+const londonDate = (iso: string) => longDate(new Date(iso), "Europe/London");
 
 export default function Fixtures() {
   const { data, isLoading, error } = useFixtures();

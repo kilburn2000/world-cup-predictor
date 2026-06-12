@@ -1,5 +1,6 @@
 import { useFixtures } from "../api.js";
 import FixtureTable from "./FixtureTable.js";
+import { longDate } from "../dates.js";
 
 // A fixture's calendar day in the host country (Pacific), matching how the
 // Yesterday / Today / Tomorrow stats tabs bucket games.
@@ -19,7 +20,7 @@ export default function DashboardFixtures() {
     offset,
     label: offset === -1 ? "Yesterday" : offset === 1 ? "Tomorrow" : "Today",
     key: new Date(Date.UTC(hy, hmo - 1, hd + offset)).toISOString().slice(0, 10),
-    dateLabel: new Date(hy, hmo - 1, hd + offset).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }),
+    dateLabel: longDate(new Date(hy, hmo - 1, hd + offset)),
     items: fixtures.filter((f) => f.kickoff && pacificKey(f.kickoff) === new Date(Date.UTC(hy, hmo - 1, hd + offset)).toISOString().slice(0, 10)),
   }));
 
