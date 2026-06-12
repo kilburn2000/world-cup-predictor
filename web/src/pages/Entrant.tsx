@@ -163,6 +163,7 @@ export default function Entrant() {
         <div className="min-w-[180px] flex-1">
           <div className="text-[11px] uppercase tracking-[1.5px] text-muted">Entrant</div>
           <div className="mt-0.5 font-display text-3xl text-cream">{data.entrant.name}</div>
+          <div className="mt-1 font-mono text-sm text-gold">{overallPos} overall</div>
         </div>
         <div className="flex items-center gap-6">
           <div className="text-right">
@@ -178,8 +179,7 @@ export default function Entrant() {
       </div>
 
       {/* stat cards */}
-      <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Overall position" value={overallPos} />
+      <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Knockout" value={knockoutValue} />
         <Stat label="Week 1" value={phaseValue("week1")} />
         <Stat label="Week 2" value={phaseValue("week2")} />
