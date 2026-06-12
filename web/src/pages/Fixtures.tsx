@@ -13,6 +13,7 @@ const STAGE: Record<string, string> = { LAST_32: "R32", LAST_16: "R16", QF: "QF"
 const stageLabel = (f: Fixture) => (f.stage === "GROUP" ? (f.group ? `Group ${f.group}` : "Group") : STAGE[f.stage] ?? f.stage);
 const frac = (n?: number, total?: number) =>
   `${n ?? 0}/${total ?? 0} (${total ? Math.round(((n ?? 0) / total) * 100) : 0}%)`;
+const pct = (n?: number, total?: number) => (total ? Math.round(((n ?? 0) / total) * 100) : 0);
 
 function Team({ name, align }: { name: string | null; align: "left" | "right" }) {
   const cls = "flex items-center gap-1.5 min-w-0 " + (align === "right" ? "justify-end" : "");
@@ -63,7 +64,7 @@ export default function Fixtures() {
           <div className="fl-card overflow-hidden">
             <div className="hidden border-b border-line px-4 py-1.5 text-[9px] uppercase tracking-wide text-muted sm:grid sm:grid-cols-[52px_1fr_auto_1fr_58px_74px_44px] sm:gap-2">
               <div /><div /><div /><div />
-              <div className="col-span-2 text-center">Most predicted</div>
+              <div className="col-span-2 text-center">{g.items.every((f) => f.status === "FINISHED") ? "Got it right" : "Most predicted"}</div>
               <div />
             </div>
             {g.items.map((f) => {
@@ -87,23 +88,41 @@ export default function Fixtures() {
                   </div>
                   <Team name={f.away} align="left" />
                   <div className="hidden text-center sm:block">
-                    <div className="font-mono text-[12px] text-cream">{f.mostCommonScore ? f.mostCommonScore.replace("-", "–") : "–"}</div>
-                    {f.mostCommonScore && <div className="text-[8px] leading-tight text-muted">{frac(f.mostCommonScoreCount, f.mostCommonTotal)}</div>}
+                    {done ? (
+                      <>
+                        <div className="font-mono text-[12px] text-cream">{f.exactCorrect ?? 0}</div>
+                        <div className="text-[8px] leading-tight text-muted">exact ({pct(f.exactCorrect, f.mostCommonTotal)}%)</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="font-mono text-[12px] text-cream">{f.mostCommonScore ? f.mostCommonScore.replace("-", "–") : "–"}</div>
+                        {f.mostCommonScore && <div className="text-[8px] leading-tight text-muted">{frac(f.mostCommonScoreCount, f.mostCommonTotal)}</div>}
+                      </>
+                    )}
                   </div>
                   <div className="hidden text-center sm:block">
-                    <div className="flex items-center justify-center gap-1 font-mono text-[10px] text-muted">
-                      {f.mostCommonResult === "DRAW" ? (
-                        "Draw"
-                      ) : f.mostCommonResult ? (
-                        <>
-                          <span>{flagFor(f.mostCommonResult === "HOME" ? f.home : f.away)}</span>
-                          <span>{f.mostCommonResult === "HOME" ? f.homeCode : f.awayCode}</span>
-                        </>
-                      ) : (
-                        "–"
-                      )}
-                    </div>
-                    {f.mostCommonResult && <div className="text-[8px] leading-tight text-muted">{frac(f.mostCommonResultCount, f.mostCommonTotal)}</div>}
+                    {done ? (
+                      <>
+                        <div className="font-mono text-[12px] text-cream">{f.resultCorrect ?? 0}</div>
+                        <div className="text-[8px] leading-tight text-muted">result ({pct(f.resultCorrect, f.mostCommonTotal)}%)</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-center gap-1 font-mono text-[10px] text-muted">
+                          {f.mostCommonResult === "DRAW" ? (
+                            "Draw"
+                          ) : f.mostCommonResult ? (
+                            <>
+                              <span>{flagFor(f.mostCommonResult === "HOME" ? f.home : f.away)}</span>
+                              <span>{f.mostCommonResult === "HOME" ? f.homeCode : f.awayCode}</span>
+                            </>
+                          ) : (
+                            "–"
+                          )}
+                        </div>
+                        {f.mostCommonResult && <div className="text-[8px] leading-tight text-muted">{frac(f.mostCommonResultCount, f.mostCommonTotal)}</div>}
+                      </>
+                    )}
                   </div>
                   <div className="text-right">
                     {live ? (

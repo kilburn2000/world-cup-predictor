@@ -649,19 +649,26 @@ app.get("/api/fixtures", async () => {
 
   // aggregate group-match predictions for the most-common score + result per fixture
   const preds = await sql`
-    select p.match_id mid, p.pred_home_team_id ph, p.pred_home_goals phg, p.pred_away_goals pag, m.home_team_id mh
+    select p.match_id mid, p.pred_home_team_id ph, p.pred_home_goals phg, p.pred_away_goals pag,
+           m.home_team_id mh, m.home_goals ahg, m.away_goals aag, m.status mstatus
     from predictions p join matches m on m.id = p.match_id
     where p.scope = 'MATCH'
   `;
-  const agg = new Map<number, { score: Map<string, number>; result: { HOME: number; DRAW: number; AWAY: number }; total: number }>();
+  const agg = new Map<number, { score: Map<string, number>; result: { HOME: number; DRAW: number; AWAY: number }; total: number; exactCorrect: number; resultCorrect: number }>();
   for (const p of preds as any[]) {
     const h = p.ph === p.mh ? p.phg : p.pag; // align to the fixture's home/away
     const a = p.ph === p.mh ? p.pag : p.phg;
     let g = agg.get(p.mid);
-    if (!g) agg.set(p.mid, (g = { score: new Map(), result: { HOME: 0, DRAW: 0, AWAY: 0 }, total: 0 }));
+    if (!g) agg.set(p.mid, (g = { score: new Map(), result: { HOME: 0, DRAW: 0, AWAY: 0 }, total: 0, exactCorrect: 0, resultCorrect: 0 }));
     g.score.set(`${h}-${a}`, (g.score.get(`${h}-${a}`) ?? 0) + 1);
     g.result[h > a ? "HOME" : h < a ? "AWAY" : "DRAW"]++;
     g.total++;
+    if (p.mstatus === "FINISHED" && p.ahg != null) {
+      if (h === p.ahg && a === p.aag) g.exactCorrect++;
+      const predRes = h > a ? "HOME" : h < a ? "AWAY" : "DRAW";
+      const actRes = p.ahg > p.aag ? "HOME" : p.ahg < p.aag ? "AWAY" : "DRAW";
+      if (predRes === actRes) g.resultCorrect++;
+    }
   }
   const modeScore = (s: Map<string, number>) => {
     let key: string | null = null, count = 0;
@@ -695,6 +702,8 @@ app.get("/api/fixtures", async () => {
       mostCommonResult: mr.key,
       mostCommonResultCount: mr.count,
       mostCommonTotal: g?.total ?? 0,
+      exactCorrect: g?.exactCorrect ?? 0,
+      resultCorrect: g?.resultCorrect ?? 0,
     };
   });
 });

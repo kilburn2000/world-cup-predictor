@@ -307,6 +307,8 @@ export interface Fixture {
   mostCommonResult?: "HOME" | "DRAW" | "AWAY" | null;
   mostCommonResultCount?: number;
   mostCommonTotal?: number;
+  exactCorrect?: number;
+  resultCorrect?: number;
 }
 export const useFixtures = () =>
   useQuery({ queryKey: ["fixtures"], queryFn: () => get<Fixture[]>("/api/fixtures"), refetchInterval: 30_000 });
