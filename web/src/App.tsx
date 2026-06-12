@@ -91,7 +91,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Leaderboard />} />
           <Route path="/stats" element={<Navigate to="/stats/scores" replace />} />
-          <Route path="/stats/scores" element={<LiveScores />} />
+          <Route path="/stats/scores" element={<LiveScores day={0} />} />
+          <Route path="/stats/yesterday" element={<LiveScores day={-1} />} />
+          <Route path="/stats/tomorrow" element={<LiveScores day={1} />} />
           <Route path="/stats/fixtures" element={<Fixtures />} />
           <Route path="/stats/fixtures/:id" element={<FixtureDetail />} />
           <Route path="/stats/groups" element={<WCGroups />} />

@@ -219,8 +219,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
   );
 }
 
-export default function LiveScores() {
-  const [day, setDay] = useState(0);
+export default function LiveScores({ day = 0 }: { day?: number }) {
   const { data, isLoading, error } = useLiveMatches(day);
   const matches = data ?? [];
   const live = matches.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
@@ -228,20 +227,10 @@ export default function LiveScores() {
   const finished = matches.filter((m) => m.status === "FINISHED");
 
   const dayLabel = day === -1 ? "Yesterday" : day === 1 ? "Tomorrow" : "Today";
-  const dayTab = (active: boolean) =>
-    "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
-    (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
   return (
     <div className="fl-enter">
       <LiveTabs />
-      <div className="mb-5 flex gap-2">
-        {([-1, 0, 1] as const).map((d) => (
-          <button key={d} className={dayTab(day === d)} onClick={() => setDay(d)}>
-            {d === -1 ? "Yesterday" : d === 1 ? "Tomorrow" : "Today"}
-          </button>
-        ))}
-      </div>
       <div className="mb-6">
         {day === 0 &&
           (live.length ? (
