@@ -466,8 +466,10 @@ app.get("/api/live", async () => {
     join teams at on at.id = m.away_team_id
     where m.status in ('IN_PLAY', 'FINISHED')
        or (m.status = 'SCHEDULED'
-           and m.kickoff_utc >= date_trunc('day', now() at time zone 'utc')
-           and m.kickoff_utc <  date_trunc('day', now() at time zone 'utc') + interval '1 day')
+           -- "today" = the host-country calendar day (US/Canada/Mexico), using
+           -- the westernmost host tz so no game lands on the wrong day
+           and (m.kickoff_utc at time zone 'America/Los_Angeles')::date
+               = (now() at time zone 'America/Los_Angeles')::date)
     order by
       (case m.status when 'IN_PLAY' then 0 when 'SCHEDULED' then 1 else 2 end),
       case when m.status = 'FINISHED' then m.kickoff_utc end desc nulls last,

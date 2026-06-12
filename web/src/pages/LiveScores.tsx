@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useLiveMatches, type LiveMatch, type LiveBoardRow, type LiveEvent } from "../api.js";
 import { flagFor } from "../flags.js";
 import LiveTabs from "../components/LiveTabs.js";
@@ -90,8 +89,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
   const leaders = m.board
     .filter((b) => b.points === topPts && topPts > 0)
     .map((b) => b.name.split(" ")[0]);
-  const board = m.board; // show ALL predictions when expanded
-  const [show, setShow] = useState(false);
+  const board = m.board; // all predictions
 
   return (
     <div className="fl-card overflow-hidden">
@@ -176,20 +174,8 @@ function MatchCard({ m }: { m: LiveMatch }) {
         </div>
       )}
 
-      {m.status === "SCHEDULED" ? (
-        <div className="px-5 py-4 text-center text-[13px] text-muted sm:px-6">
-          Kicks off {m.kickoff ? new Date(m.kickoff).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "today"} · predictions locked
-        </div>
-      ) : (
-        <>
-          <button
-            onClick={() => setShow((v) => !v)}
-            className="block w-full px-5 py-2.5 text-center text-[11.5px] uppercase tracking-wide text-muted transition-colors hover:text-cream sm:px-6"
-          >
-            {show ? "Hide predictions ▴" : "Show predictions ▾"}
-          </button>
-          {show && (
-            <div className="px-5 pb-5 sm:px-6">
+      {m.status !== "SCHEDULED" && (
+        <div className="px-5 pb-5 pt-2 sm:px-6">
               <div className="mb-3 text-[11.5px] text-muted">
                 <span className="font-mono text-gold">{winners}</span> entrants ·{" "}
                 {ft ? "points awarded" : "points in play"}
@@ -230,9 +216,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
                   </div>
                 );
               })}
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );
