@@ -86,12 +86,12 @@ export default function FixtureDetail() {
       {data.board.length > 0 && (
         <div className="mb-5 grid grid-cols-2 gap-3">
           <div className="fl-card p-4">
-            <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most common score</div>
+            <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most predicted score</div>
             <div className="mt-1 font-mono text-2xl text-cream">{topPick ? topPick.replace("-", "–") : "–"}</div>
             <div className="text-[11px] text-muted">{topPickCount} {topPickCount === 1 ? "entrant" : "entrants"}</div>
           </div>
           <div className="fl-card p-4">
-            <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most common result</div>
+            <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Most predicted result</div>
             <div className="mt-1 truncate font-display text-lg text-cream">{topResultLabel}</div>
             <div className="text-[11px] text-muted">{topResultCount} {topResultCount === 1 ? "entrant" : "entrants"}</div>
           </div>
