@@ -1,5 +1,21 @@
 import { sql } from "./db/index.js";
-import { getMatches } from "./espn.js";
+import { getMatches, getMatchEvents } from "./espn.js";
+import { dbNameMap, resolveEspn } from "./sync.js";
+
+// Finished matches whose events we've already captured — don't re-fetch their
+// summary every poll. In-memory; on restart we re-capture once (cheap, bounded
+// to the current scoreboard window), and persisted match_scorers keep totals.
+const captured = new Set<string>();
+
+// Live key events per DB match id (goals + cards with player/minute), aligned to
+// the match's home/away. The live feed reads this; the toasts read it too.
+export interface LiveEventRow {
+  minute: number;
+  type: "goal" | "yellow" | "red";
+  team: "home" | "away";
+  player?: string;
+}
+export const liveMatchEvents = new Map<number, LiveEventRow[]>();
 
 // "Top Scorer" side competition: each entrant has a pair of players; their
 // combined goal tally over the tournament decides a single prize. Goals come
@@ -21,9 +37,10 @@ const normName = (s: string) =>
 const keyToken = (tracked: string) =>
   normName(tracked).split(" ").filter((t) => !["jr", "junior", "jnr"].includes(t)).pop() ?? "";
 
-// Pull goal scorers from the feed and recompute each tracked player's feed_goals.
-// Per-match scorer counts are persisted so tournament totals survive once a match
-// drops off the live scoreboard window. Safe to run on every poll.
+// Pull each live match's key events from the feed: store them for the live feed
+// (goals + cards with the scorer's name) AND tally goal scorers for the Top
+// Scorer competition. Per-match scorer counts are persisted so tournament totals
+// survive once a match drops off the scoreboard window. Safe to run every poll.
 export async function syncScorers(): Promise<void> {
   let matches: Awaited<ReturnType<typeof getMatches>>;
   try {
@@ -31,18 +48,54 @@ export async function syncScorers(): Promise<void> {
   } catch {
     return; // feed unavailable — leave existing tallies in place
   }
+  const byNorm = await dbNameMap();
 
   for (const m of matches) {
     if (m.state === "pre") continue;
-    const goals = (m.events ?? []).filter((e) => e.type === "goal" && e.player);
-    const perPlayer = new Map<string, { country: string; goals: number }>();
-    for (const g of goals) {
-      const country = g.team === "home" ? m.home : m.away;
-      const cur = perPlayer.get(g.player!) ?? { country, goals: 0 };
-      cur.goals++;
-      perPlayer.set(g.player!, cur);
+    if (m.state === "post" && captured.has(m.id)) continue; // already final
+
+    // Full key events from the summary; fall back to the scoreboard goal events
+    // (covers mock games and the brief window before the summary fills).
+    let events: { type: "goal" | "yellow" | "red"; minute: number; player?: string; country: string; own: boolean }[] = [];
+    try {
+      events = await getMatchEvents(m.id);
+    } catch {
+      /* summary unavailable - fall back below */
     }
-    // Replace this match's scorers so VAR/corrections are reflected.
+    if (!events.length) {
+      events = (m.events ?? [])
+        .filter((e) => e.type === "goal" || e.type === "yellow" || e.type === "red")
+        .map((e) => ({ type: e.type as any, minute: e.minute, player: e.player, country: e.team === "home" ? m.home : m.away, own: false }));
+    }
+
+    // Resolve the DB match (by team pair) and store events aligned to its home/away.
+    const h = resolveEspn(m.home, byNorm);
+    const a = resolveEspn(m.away, byNorm);
+    let dbMatch: any = null;
+    if (h && a) {
+      [dbMatch] = await sql`
+        select id, home_team_id from matches
+        where (home_team_id = ${h} and away_team_id = ${a}) or (home_team_id = ${a} and away_team_id = ${h})
+        limit 1
+      `;
+    }
+    if (dbMatch) {
+      const rows: LiveEventRow[] = events.map((e) => {
+        const tid = resolveEspn(e.country, byNorm);
+        return { minute: e.minute, type: e.type, team: tid === dbMatch.home_team_id ? "home" : "away", player: e.player };
+      });
+      liveMatchEvents.set(dbMatch.id, rows);
+    }
+
+    // Tally goal scorers (own goals don't count for the player).
+    const perPlayer = new Map<string, { country: string; goals: number }>();
+    for (const e of events) {
+      if (e.type !== "goal" || e.own || !e.player) continue;
+      const cur = perPlayer.get(e.player) ?? { country: e.country, goals: 0 };
+      cur.goals++;
+      if (!cur.country && e.country) cur.country = e.country;
+      perPlayer.set(e.player, cur);
+    }
     await sql`delete from match_scorers where espn_match_id = ${m.id}`;
     for (const [player, info] of perPlayer) {
       await sql`
@@ -50,6 +103,7 @@ export async function syncScorers(): Promise<void> {
         values (${m.id}, ${player}, ${info.country}, ${info.goals})
       `;
     }
+    if (m.state === "post") captured.add(m.id);
   }
 
   const players = (await sql`select id, name, country from scorer_players`) as any[];

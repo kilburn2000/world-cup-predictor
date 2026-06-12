@@ -16,7 +16,7 @@ import { scoreGroupMatch } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout } from "./wc.js";
-import { topScorerStandings } from "./scorers.js";
+import { topScorerStandings, liveMatchEvents } from "./scorers.js";
 import { runImport, savePredictions, checkUnresolved } from "./importSheet.js";
 import { extractFromPhoto, toPredictions } from "./photoImport.js";
 import { startPoller } from "./poller.js";
@@ -636,8 +636,10 @@ app.get("/api/live", async (req: any) => {
     let minute: number | null = null;
     let half: string | null = null;
     let period: number | null = null;
-    // synthesised goal log (already aligned to this match's home/away)
-    const events: any[] = (liveEvents.get(m.id) ?? []).slice().sort((a, b) => a.minute - b.minute);
+    // real key events from the summary feed (goals + cards with the scorer's
+    // name); fall back to the synthesised goal log if the feed hasn't filled yet.
+    const feedEvents = liveMatchEvents.get(m.id);
+    const events: any[] = (feedEvents?.length ? feedEvents : liveEvents.get(m.id) ?? []).slice().sort((a, b) => a.minute - b.minute);
     if (enrich) {
       const liveNow = m.status === "IN_PLAY";
       minute = liveNow ? enrich.espn.minute : null;

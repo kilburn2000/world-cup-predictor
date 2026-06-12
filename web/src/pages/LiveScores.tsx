@@ -186,6 +186,27 @@ function MatchCard({ m }: { m: LiveMatch }) {
         </div>
       )}
 
+      {m.events && m.events.length > 0 && (
+        <div className="border-b border-line px-5 py-3 sm:px-6">
+          <div className="mb-1.5 text-[9px] uppercase tracking-wide text-muted">Key events</div>
+          <div className="space-y-1">
+            {[...m.events].sort((a, b) => a.minute - b.minute).map((ev, i) => {
+              const colour = ev.type === "goal" ? "#c9a86a" : ev.type === "red" ? "#d9534f" : "#e3c558";
+              const tag = ev.type === "goal" ? "Goal" : ev.type === "red" ? "Red" : ev.type === "yellow" ? "Yellow" : "";
+              const team = ev.team === "home" ? m.home : m.away;
+              return (
+                <div key={i} className="flex items-center gap-2 text-[12.5px]">
+                  <span className="w-8 shrink-0 font-mono text-[11px] text-muted">{ev.minute}'</span>
+                  <span>{flagFor(team)}</span>
+                  <span className="truncate text-cream">{ev.player ?? team}</span>
+                  <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase tracking-wide" style={{ color: colour }}>{tag}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {board.length > 0 && (
         <>
           <button

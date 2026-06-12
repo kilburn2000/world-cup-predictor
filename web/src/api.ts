@@ -83,7 +83,7 @@ export interface TopScorerRow {
   total: number;
 }
 export const useTopScorer = () =>
-  useQuery({ queryKey: ["top-scorer"], queryFn: () => get<TopScorerRow[]>("/api/top-scorer"), refetchInterval: 30_000 });
+  useQuery({ queryKey: ["top-scorer"], queryFn: () => get<TopScorerRow[]>("/api/top-scorer"), refetchInterval: 10_000 });
 
 export interface AdminScorerPlayer {
   id: number;
@@ -419,5 +419,5 @@ export const useLiveMatches = (day = 0) =>
   useQuery({
     queryKey: ["live", day],
     queryFn: () => get<LiveMatch[]>(`/api/live?day=${day}`),
-    refetchInterval: 15_000,
+    refetchInterval: 10_000,
   });

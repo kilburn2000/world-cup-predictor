@@ -8,13 +8,9 @@ const ordinal = (n: number) => {
 };
 
 function Stat({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
-  const isNum = typeof value === "number";
   return (
     <div className="fl-card px-3 py-3 text-center">
-      <div
-        className={(isNum ? "font-mono text-2xl" : "font-display text-2xl") + " leading-tight"}
-        style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}
-      >
+      <div className="font-mono text-2xl leading-tight" style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}>
         {value}
       </div>
       <div className="mt-1.5 text-[10px] uppercase tracking-[1px] text-muted">{label}</div>

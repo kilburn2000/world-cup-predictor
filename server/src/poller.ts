@@ -8,6 +8,7 @@ import { syncScorers } from "./scorers.js";
 // which ESPN's score feed doesn't give us. Both are free.
 let liveRunning = false;
 let structRunning = false;
+let scorerRunning = false;
 
 async function liveTick() {
   if (liveRunning) return;
@@ -18,11 +19,23 @@ async function liveTick() {
       const n = await recomputeAll();
       console.log(`[espn] ${changed} match(es) changed → rescored ${n} predictions`);
     }
-    await syncScorers(); // tally goal scorers for the Top Scorer competition
   } catch (e: any) {
     console.warn(`[espn] ${e.message}`);
   } finally {
     liveRunning = false;
+  }
+}
+
+// Top Scorer feed runs on its own faster cadence so goal tallies update promptly.
+async function scorerTick() {
+  if (scorerRunning) return;
+  scorerRunning = true;
+  try {
+    await syncScorers();
+  } catch (e: any) {
+    console.warn(`[scorers] ${e.message}`);
+  } finally {
+    scorerRunning = false;
   }
 }
 
@@ -40,10 +53,12 @@ async function structTick() {
 
 export function startPoller() {
   cron.schedule("*/15 * * * * *", liveTick); // every 15 seconds
-  console.log("[poller] ESPN live scores every 15s");
+  cron.schedule("*/10 * * * * *", scorerTick); // Top Scorer feed + live events, every 10s
+  console.log("[poller] ESPN live scores every 15s, scorer/events feed every 10s");
   // football-data structure sync is OFF: it overwrote ESPN's live scores with
   // stale/null data. ESPN is the source of truth for all live scores/results.
   // (Re-introduce a knockout-only structure resolver before the R32 if needed.)
   void structTick;
   liveTick();
+  scorerTick();
 }

@@ -6,6 +6,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 const SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard";
+const SUMMARY = (event: string) => `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=${event}`;
 // A demo/mock feed: if this file exists, its matches are merged into the live
 // feed (used by mockSim.ts to preview the live experience without a real game).
 const MOCK_PATH = join(homedir(), ".cache/wc-mock.json");
@@ -79,6 +80,46 @@ export async function getMatches(): Promise<EspnMatch[]> {
     if (!mock.length) throw e; // only swallow errors while a mock is active
   }
   return [...real, ...mock];
+}
+
+export interface SummaryEvent {
+  type: "goal" | "yellow" | "red";
+  minute: number;
+  player?: string;
+  country: string; // scoring/booked player's team display name (e.g. "Portugal")
+  own: boolean; // own goal (counts on the scoreboard, not for the scorer)
+}
+
+// All key events for one match from ESPN's per-match summary (richer + timelier
+// than the scoreboard's `details`): goals (incl. penalties + own goals) and cards,
+// each with the player, minute and team.
+export async function getMatchEvents(eventId: string): Promise<SummaryEvent[]> {
+  const res = await fetch(SUMMARY(eventId), { headers: { "user-agent": "Mozilla/5.0 worldcup-predictor" } });
+  if (!res.ok) throw new Error(`ESPN summary HTTP ${res.status}`);
+  const data: any = await res.json();
+  const comp = data.header?.competitions?.[0];
+  const teamName = new Map<string, string>();
+  for (const c of comp?.competitors ?? []) {
+    if (c.team?.id) teamName.set(String(c.team.id), c.team.displayName ?? c.team.shortDisplayName ?? "");
+  }
+  const out: SummaryEvent[] = [];
+  for (const ev of data.keyEvents ?? []) {
+    const text = String(ev.type?.text ?? "").toLowerCase();
+    const own = text.includes("own");
+    let type: SummaryEvent["type"] | null = null;
+    if (text.includes("goal") || /penalt.*scor|scor.*penalt/.test(text)) type = "goal";
+    else if (text.includes("red")) type = "red";
+    else if (text.includes("yellow")) type = "yellow";
+    if (!type) continue;
+    out.push({
+      type,
+      minute: parseClock(ev.clock?.displayValue) ?? 0,
+      player: ev.athletesInvolved?.[0]?.displayName ?? ev.participants?.[0]?.athlete?.displayName,
+      country: teamName.get(String(ev.team?.id)) ?? "",
+      own,
+    });
+  }
+  return out;
 }
 
 async function getRealMatches(): Promise<EspnMatch[]> {
