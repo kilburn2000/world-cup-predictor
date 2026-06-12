@@ -278,7 +278,7 @@ export interface LiveMatch {
   group?: string | null;
   venue?: string;
   status: "SCHEDULED" | "IN_PLAY" | "PAUSED" | "FINISHED";
-  /** kickoff time (ISO) — present for upcoming fixtures. */
+  /** kickoff time (ISO) - present for upcoming fixtures. */
   kickoff?: string;
   /** null when not in play. */
   minute: number | null;

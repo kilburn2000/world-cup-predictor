@@ -50,7 +50,7 @@ function MatchRow({ m }: { m: WallchartMatch }) {
         </span>
       ) : (
         <span className="w-[72px] text-right font-mono text-[10px] uppercase tracking-wider text-muted">
-          —
+          -
         </span>
       )}
     </div>
@@ -72,7 +72,7 @@ export default function Entrant() {
   const overallPos = me && leaderboard ? ordinal(1 + leaderboard.filter((e) => e.total > me.total).length) : "–";
   // Knockout standing: during the group stage everyone is "Group X"; the bracket
   // rounds (R16 → Final) fill in once the entrant knockout is wired up.
-  let knockoutPos = "—";
+  let knockoutPos = "-";
   for (const g of groups ?? []) {
     if (g.entrants.some((e) => e.entrantId === eid)) { knockoutPos = `Group ${g.group}`; break; }
   }

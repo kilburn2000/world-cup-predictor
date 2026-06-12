@@ -74,7 +74,7 @@ app.get("/api/admin/check", async (req: any, reply) => {
   return { ok: true };
 });
 
-// Provisional points from group matches IN PLAY right now — so everything moves
+// Provisional points from group matches IN PLAY right now - so everything moves
 // mid-game. Returns entrantId -> list of their in-play games with the breakdown.
 async function inPlayProvisional() {
   const cfg = await loadConfig();
@@ -150,7 +150,7 @@ app.get("/api/phases", async () => {
 
 // The "Everyone" consensus: a virtual entrant who, for every game, picks the
 // most-predicted scoreline (and most-predicted result for the outcome point),
-// scored live. Not a real entrant — only shown as a toggle-on comparison in the
+// scored live. Not a real entrant - only shown as a toggle-on comparison in the
 // standings, never in stats or prizes.
 app.get("/api/consensus", async () => {
   const cfg = await loadConfig();
@@ -201,7 +201,7 @@ app.get("/api/consensus", async () => {
   return out;
 });
 
-// Fun stats for the standings — leaders by various measures, with ties as
+// Fun stats for the standings - leaders by various measures, with ties as
 // "name + N others".
 app.get("/api/stats", async () => {
   const rows = (await sql`
@@ -290,7 +290,7 @@ app.get("/api/groups", async () => {
   `) as any[];
   const entrantGroup = new Map(rows.map((r) => [r.entrantId, r.grp]));
 
-  // provisional points from IN-PLAY group games — but still only the entrant's
+  // provisional points from IN-PLAY group games - but still only the entrant's
   // own WC group counts toward their knockout-competition score.
   const liveMatches = await sql`
     select id, matchday, group_name grp, home_team_id mh, home_goals hg, away_goals ag
@@ -520,7 +520,7 @@ app.get("/api/entrants/:id/edit", async (req: any, reply) => {
 });
 
 // Live page feed: every in-play match, today's upcoming fixtures, and all
-// results so far — each with a points board (what each entrant scores/scored at
+// results so far - each with a points board (what each entrant scores/scored at
 // that scoreline) and, for in-play games, ESPN's live minute + goal/card events.
 app.get("/api/live", async (req: any) => {
   const cfg = await loadConfig();
@@ -581,7 +581,7 @@ app.get("/api/live", async (req: any) => {
       if (h && a) espnByPair.set([h, a].sort((x, y) => x - y).join("-"), { espn: e, homeId: h });
     }
   } catch {
-    /* ESPN unavailable — fall back to DB-only (no minute/events) */
+    /* ESPN unavailable - fall back to DB-only (no minute/events) */
   }
 
   return (rows as any[]).map((m) => {
@@ -589,7 +589,7 @@ app.get("/api/live", async (req: any) => {
     const ag = m.ag ?? 0;
     const scored = m.status === "IN_PLAY" || m.status === "FINISHED";
 
-    // board for every group fixture — points/tier once it's in play/finished,
+    // board for every group fixture - points/tier once it's in play/finished,
     // just the picks (points null) before kick-off.
     let board: any[] = [];
     if (m.stage === "GROUP") {

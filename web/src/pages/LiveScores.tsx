@@ -28,7 +28,7 @@ const TIER: Record<NonNullable<LiveBoardRow["tier"]>, { label: string; bg: strin
   miss: { label: "No points", bg: "rgba(217,146,106,0.12)", fg: "#d9926a" },
 };
 
-/** Small football icon — clearly distinct from a yellow card. */
+/** Small football icon - clearly distinct from a yellow card. */
 function BallIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24">
@@ -121,7 +121,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
           >
             <BallIcon size={18} />
             <span className="font-mono text-xs uppercase tracking-[2px] text-gold">
-              Goal — {ph.lastGoal.player ?? ""} ({ph.lastGoal.team === "home" ? m.homeCode : m.awayCode})
+              Goal - {ph.lastGoal.player ?? ""} ({ph.lastGoal.team === "home" ? m.homeCode : m.awayCode})
             </span>
           </div>
         )}
@@ -275,7 +275,7 @@ export default function LiveScores({ day = 0 }: { day?: number }) {
             ? "Yesterday’s results."
             : day === 1
               ? "Tomorrow’s fixtures."
-              : "Today’s fixtures and results — points update live during games."}
+              : "Today’s fixtures and results - points update live during games."}
         </p>
       </div>
 

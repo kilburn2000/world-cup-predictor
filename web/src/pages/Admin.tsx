@@ -12,13 +12,13 @@ const CARDS = [
     to: "/upload",
     icon: "↑",
     title: "Add Entrant",
-    blurb: "Upload a photo (or spreadsheet) of an entry sheet — read automatically with AI, then check and save.",
+    blurb: "Upload a photo (or spreadsheet) of an entry sheet - read automatically with AI, then check and save.",
   },
   {
     to: "/scoring",
     icon: "★",
     title: "Scoring",
-    blurb: "Set the points for each outcome — result, goal difference, exact score, knockout progression. Saving re-scores everyone.",
+    blurb: "Set the points for each outcome - result, goal difference, exact score, knockout progression. Saving re-scores everyone.",
   },
   {
     to: "/table",

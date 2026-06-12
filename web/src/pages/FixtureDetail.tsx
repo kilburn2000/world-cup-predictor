@@ -111,7 +111,7 @@ export default function FixtureDetail() {
         <p className="fl-card px-5 py-8 text-center text-[13px] text-muted">
           {m.stage === "GROUP"
             ? "No predictions for this fixture."
-            : "Knockout games aren’t scored per-game — they count toward each entrant’s progression points."}
+            : "Knockout games aren’t scored per-game - they count toward each entrant’s progression points."}
         </p>
       ) : (
         <div className="fl-card overflow-hidden">

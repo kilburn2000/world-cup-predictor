@@ -28,14 +28,14 @@ const ordinal = (n: number) => {
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 const holderText = (names: string[]) =>
-  names.length === 0 ? "—" : names.length === 1 ? names[0] : `${names.length} entrants`;
+  names.length === 0 ? "-" : names.length === 1 ? names[0] : `${names.length} entrants`;
 
 export default function Prizes() {
   const { data } = useLeaderboard();
   const rows = data ?? [];
 
   const weeklyLeader = (field: "week1" | "week2" | "week3" | "r32") => {
-    if (!rows.length) return "—";
+    if (!rows.length) return "-";
     const max = Math.max(...rows.map((e) => e[field]));
     if (max <= 0) return "Not played yet";
     return holderText(rows.filter((e) => e[field] === max).map((e) => e.name));
@@ -47,12 +47,12 @@ export default function Prizes() {
   // total; everyone tied on that position's total is in contention for it (so a
   // big tie at the top shows the same group across 1st–10th).
   const overallHolder = (place: number) => {
-    if (rows.length < place) return "—";
+    if (rows.length < place) return "-";
     const t = rows[place - 1].total;
     return holderText(rows.filter((e) => e.total === t).map((e) => e.name));
   };
   const minTotal = rows.length ? Math.min(...rows.map((e) => e.total)) : null;
-  const lastHolder = minTotal === null ? "—" : holderText(rows.filter((e) => e.total === minTotal).map((e) => e.name));
+  const lastHolder = minTotal === null ? "-" : holderText(rows.filter((e) => e.total === minTotal).map((e) => e.name));
 
   return (
     <div className="fl-enter">

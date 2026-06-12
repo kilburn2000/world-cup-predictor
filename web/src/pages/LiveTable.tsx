@@ -7,7 +7,7 @@ export default function LiveTable() {
     return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the table.</p>;
   if (!data?.length)
-    return <p className="text-muted">No standings yet — seed the tournament.</p>;
+    return <p className="text-muted">No standings yet - seed the tournament.</p>;
 
   return (
     <div className="fl-enter">

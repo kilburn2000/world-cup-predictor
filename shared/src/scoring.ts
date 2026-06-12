@@ -1,4 +1,4 @@
-// The scoring engine — a faithful port of the entry spreadsheet's formulas
+// The scoring engine - a faithful port of the entry spreadsheet's formulas
 // (template "hb v3.6"). Pure + deterministic so it can be re-run over the whole
 // tournament whenever a result changes.
 

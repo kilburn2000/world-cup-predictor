@@ -15,7 +15,7 @@ const PROMPT = `These image tiles together make up ONE World Cup 2026 prediction
 
 Extract the entrant's NAME (the big title at the top) and EVERY predicted result. Read the small red score boxes carefully (single digits). Keep fixtures in the order they appear.
 
-CRITICAL counts — the sheet ALWAYS has EXACTLY these, no more, no fewer:
+CRITICAL counts - the sheet ALWAYS has EXACTLY these, no more, no fewer:
 - GROUP stage: 72 matches
 - Round of 32: 16 matches
 - Round of 16: 8 matches
@@ -23,7 +23,7 @@ CRITICAL counts — the sheet ALWAYS has EXACTLY these, no more, no fewer:
 - Semi-Final: 2 matches
 - Third place: 1 match
 - Final: 1 match
-(knockout = 32 total). The tiles overlap at their edges — if a match is visible in two tiles, include it ONCE only. Never invent, duplicate, or carry a match into the wrong round. If you can't read a score, still include the match with your best read.
+(knockout = 32 total). The tiles overlap at their edges - if a match is visible in two tiles, include it ONCE only. Never invent, duplicate, or carry a match into the wrong round. If you can't read a score, still include the match with your best read.
 
 Output STRICT JSON only, no prose, no markdown fences:
 {"name":"...","group":[{"home":"Mexico","homeGoals":2,"awayGoals":0,"away":"South Africa"}],"knockout":[{"round":"Round of 32","home":"...","homeGoals":1,"awayGoals":0,"away":"..."}]}`;

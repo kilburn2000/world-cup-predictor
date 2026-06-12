@@ -16,7 +16,7 @@ const STEP = 35_000;
 
 const steps: { hg: number; ag: number; status: string; label: string }[] = [
   { hg: 0, ag: 0, status: "IN_PLAY", label: "Kick-off (0-0)" },
-  { hg: 1, ag: 0, status: "IN_PLAY", label: `GOAL — ${m.home} 1-0` },
+  { hg: 1, ag: 0, status: "IN_PLAY", label: `GOAL - ${m.home} 1-0` },
   { hg: 1, ag: 1, status: "IN_PLAY", label: "1-1" },
   { hg: 2, ag: 1, status: "IN_PLAY", label: `${m.home} 2-1` },
   { hg: 2, ag: 1, status: "FINISHED", label: "FULL TIME (2-1)" },

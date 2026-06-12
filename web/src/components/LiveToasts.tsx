@@ -38,7 +38,7 @@ function phaseOf(m: LiveMatch): Phase {
   return "PRE";
 }
 
-// Global live-event ticker — polls the live feed regardless of page and drops a
+// Global live-event ticker - polls the live feed regardless of page and drops a
 // toast in for kick-off, goals, cards, half-time and full-time.
 export default function LiveToasts() {
   const { data } = useLiveMatches();

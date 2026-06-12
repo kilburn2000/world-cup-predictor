@@ -54,7 +54,7 @@ export default function EditPredictions() {
     try {
       const r = await savePredictions(data!.entrant.name, preds, getToken());
       setStatusOk(true);
-      setStatus(`Saved — ${r.groupPredictions + r.knockoutPredictions}/104 predictions.`);
+      setStatus(`Saved - ${r.groupPredictions + r.knockoutPredictions}/104 predictions.`);
       qc.invalidateQueries({ queryKey: ["leaderboard"] });
       qc.invalidateQueries({ queryKey: ["entrants"] });
       qc.invalidateQueries({ queryKey: ["edit", id] });
@@ -88,7 +88,7 @@ export default function EditPredictions() {
       </div>
       <h1 className="font-display text-3xl font-medium text-cream">Edit · {data.entrant.name}</h1>
       <p className="mb-5 mt-1 text-[13px] text-muted">
-        Fill any blanks the import missed. Group fixtures are fixed — just enter the score.{" "}
+        Fill any blanks the import missed. Group fixtures are fixed - just enter the score.{" "}
         {(groupBlanks > 0 || koBlanks > 0) && (
           <span className="text-down">{groupBlanks} group + {koBlanks} knockout still blank.</span>
         )}

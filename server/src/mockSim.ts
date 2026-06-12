@@ -25,12 +25,12 @@ push({ min: 2, half: "First Half", period: 1, hg: 0, ag: 0, finished: false, lab
 events.push({ minute: 11, type: "yellow", team: "away", player: "Demirović" });
 push({ min: 14, half: "First Half", period: 1, hg: 0, ag: 0, finished: false, label: "14' yellow (BIH)" });
 events.push({ minute: 23, type: "goal", team: "home", player: "Davies" });
-push({ min: 24, half: "First Half", period: 1, hg: 1, ag: 0, finished: false, label: "23' GOAL — Canada 1-0" });
+push({ min: 24, half: "First Half", period: 1, hg: 1, ag: 0, finished: false, label: "23' GOAL - Canada 1-0" });
 push({ min: 45, half: "Halftime", period: 1, hg: 1, ag: 0, finished: false, label: "Half-time" });
 events.push({ minute: 57, type: "goal", team: "away", player: "Džeko" });
-push({ min: 58, half: "Second Half", period: 2, hg: 1, ag: 1, finished: false, label: "57' GOAL — Bosnia 1-1" });
+push({ min: 58, half: "Second Half", period: 2, hg: 1, ag: 1, finished: false, label: "57' GOAL - Bosnia 1-1" });
 events.push({ minute: 70, type: "goal", team: "home", player: "David" });
-push({ min: 71, half: "Second Half", period: 2, hg: 2, ag: 1, finished: false, label: "70' GOAL — Canada 2-1" });
+push({ min: 71, half: "Second Half", period: 2, hg: 2, ag: 1, finished: false, label: "70' GOAL - Canada 2-1" });
 events.push({ minute: 79, type: "yellow", team: "home", player: "Eustáquio" });
 events.push({ minute: 82, type: "red", team: "away", player: "Barišić" });
 push({ min: 84, half: "Second Half", period: 2, hg: 2, ag: 1, finished: false, label: "82' RED card (BIH)" });
@@ -71,5 +71,5 @@ await sql`
   where id = ${m.id}
 `;
 await recomputeAll();
-console.log("Cleaned up — match reset, mock feed removed.");
+console.log("Cleaned up - match reset, mock feed removed.");
 await sql.end();

@@ -32,7 +32,7 @@ async function get<T>(path: string, { ttl = CACHE_TTL_MS } = {}): Promise<T> {
 
   await throttle();
   const res = await fetch(`${BASE}${path}`, { headers: { "X-Auth-Token": TOKEN } });
-  if (res.status === 429) throw new Error("football-data.org rate limit hit (429) — backing off");
+  if (res.status === 429) throw new Error("football-data.org rate limit hit (429) - backing off");
   if (!res.ok) throw new Error(`football-data.org ${path} -> HTTP ${res.status}`);
   const data = (await res.json()) as T;
   cache.set(path, { at: Date.now(), data });

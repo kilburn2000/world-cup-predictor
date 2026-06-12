@@ -14,7 +14,7 @@ const ALIAS: Record<string, string> = {
   [norm("USA")]: norm("United States"),
 };
 
-// Normalised prediction list — the common shape produced by EITHER the
+// Normalised prediction list - the common shape produced by EITHER the
 // spreadsheet parser or the (forthcoming) photo extractor, then handed to
 // savePredictions(). Group fixtures map by team pair; knockouts carry a slot.
 export type ParsedPrediction =
@@ -45,7 +45,7 @@ function knockoutSlot(row: number): string | null {
 export function parseEntrySheet(file: Buffer): ParsedPrediction[] {
   const wb = XLSX.read(file, { type: "buffer" });
   const ws = wb.Sheets["Entry To Copy"];
-  if (!ws) throw new Error('Sheet "Entry To Copy" not found — is this the right template?');
+  if (!ws) throw new Error('Sheet "Entry To Copy" not found - is this the right template?');
   const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, blankrows: false, defval: "" });
 
   const out: ParsedPrediction[] = [];

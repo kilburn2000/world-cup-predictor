@@ -85,7 +85,7 @@ export default function ManageEntrants() {
         <div>
           <h1 className="font-display text-4xl font-medium tracking-tight text-cream">Manage entrants</h1>
           <p className="mt-1.5 text-[13px] text-muted">
-            Edit a name to fix a misread (click away to save). {incomplete > 0 && <span className="text-down">{incomplete} sheet{incomplete > 1 ? "s" : ""} read incomplete — re-upload on Add Entrant.</span>}
+            Edit a name to fix a misread (click away to save). {incomplete > 0 && <span className="text-down">{incomplete} sheet{incomplete > 1 ? "s" : ""} read incomplete - re-upload on Add Entrant.</span>}
           </p>
         </div>
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…" className="fl-input w-56" />

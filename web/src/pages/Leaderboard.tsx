@@ -221,7 +221,7 @@ export default function Leaderboard() {
   const everyone = showConsensus && consensusTab ? consensus ?? null : null;
 
   const sub =
-    tab === "overall" ? "The main competition — every entrant ranked on all their predictions across the whole tournament."
+    tab === "overall" ? "The main competition - every entrant ranked on all their predictions across the whole tournament."
     : tab === "knockout" ? "A second competition: entrant groups, scored on each player’s own World Cup group, top two into the bracket."
     : `Points scored in ${TITLES[tab]} only.`;
 

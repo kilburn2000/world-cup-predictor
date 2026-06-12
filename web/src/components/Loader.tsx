@@ -1,5 +1,5 @@
 /**
- * Floodlight loading overlay — pulsating Whitey's crest.
+ * Floodlight loading overlay - pulsating Whitey's crest.
  * Shown briefly on first load and between route changes.
  */
 export default function Loader({ label = "Whitey’s World Cup Sweepstake" }: { label?: string }) {

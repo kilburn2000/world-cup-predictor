@@ -68,10 +68,10 @@ export async function recomputeAll(): Promise<number> {
   //   +knockoutTeam   for each correctly-positioned team (home pick == actual
   //                   home team, and/or away pick == actual away team)
   //   +scoreline      ONLY when BOTH teams are correctly positioned (an exact
-  //                   matchup in the right slot) — then the goals/result/exact
+  //                   matchup in the right slot) - then the goals/result/exact
   //                   bonus apply, aligned by side, up to +5.
   // So the max is 7 a tie. If group placings swap a team into a different slot,
-  // it earns nothing here even if the same two teams meet via another route —
+  // it earns nothing here even if the same two teams meet via another route -
   // the slot (and side) is what's being predicted, not just the fixture.
   //
   // Team-in-position points land as soon as the tie is drawn (teams resolved);

@@ -21,6 +21,6 @@ export default function ScoredChips({
   if (Math.sign(ph - pa) === Math.sign(hs - as)) chips.push(<Chip key="r" label="Result" tone="green" />);
   if (homeOk) chips.push(<Chip key="h" label={`${homeCode} ${hs}`} tone="team" />);
   if (awayOk) chips.push(<Chip key="a" label={`${awayCode} ${as}`} tone="team" />);
-  if (!chips.length) return <span className="font-mono text-[11px] text-muted">—</span>;
+  if (!chips.length) return <span className="font-mono text-[11px] text-muted">-</span>;
   return <div className="flex flex-wrap justify-center gap-1">{chips}</div>;
 }

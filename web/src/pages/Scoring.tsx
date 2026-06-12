@@ -60,7 +60,7 @@ export default function Scoring() {
     try {
       const res = await saveScoringConfig(cfg, getToken());
       setStatusOk(true);
-      setStatus(`Saved — re-scored ${res.rescored} entries.`);
+      setStatus(`Saved - re-scored ${res.rescored} entries.`);
       qc.invalidateQueries({ queryKey: ["leaderboard"] });
     } catch (e: any) {
       setStatusOk(false);
@@ -97,7 +97,7 @@ export default function Scoring() {
         </h3>
         <p className="mb-2 text-[12px] text-muted">
           A knockout tie is scored the same as a group game (up to {cfg.outcome + cfg.teamGoals * 2 + cfg.exactBonus}),
-          plus the bonus below per correctly-placed team — up to {cfg.outcome + cfg.teamGoals * 2 + cfg.exactBonus + cfg.knockoutTeam * 2} in total.
+          plus the bonus below per correctly-placed team - up to {cfg.outcome + cfg.teamGoals * 2 + cfg.exactBonus + cfg.knockoutTeam * 2} in total.
         </p>
         <NumberRow label="Correct team in position" hint="per team you place in the right slot (2 a tie)" value={cfg.knockoutTeam} onChange={(v) => set("knockoutTeam", v)} />
       </div>

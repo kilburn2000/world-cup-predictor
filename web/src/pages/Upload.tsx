@@ -36,7 +36,7 @@ export default function Upload() {
       setName(r.name ?? "");
       setPreds(r.predictions);
       setUnresolved(r.unresolved);
-      say(`Read ${r.predictions.length} predictions — check and save below.`, true);
+      say(`Read ${r.predictions.length} predictions - check and save below.`, true);
     } catch (e: any) {
       say(`Extract failed: ${e.message}`);
     } finally {
@@ -93,7 +93,7 @@ export default function Upload() {
       </div>
       <h1 className="text-center font-display text-3xl font-medium text-cream">Add an entrant</h1>
       <p className="mx-auto mb-6 mt-2 max-w-lg text-center text-sm leading-relaxed text-muted">
-        Upload a <strong className="text-cream">photo</strong> of the printed sheet — it’s read automatically, then you check and save.
+        Upload a <strong className="text-cream">photo</strong> of the printed sheet - it’s read automatically, then you check and save.
       </p>
 
       <div className="fl-card p-6">
@@ -129,7 +129,7 @@ export default function Upload() {
 
             {unresolved.length > 0 && (
               <p className="mb-4 rounded-md border px-3 py-2 text-[13px]" style={{ borderColor: "rgba(217,146,106,0.4)", background: "rgba(217,146,106,0.1)", color: "#d9926a" }}>
-                ⚠️ Unrecognised team names — fix the spelling so they score: {unresolved.join(", ")}
+                ⚠️ Unrecognised team names - fix the spelling so they score: {unresolved.join(", ")}
               </p>
             )}
 

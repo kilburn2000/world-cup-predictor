@@ -160,7 +160,7 @@ const ALL_KO: { match: number; a: Src; b: Src }[] = [
 //    fully played (decided);
 //  - "winner/loser of match N" sides resolve from that tie's actual result
 //    (explicit winner_team_id wins, else the higher score; a draw with no
-//    recorded winner — i.e. an un-entered shootout — stays unresolved);
+//    recorded winner - i.e. an un-entered shootout - stays unresolved);
 //  - third-placed sides are NOT touched here (admin assigns those, since FIFA's
 //    best-thirds slotting is a published lookup, not derivable from standings).
 // Deterministic sides are owned by the resolver and overwritten/cleared to track
