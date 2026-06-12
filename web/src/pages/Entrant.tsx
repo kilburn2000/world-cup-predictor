@@ -84,7 +84,7 @@ export default function Entrant() {
   const phaseValue = (f: Phase): string => {
     if (!me || !phaseStarted[f]) return "-";
     const all = lb.map((e) => e[f]);
-    return `${me[f]} pts, ${posLabel(me[f], all)}`;
+    return `${me[f]} pts (${posLabel(me[f], all)})`;
   };
 
   // Knockout: "E (1st=)" - group letter + position - or "Eliminated".
