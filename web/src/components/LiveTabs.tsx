@@ -7,8 +7,8 @@ const sub = ({ isActive }: { isActive: boolean }) =>
 export default function LiveTabs() {
   return (
     <div className="mb-6 flex flex-wrap gap-2">
-      <NavLink to="/stats/yesterday" className={sub}>Yesterday</NavLink>
       <NavLink to="/stats/scores" end className={sub}>Today</NavLink>
+      <NavLink to="/stats/yesterday" className={sub}>Yesterday</NavLink>
       <NavLink to="/stats/tomorrow" className={sub}>Tomorrow</NavLink>
       <NavLink to="/stats/fixtures" className={sub}>All Fixtures &amp; Results</NavLink>
       <NavLink to="/stats/groups" className={sub}>Groups</NavLink>

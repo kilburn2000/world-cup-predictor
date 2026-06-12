@@ -227,6 +227,9 @@ export default function LiveScores({ day = 0 }: { day?: number }) {
   const finished = matches.filter((m) => m.status === "FINISHED");
 
   const dayLabel = day === -1 ? "Yesterday" : day === 1 ? "Tomorrow" : "Today";
+  // host-country (Pacific) date for the selected day
+  const [hy, hmo, hd] = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).split("-").map(Number);
+  const dateLabel = new Date(hy, hmo - 1, hd + day).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="fl-enter">
@@ -245,6 +248,7 @@ export default function LiveScores({ day = 0 }: { day?: number }) {
             </div>
           ))}
         <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">{dayLabel}’s Games</h1>
+        <div className="mt-1 font-mono text-[12px] text-gold">{dateLabel}</div>
         <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted">
           {day === -1
             ? "Yesterday’s results."
