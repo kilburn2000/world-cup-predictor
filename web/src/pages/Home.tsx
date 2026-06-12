@@ -55,13 +55,13 @@ export default function Home() {
   }
 
   return (
-    <div className="fl-enter mx-auto max-w-sm">
+    <div className="fl-enter mx-auto max-w-lg">
       <h1 className="text-balance text-center font-display text-3xl font-medium text-cream">Welcome to Whitey’s World Cup 2026 Sweepstake</h1>
-      <p className="mx-auto mb-6 mt-2 max-w-xs text-pretty text-center text-sm leading-relaxed text-muted">
+      <p className="mx-auto mb-6 mt-2 max-w-md text-pretty text-center text-sm leading-relaxed text-muted">
         Sign in to see your personalised dashboard - your points, prize money won, position in every
         competition and your top-scorer picks. You can still browse the standings and stats without signing in.
       </p>
-      <form onSubmit={submit} className="fl-card flex flex-col gap-4 p-6">
+      <form onSubmit={submit} className="fl-card mx-auto flex w-full max-w-sm flex-col gap-4 p-6">
         <div>
           <div className="mb-1.5 text-[10px] uppercase tracking-[1.5px] text-muted">Email</div>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus className="fl-input" placeholder="you@example.com" />
