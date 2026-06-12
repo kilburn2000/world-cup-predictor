@@ -106,6 +106,15 @@ function FixtureTable({ items }: { items: Fixture[] }) {
               </div>
             </div>
 
+            {/* Logged-in entrant's own pick for this fixture. */}
+            {f.myPick && (
+              <div className="mt-1.5 flex items-center justify-center gap-2 text-[11px] sm:justify-start sm:pl-[60px]">
+                <span className="text-[8.5px] uppercase tracking-[1.5px] text-gold/80">Your pick</span>
+                <span className="font-mono text-cream">{f.myPick.replace("-", "–")}</span>
+                {f.myPoints != null && <span className="font-mono font-semibold text-gold">+{f.myPoints}</span>}
+              </div>
+            )}
+
             {/* Mobile: the prediction columns can't fit inline, so stack them below. */}
             {(done || f.mostCommonScore) && (
               <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1 border-t border-line pt-2 text-[11px] text-muted sm:hidden">

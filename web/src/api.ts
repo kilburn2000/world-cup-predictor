@@ -357,6 +357,8 @@ export interface Fixture {
   mostCommonTotal?: number;
   exactCorrect?: number;
   resultCorrect?: number;
+  myPick?: string | null;
+  myPoints?: number | null;
 }
 export const useFixtures = () =>
   useQuery({ queryKey: ["fixtures"], queryFn: () => get<Fixture[]>("/api/fixtures"), refetchInterval: 30_000 });

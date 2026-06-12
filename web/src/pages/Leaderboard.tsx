@@ -3,6 +3,10 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted } from "../api.js";
 import TabSelect from "../components/TabSelect.js";
 import { flagFor } from "../flags.js";
+import { useMe } from "../auth.js";
+
+// Gold "you" badge for the logged-in entrant's own row.
+const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
 // Pick country code -> country name flagFor() understands.
 const SCORER_COUNTRY: Record<string, string> = {
@@ -74,6 +78,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: stats } = useStats();
   const { data: started } = usePhasesStarted();
+  const { data: me } = useMe();
+  const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_44px] items-center gap-1";
@@ -109,12 +115,13 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <div className="text-right font-mono text-sm font-semibold text-gold">{e.total}</div>
             </div>
           ) : (
-            <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft"}>
+            <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
               <div className="font-mono text-xs">
                 {i < 3 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
               </div>
               <div className="flex min-w-0 items-center gap-1.5">
                 <span className="truncate text-cream">{e.name}</span>
+                {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
               <div className="text-center font-mono text-[11px] text-muted">{cell(e.week1, started?.week1)}</div>

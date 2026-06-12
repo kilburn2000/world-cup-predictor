@@ -684,7 +684,9 @@ app.get("/api/live", async (req: any) => {
 });
 
 // All fixtures + results, chronological (knockout teams are null until resolved).
-app.get("/api/fixtures", async () => {
+app.get("/api/fixtures", async (req: any) => {
+  const cfg = await loadConfig();
+  const myId = req.user?.entrantId ?? null;
   const rows = await sql`
     select m.id, m.stage, m.group_name grp, m.matchday, m.kickoff_utc, m.status,
            m.home_goals hg, m.away_goals ag,
@@ -728,6 +730,21 @@ app.get("/api/fixtures", async () => {
     return { key, count: r[key] };
   };
 
+  // the logged-in entrant's own pick per fixture (aligned to home/away)
+  const myPreds = new Map<number, { h: number; a: number }>();
+  if (myId) {
+    const mine = await sql`
+      select p.match_id mid, p.pred_home_team_id ph, p.pred_home_goals phg, p.pred_away_goals pag, m.home_team_id mh
+      from predictions p join matches m on m.id = p.match_id
+      where p.scope = 'MATCH' and p.entrant_id = ${myId}
+    `;
+    for (const p of mine as any[]) {
+      const h = p.ph === p.mh ? p.phg : p.pag;
+      const a = p.ph === p.mh ? p.pag : p.phg;
+      myPreds.set(p.mid, { h, a });
+    }
+  }
+
   return (rows as any[]).map((m) => {
     const g = agg.get(m.id);
     const ms = g ? modeScore(g.score) : { key: null, count: 0 };
@@ -752,6 +769,12 @@ app.get("/api/fixtures", async () => {
       mostCommonTotal: g?.total ?? 0,
       exactCorrect: g?.exactCorrect ?? 0,
       resultCorrect: g?.resultCorrect ?? 0,
+      myPick: (() => { const p = myPreds.get(m.id); return p ? `${p.h}-${p.a}` : null; })(),
+      myPoints: (() => {
+        const p = myPreds.get(m.id);
+        const scored = (m.status === "FINISHED" || m.status === "IN_PLAY") && m.hg != null;
+        return p && scored ? scoreGroupMatch(p.h, p.a, m.hg, m.ag, cfg).points : null;
+      })(),
     };
   });
 });
