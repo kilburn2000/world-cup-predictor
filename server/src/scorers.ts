@@ -42,7 +42,7 @@ type FeedEvent = { type: "goal" | "yellow" | "red"; minute: number; player?: str
 // Scoreboard goal/card events -> our stored shape (fallback when no summary).
 function eventsFromScoreboard(m: { home: string; away: string; events?: { type: string; minute: number; player?: string; team: "home" | "away" }[] }): FeedEvent[] {
   return (m.events ?? [])
-    .filter((e) => e.type === "goal" || e.type === "yellow" || e.type === "red")
+    .filter((e) => e.type === "goal" || e.type === "red")
     .map((e) => ({ type: e.type as FeedEvent["type"], minute: e.minute, player: e.player, country: e.team === "home" ? m.home : m.away, own: false }));
 }
 

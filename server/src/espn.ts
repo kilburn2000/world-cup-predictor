@@ -107,10 +107,10 @@ export async function getMatchEvents(eventId: string): Promise<SummaryEvent[]> {
   for (const ev of data.keyEvents ?? []) {
     const text = String(ev.type?.text ?? "").toLowerCase();
     const own = text.includes("own");
+    // Key events are goals + red cards only (yellows are noise).
     let type: SummaryEvent["type"] | null = null;
     if (text.includes("goal") || /penalt.*scor|scor.*penalt/.test(text)) type = "goal";
     else if (text.includes("red")) type = "red";
-    else if (text.includes("yellow")) type = "yellow";
     if (!type) continue;
     out.push({
       type,

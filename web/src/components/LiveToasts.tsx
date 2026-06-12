@@ -15,9 +15,8 @@ interface Toast {
 function eventToast(id: string, m: LiveMatch, e: LiveEvent): Toast {
   const score = `${m.homeScore}–${m.awayScore}`;
   const who = `${e.minute}'${e.player ? " · " + e.player : ""}`;
-  if (e.type === "goal") return { id, accent: "#c9a86a", label: `Goal · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
-  if (e.type === "red") return { id, accent: "#d9534f", label: `Red card · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
-  return { id, accent: "#e3c558", label: `Yellow card · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
+  if (e.type === "goal") return { id, accent: "#c9a86a", label: `⚽ Goal · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
+  return { id, accent: "#d9534f", label: `🟥 Red card · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
 }
 
 type Kind = "kickoff" | "half" | "full";

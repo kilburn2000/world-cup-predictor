@@ -191,8 +191,8 @@ function MatchCard({ m }: { m: LiveMatch }) {
           <div className="mb-1.5 text-[9px] uppercase tracking-wide text-muted">Key events</div>
           <div className="space-y-1">
             {[...m.events].sort((a, b) => a.minute - b.minute).map((ev, i) => {
-              const colour = ev.type === "goal" ? "#c9a86a" : ev.type === "red" ? "#d9534f" : "#e3c558";
-              const tag = ev.type === "goal" ? "Goal" : ev.type === "red" ? "Red" : ev.type === "yellow" ? "Yellow" : "";
+              const colour = ev.type === "goal" ? "#c9a86a" : "#d9534f";
+              const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
               const team = ev.team === "home" ? m.home : m.away;
               return (
                 <div key={i} className="flex items-center gap-2 text-[12.5px]">
