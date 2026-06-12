@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGroups, useLeaderboard, useStats, useConsensus, type GroupEntrant, type StatLeader, type Consensus } from "../api.js";
+import TabSelect from "../components/TabSelect.js";
 
 function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeader; unit: string; unitPlural?: string }) {
   const has = l && l.name && l.value > 0;
@@ -226,22 +227,46 @@ export default function Leaderboard() {
         <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted">{sub}</p>
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        {TABS.map((t) => (
-          <button key={t.key} className={subTab(tab === t.key)} onClick={() => setTab(t.key)}>{t.label}</button>
-        ))}
-        {consensusTab && (
-          <button
-            onClick={() => setShowConsensus((v) => !v)}
-            title="Score a pretend entrant who always picks the crowd's most-predicted scoreline"
-            className={
-              "ml-auto rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
-              (showConsensus ? "border border-gold bg-gold-soft text-cream" : "border border-line text-muted hover:text-cream")
-            }
-          >
-            {showConsensus ? "✓ " : ""}👥 Everyone
-          </button>
-        )}
+      <div className="mb-5">
+        {/* Mobile: tabs collapse into a dropdown. */}
+        <div className="flex items-center gap-2 sm:hidden">
+          <TabSelect
+            className="flex-1"
+            value={tab}
+            onChange={(v) => setTab(v as Tab)}
+            options={TABS.map((t) => ({ value: t.key, label: t.label }))}
+          />
+          {consensusTab && (
+            <button
+              onClick={() => setShowConsensus((v) => !v)}
+              title="Score a pretend entrant who always picks the crowd's most-predicted scoreline"
+              className={
+                "shrink-0 rounded-lg px-3.5 py-2.5 text-sm transition-colors " +
+                (showConsensus ? "border border-gold bg-gold-soft text-cream" : "border border-line text-muted hover:text-cream")
+              }
+            >
+              {showConsensus ? "✓ " : ""}👥
+            </button>
+          )}
+        </div>
+        {/* Desktop: full pill row. */}
+        <div className="hidden flex-wrap items-center gap-2 sm:flex">
+          {TABS.map((t) => (
+            <button key={t.key} className={subTab(tab === t.key)} onClick={() => setTab(t.key)}>{t.label}</button>
+          ))}
+          {consensusTab && (
+            <button
+              onClick={() => setShowConsensus((v) => !v)}
+              title="Score a pretend entrant who always picks the crowd's most-predicted scoreline"
+              className={
+                "ml-auto rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
+                (showConsensus ? "border border-gold bg-gold-soft text-cream" : "border border-line text-muted hover:text-cream")
+              }
+            >
+              {showConsensus ? "✓ " : ""}👥 Everyone
+            </button>
+          )}
+        </div>
       </div>
 
       {tab === "overall" ? <Overall everyone={everyone} /> : tab === "knockout" ? <Knockout /> : <PhaseBoard phase={tab} everyone={everyone} />}

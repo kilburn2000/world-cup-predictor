@@ -29,6 +29,11 @@ const adminBtn = () =>
   "shrink-0 whitespace-nowrap rounded-lg border border-gold bg-gold px-3.5 py-1.5 text-sm font-semibold " +
   "text-pitch-950 transition-colors hover:bg-transparent hover:text-gold";
 
+// Mobile dropdown row: full-width tappable item.
+const mobileItem = ({ isActive }: { isActive: boolean }) =>
+  "rounded-lg px-3 py-2.5 text-sm transition-colors " +
+  (isActive ? "bg-gold-soft font-semibold text-cream" : "text-muted hover:bg-gold-soft hover:text-cream");
+
 function labelFor(pathname: string): string {
   if (pathname === "/") return "Live Standings";
   if (pathname.startsWith("/stats")) return "Stats";
@@ -48,6 +53,7 @@ export default function App() {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [label, setLabel] = useState("Whitey’s World Cup Sweepstake");
+  const [menuOpen, setMenuOpen] = useState(false);
   const firstLoad = useRef(true);
 
   useEffect(() => {
@@ -58,6 +64,7 @@ export default function App() {
   // Flip to the loading state *before* the browser paints the new route, so the
   // overlay covers the incoming page instead of the page flashing in first.
   useLayoutEffect(() => {
+    setMenuOpen(false);
     if (firstLoad.current) {
       firstLoad.current = false;
       return;
@@ -72,20 +79,47 @@ export default function App() {
     <div className="min-h-screen pb-20">
       <LiveToasts />
       <header className="sticky top-0 z-30 border-b border-line bg-pitch-950/75 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <NavLink to="/" className="flex items-center gap-3">
-            <img src="/whiteys-crest.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain sm:h-28 sm:w-28" />
-            <div>
-              <div className="font-display text-lg font-medium leading-none text-cream sm:text-xl whitespace-nowrap">World Cup 2026</div>
-              <div className="mt-[3px] text-[10px] uppercase tracking-[1.8px] text-muted whitespace-nowrap">Sweepstake</div>
-            </div>
-          </NavLink>
-          <nav className="-mx-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <NavLink to="/" className={tab} end>Standings</NavLink>
-            <NavLink to="/prizes" className={tab}>Prizes</NavLink>
-            <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
-            <NavLink to="/admin" className={adminBtn}>Admin</NavLink>
-          </nav>
+        <div className="mx-auto max-w-5xl px-4 py-3">
+          <div className="relative flex items-center justify-center sm:justify-between sm:gap-4">
+            <NavLink to="/" className="flex items-center gap-3">
+              <img src="/whiteys-crest.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain sm:h-28 sm:w-28" />
+              <div>
+                <div className="font-display text-lg font-medium leading-none text-cream sm:text-xl whitespace-nowrap">World Cup 2026</div>
+                <div className="mt-[3px] text-[10px] uppercase tracking-[1.8px] text-muted whitespace-nowrap">Sweepstake</div>
+              </div>
+            </NavLink>
+
+            {/* Mobile: burger toggle. */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg border border-line text-cream transition-colors hover:border-gold sm:hidden"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+              </svg>
+            </button>
+
+            {/* Desktop: inline nav. */}
+            <nav className="hidden items-center gap-5 sm:flex">
+              <NavLink to="/" className={tab} end>Standings</NavLink>
+              <NavLink to="/prizes" className={tab}>Prizes</NavLink>
+              <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
+              <NavLink to="/admin" className={adminBtn}>Admin</NavLink>
+            </nav>
+          </div>
+
+          {/* Mobile: dropdown nav panel. */}
+          {menuOpen && (
+            <nav className="mt-3 flex flex-col gap-1 border-t border-line pt-3 sm:hidden">
+              <NavLink to="/" end className={mobileItem}>Standings</NavLink>
+              <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
+              <NavLink to="/stats/scores" className={() => mobileItem({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
+              <NavLink to="/admin" className={mobileItem}>Admin</NavLink>
+            </nav>
+          )}
         </div>
       </header>
 
