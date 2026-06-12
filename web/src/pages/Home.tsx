@@ -7,6 +7,7 @@ import MiniStandings from "../components/MiniStandings.js";
 import MiniTopScorer from "../components/MiniTopScorer.js";
 import MiniWeek from "../components/MiniWeek.js";
 import MiniKnockout from "../components/MiniKnockout.js";
+import DashboardFixtures from "../components/DashboardFixtures.js";
 import Loader from "../components/Loader.js";
 
 export default function Home() {
@@ -28,7 +29,10 @@ export default function Home() {
     return (
       <div className="fl-enter">
         <EntrantSummary id={me.entrantId} eyebrow="Welcome Back" />
-        <div className="mt-4 grid items-stretch gap-4 sm:grid-cols-2">
+        <div className="mt-7">
+          <DashboardFixtures />
+        </div>
+        <div className="mt-7 grid items-stretch gap-4 sm:grid-cols-2">
           <MiniStandings entrantId={me.entrantId} />
           <MiniTopScorer entrantId={me.entrantId} />
           <MiniWeek entrantId={me.entrantId} />
