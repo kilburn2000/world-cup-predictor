@@ -89,6 +89,7 @@ export default function App() {
   // overlay covers the incoming page instead of the page flashing in first.
   useLayoutEffect(() => {
     setMenuOpen(false);
+    window.scrollTo(0, 0);
     if (firstLoad.current) {
       firstLoad.current = false;
       return;
