@@ -206,24 +206,29 @@ function MatchCard({ m }: { m: LiveMatch }) {
               {board.map((b, i) => {
                 const t = b.tier ? TIER[b.tier] : null;
                 return (
-                  <div
-                    key={b.entrantId}
-                    className="grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg border-t border-line px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]"
-                  >
-                    <div className="font-mono text-xs text-muted">{i + 1}</div>
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
-                        {initials(b.name)}
+                  <div key={b.entrantId} className="border-t border-line">
+                    <div className="grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]">
+                      <div className="font-mono text-xs text-muted">{i + 1}</div>
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
+                          {initials(b.name)}
+                        </div>
+                        <div className="text-[13.5px] text-cream">{b.name}</div>
                       </div>
-                      <div className="text-[13.5px] text-cream">{b.name}</div>
+                      <div className="text-center font-mono text-[13px]">{b.pick}</div>
+                      <div className="hidden justify-center sm:flex">
+                        {b.points != null && <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />}
+                      </div>
+                      <div className="text-right font-mono text-base" style={{ color: t?.fg ?? "#8d9388" }}>
+                        {b.points != null ? `+${b.points}` : "–"}
+                      </div>
                     </div>
-                    <div className="text-center font-mono text-[13px]">{b.pick}</div>
-                    <div className="hidden justify-center sm:flex">
-                      {b.points != null && <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />}
-                    </div>
-                    <div className="text-right font-mono text-base" style={{ color: t?.fg ?? "#8d9388" }}>
-                      {b.points != null ? `+${b.points}` : "–"}
-                    </div>
+                    {/* Mobile: the scoring breakdown can't fit inline, so stack it below. */}
+                    {b.points != null && (
+                      <div className="flex justify-end px-3 pb-2.5 sm:hidden">
+                        <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+                      </div>
+                    )}
                   </div>
                 );
               })}
