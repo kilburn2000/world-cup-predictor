@@ -80,7 +80,7 @@ export default function App() {
       <LiveToasts />
       <header className="sticky top-0 z-30 border-b border-line bg-pitch-950/75 backdrop-blur-md">
         <div className="mx-auto max-w-5xl px-4 py-3">
-          <div className="relative flex items-center justify-center sm:justify-between sm:gap-4">
+          <div className="relative flex items-center justify-between sm:gap-4">
             <NavLink to="/" className="flex items-center gap-3">
               <img src="/whiteys-crest.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain sm:h-28 sm:w-28" />
               <div>
@@ -95,9 +95,9 @@ export default function App() {
               onClick={() => setMenuOpen((v) => !v)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
-              className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg border border-line text-cream transition-colors hover:border-gold sm:hidden"
+              className="absolute right-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg border border-gold bg-gold-soft text-gold transition-colors hover:bg-gold hover:text-pitch-950 sm:hidden"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
               </svg>
             </button>
