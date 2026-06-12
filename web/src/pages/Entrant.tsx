@@ -170,7 +170,7 @@ export default function Entrant() {
       </Link>
 
       {/* header */}
-      <div className="fl-card mb-4 mt-4 flex flex-wrap items-center gap-5 p-6">
+      <div className="fl-card mb-4 mt-4 flex flex-col flex-wrap items-center gap-5 p-6 text-center sm:flex-row sm:text-left">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-gold font-mono text-xl font-semibold text-gold">
           {inits}
         </div>
@@ -179,7 +179,7 @@ export default function Entrant() {
           <div className="mt-0.5 font-display text-3xl text-cream">{data.entrant.name}</div>
           <div className="mt-1 font-mono text-sm text-gold">{overallPos} overall</div>
           {ts && ts.players.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted sm:justify-start">
               <span className="text-[10px] uppercase tracking-[1px]">Top scorer picks</span>
               {ts.players.map((p) => (
                 <span key={p.name} className="inline-flex items-center gap-1">
