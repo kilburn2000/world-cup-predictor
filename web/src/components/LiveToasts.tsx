@@ -86,7 +86,7 @@ export default function LiveToasts() {
 
   if (!toasts.length) return null;
   const teamCls = (t: Toast, side: "home" | "away") =>
-    t.highlight === null ? "text-cream" : t.highlight === side ? "font-semibold text-cream" : "text-muted";
+    t.highlight === null ? "text-pitch-950" : t.highlight === side ? "font-semibold text-pitch-950" : "text-pitch-950/45";
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-3 z-[60] flex flex-col-reverse items-stretch gap-2 px-2 sm:bottom-auto sm:top-3 sm:flex-col sm:items-center sm:px-3">
@@ -94,15 +94,15 @@ export default function LiveToasts() {
         <div
           key={t.id}
           className="toast-drop pointer-events-auto flex w-full overflow-hidden rounded-xl sm:max-w-sm"
-          style={{ background: "rgba(11,21,14,0.97)", border: "1px solid rgba(232,228,216,0.45)", boxShadow: "0 10px 34px rgba(0,0,0,0.5)" }}
+          style={{ background: "linear-gradient(180deg, #d8bd7e 0%, #c39c54 100%)", border: "1px solid rgba(0,0,0,0.22)", boxShadow: "0 10px 34px rgba(0,0,0,0.5)" }}
         >
-          <span className="w-1 shrink-0" style={{ background: t.accent }} aria-hidden />
+          <span className="w-1.5 shrink-0" style={{ background: "rgba(16,17,13,0.55)" }} aria-hidden />
           <div className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-2.5">
-            <div className="text-[10px] font-semibold uppercase tracking-[1.5px]" style={{ color: t.accent }}>{t.label}</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[1.5px] text-pitch-950">{t.label}</div>
             <div className="flex items-center gap-1.5 text-[13.5px]">
               <span>{flagFor(t.home)}</span>
               <span className={"truncate " + teamCls(t, "home")}>{t.home}</span>
-              <span className="px-1 font-mono text-cream">{t.score ?? "v"}</span>
+              <span className="px-1 font-mono text-pitch-950">{t.score ?? "v"}</span>
               <span className={"truncate " + teamCls(t, "away")}>{t.away}</span>
               <span>{flagFor(t.away)}</span>
             </div>
