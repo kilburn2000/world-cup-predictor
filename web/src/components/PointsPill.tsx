@@ -7,7 +7,7 @@ export default function PointsPill({ points }: { points: number }) {
       className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold"
       style={{ background: "rgba(122,162,214,0.18)", color: "#9db8e6" }}
     >
-      {points} {points === 1 ? "pt" : "pts"}
+      {points}{points === 1 ? "pt" : "pts"}
     </span>
   );
 }

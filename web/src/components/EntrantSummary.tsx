@@ -66,7 +66,7 @@ export default function EntrantSummary({ id, eyebrow = "Entrant" }: { id: string
   const phaseValue = (f: Phase): Card => {
     if (!me || !phaseStarted[f]) return { value: "-", pos: "TBC" };
     const all = lb.map((e) => e[f]);
-    return { value: `${me[f]} pts`, pos: posLabel(me[f], all) };
+    return { value: `${me[f]}pt${me[f] === 1 ? "" : "s"}`, pos: posLabel(me[f], all) };
   };
 
   // Knockout: "Group E" + position - or "Eliminated".
