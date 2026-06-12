@@ -508,8 +508,9 @@ app.get("/api/entrants/:id/edit", async (req: any, reply) => {
 // Live page feed: every in-play match, today's upcoming fixtures, and all
 // results so far — each with a points board (what each entrant scores/scored at
 // that scoreline) and, for in-play games, ESPN's live minute + goal/card events.
-app.get("/api/live", async () => {
+app.get("/api/live", async (req: any) => {
   const cfg = await loadConfig();
+  const day = Math.max(-1, Math.min(1, Math.trunc(Number(req.query?.day) || 0))); // -1 yesterday, 0 today, +1 tomorrow
   const rows = await sql`
     select m.id, m.stage, m.group_name grp, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
            m.home_team_id mh, m.away_team_id ma,
@@ -517,11 +518,10 @@ app.get("/api/live", async () => {
     from matches m
     join teams ht on ht.id = m.home_team_id
     join teams at on at.id = m.away_team_id
-    -- only TODAY's games (host-country calendar day, US/Canada/Mexico) — the
-    -- westernmost host tz so no game lands on the wrong day. Includes today's
-    -- upcoming, in-play, and finished games; previous days' results are excluded.
+    -- games on the selected host-country day (US/Canada/Mexico), using the
+    -- westernmost host tz so no game lands on the wrong day. day = -1/0/+1.
     where (m.kickoff_utc at time zone 'America/Los_Angeles')::date
-        = (now() at time zone 'America/Los_Angeles')::date
+        = (now() at time zone 'America/Los_Angeles')::date + ${day}::int
     order by
       (case m.status when 'IN_PLAY' then 0 when 'SCHEDULED' then 1 else 2 end),
       case when m.status = 'FINISHED' then m.kickoff_utc end desc nulls last,

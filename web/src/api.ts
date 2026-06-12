@@ -364,10 +364,10 @@ export interface KoRound {
 export const useWcKnockout = () =>
   useQuery({ queryKey: ["wc-knockout"], queryFn: () => get<{ rounds: KoRound[] }>("/api/wc-knockout"), refetchInterval: 30_000 });
 
-/** Polls every 20s while the page is open. */
-export const useLiveMatches = () =>
+/** day: -1 yesterday, 0 today, +1 tomorrow. Polls every 15s. */
+export const useLiveMatches = (day = 0) =>
   useQuery({
-    queryKey: ["live"],
-    queryFn: () => get<LiveMatch[]>("/api/live"),
+    queryKey: ["live", day],
+    queryFn: () => get<LiveMatch[]>(`/api/live?day=${day}`),
     refetchInterval: 15_000,
   });

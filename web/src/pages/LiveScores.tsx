@@ -220,31 +220,48 @@ function MatchCard({ m }: { m: LiveMatch }) {
 }
 
 export default function LiveScores() {
-  const { data, isLoading, error } = useLiveMatches();
+  const [day, setDay] = useState(0);
+  const { data, isLoading, error } = useLiveMatches(day);
   const matches = data ?? [];
   const live = matches.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
   const upcoming = matches.filter((m) => m.status === "SCHEDULED");
   const finished = matches.filter((m) => m.status === "FINISHED");
 
+  const dayLabel = day === -1 ? "Yesterday" : day === 1 ? "Tomorrow" : "Today";
+  const dayTab = (active: boolean) =>
+    "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
+    (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
+
   return (
     <div className="fl-enter">
       <LiveTabs />
+      <div className="mb-5 flex gap-2">
+        {([-1, 0, 1] as const).map((d) => (
+          <button key={d} className={dayTab(day === d)} onClick={() => setDay(d)}>
+            {d === -1 ? "Yesterday" : d === 1 ? "Tomorrow" : "Today"}
+          </button>
+        ))}
+      </div>
       <div className="mb-6">
-        {live.length ? (
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-[#d9534f]">
-            <span className="h-2 w-2 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
-            {live.length} live now
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-muted">
-            <span className="h-2 w-2 rounded-full bg-muted" />
-            No matches in play
-          </div>
-        )}
-        <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">Today’s Games</h1>
+        {day === 0 &&
+          (live.length ? (
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-[#d9534f]">
+              <span className="h-2 w-2 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
+              {live.length} live now
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-muted">
+              <span className="h-2 w-2 rounded-full bg-muted" />
+              No matches in play
+            </div>
+          ))}
+        <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">{dayLabel}’s Games</h1>
         <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted">
-          Today’s fixtures and every result so far. For matches in play, each entrant’s points update
-          live with the score.
+          {day === -1
+            ? "Yesterday’s results."
+            : day === 1
+              ? "Tomorrow’s fixtures."
+              : "Today’s fixtures and results — points update live during games."}
         </p>
       </div>
 
@@ -254,10 +271,9 @@ export default function LiveScores() {
       {!isLoading && !error && matches.length === 0 && (
         <div className="fl-card px-7 py-14 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-line text-2xl text-muted">◷</div>
-          <div className="font-display text-2xl text-cream">Nothing scheduled</div>
+          <div className="font-display text-2xl text-cream">No games {dayLabel.toLowerCase()}</div>
           <p className="mx-auto mt-2 max-w-md text-[13.5px] leading-relaxed text-muted">
-            No fixtures today and no results yet. Match cards and the points-in-play board appear here
-            once games kick off.
+            There are no World Cup fixtures on this day.
           </p>
         </div>
       )}
@@ -270,7 +286,7 @@ export default function LiveScores() {
       )}
       {upcoming.length > 0 && (
         <div className="mb-7">
-          <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-muted">Today’s fixtures</h2>
+          <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-muted">{day === 0 ? "Today’s fixtures" : "Fixtures"}</h2>
           <div className="flex flex-col gap-5">{upcoming.map((m) => <MatchCard key={m.id} m={m} />)}</div>
         </div>
       )}
