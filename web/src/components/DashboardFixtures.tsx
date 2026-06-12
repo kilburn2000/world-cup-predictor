@@ -14,8 +14,10 @@ export default function DashboardFixtures() {
     .split("-")
     .map(Number);
 
+  // Live first, then finished results, then still-to-play - so played games never
+  // sit below upcoming ones on the same day.
   const rank = (m: LiveMatch) =>
-    m.status === "IN_PLAY" || m.status === "PAUSED" ? 0 : m.status === "SCHEDULED" ? 1 : 2;
+    m.status === "IN_PLAY" || m.status === "PAUSED" ? 0 : m.status === "FINISHED" ? 1 : 2;
   const sortDay = (arr: LiveMatch[]) =>
     [...arr].sort((a, b) => rank(a) - rank(b) || (a.kickoff ?? "").localeCompare(b.kickoff ?? ""));
 
