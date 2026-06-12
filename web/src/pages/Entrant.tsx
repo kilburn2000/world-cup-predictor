@@ -108,7 +108,7 @@ export default function Entrant() {
     const wc = wcGroups?.find((w) => w.group === g.group);
     knockoutValue = wc?.decided && !ge.qualifying
       ? "Eliminated"
-      : <>{g.group} <Pos>{posLabel(ge.total, g.entrants.map((x) => x.total))}</Pos></>;
+      : <>Group {g.group} <Pos>{posLabel(ge.total, g.entrants.map((x) => x.total))}</Pos></>;
     break;
   }
 
