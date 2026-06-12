@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted } from "../api.js";
 import TabSelect from "../components/TabSelect.js";
 import { flagFor } from "../flags.js";
@@ -252,6 +252,14 @@ function TopScorers() {
 }
 
 type Tab = "overall" | "knockout" | "topscorer" | Phase;
+// Each tab is its own route: /standings/<slug>.
+const TAB_SLUG: Record<Tab, string> = {
+  overall: "overall", knockout: "knockout", topscorer: "top-scorer",
+  week1: "week-1", week2: "week-2", week3: "week-3", r32: "round-of-32",
+};
+const SLUG_TAB: Record<string, Tab> = Object.fromEntries(
+  Object.entries(TAB_SLUG).map(([k, v]) => [v, k as Tab]),
+) as Record<string, Tab>;
 const TABS: { key: Tab; label: string }[] = [
   { key: "overall", label: "Overall" },
   { key: "knockout", label: "Knockout" },
@@ -267,7 +275,10 @@ const TITLES: Record<Tab, string> = {
 };
 
 export default function Leaderboard() {
-  const [tab, setTab] = useState<Tab>("overall");
+  const navigate = useNavigate();
+  const { tab: slug } = useParams();
+  const tab: Tab = SLUG_TAB[slug ?? ""] ?? "overall";
+  const setTab = (t: Tab) => navigate(`/standings/${TAB_SLUG[t]}`);
   const [showConsensus, setShowConsensus] = useState(false);
   const { data: consensus } = useConsensus();
   const consensusTab = tab !== "knockout" && tab !== "topscorer";
