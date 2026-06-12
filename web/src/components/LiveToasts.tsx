@@ -12,8 +12,24 @@ interface Toast {
   highlight: "home" | "away" | null; // team to emphasise (goal / card)
 }
 
+// The scoreline as of an event - counting goals up to (and including) it - so a
+// goal toast shows the score the goal made, not the match's current/final score
+// (which can lag the event in the feed, or be the full-time score on a reload).
+function scoreAt(m: LiveMatch, ev: LiveEvent): string {
+  const goals = m.events.filter((e) => e.type === "goal").sort((a, b) => a.minute - b.minute);
+  let h = 0;
+  let a = 0;
+  for (const g of goals) {
+    if (g.minute > ev.minute) break;
+    if (g.team === "home") h++;
+    else a++;
+    if (g === ev) break;
+  }
+  return `${h}–${a}`;
+}
+
 function eventToast(id: string, m: LiveMatch, e: LiveEvent): Toast {
-  const score = `${m.homeScore}–${m.awayScore}`;
+  const score = scoreAt(m, e);
   const who = `${e.minute}'${e.player ? " · " + e.player : ""}`;
   if (e.type === "goal") return { id, accent: "#c9a86a", label: `⚽ Goal · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
   return { id, accent: "#d9534f", label: `🟥 Red card · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
@@ -66,13 +82,16 @@ export default function LiveToasts() {
           }
         }
       }
-      // goal / card events
+      // goal / card events - only toast while the match is actually live, so
+      // reloading after a game (or a backfill of a finished match) doesn't replay
+      // every event. Historical events are still recorded as "seen".
+      const liveNow = m.status === "IN_PLAY" || m.status === "PAUSED";
       for (const e of m.events ?? []) {
         if (e.type === "var") continue;
         const key = `${m.id}-${e.minute}-${e.type}-${e.team}-${e.player ?? ""}`;
         if (seen.current.has(key)) continue;
         seen.current.add(key);
-        if (initialised.current) fresh.push(eventToast(key, m, e));
+        if (initialised.current && liveNow) fresh.push(eventToast(key, m, e));
       }
     }
     initialised.current = true;
