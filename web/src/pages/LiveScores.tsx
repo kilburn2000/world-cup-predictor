@@ -155,7 +155,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
 
       {/* finished → who got it right; otherwise → the crowd's most-predicted */}
       {m.mostCommonScore && (
-        <div className="flex flex-wrap items-center justify-center gap-1.5 border-b border-line px-5 py-2.5 text-[11.5px] text-muted sm:px-6">
+        <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[11.5px] leading-none text-muted sm:px-6">
           {finished ? (
             <>
               <span className="text-[9px] uppercase tracking-wide">Got it right</span>

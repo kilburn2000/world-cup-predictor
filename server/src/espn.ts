@@ -22,12 +22,13 @@ function readMock(): EspnMatch[] {
 let cache: { at: number; data: any } | null = null;
 const CACHE_MS = 8000;
 
-async function getScoreboard(): Promise<any> {
-  if (cache && Date.now() - cache.at < CACHE_MS) return cache.data;
-  const res = await fetch(SCOREBOARD, { headers: { "user-agent": "Mozilla/5.0 worldcup-predictor" } });
+async function getScoreboard(dates?: string): Promise<any> {
+  if (!dates && cache && Date.now() - cache.at < CACHE_MS) return cache.data;
+  const url = dates ? `${SCOREBOARD}?dates=${dates}` : SCOREBOARD;
+  const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 worldcup-predictor" } });
   if (!res.ok) throw new Error(`ESPN scoreboard HTTP ${res.status}`);
   const data = await res.json();
-  cache = { at: Date.now(), data };
+  if (!dates) cache = { at: Date.now(), data };
   return data;
 }
 
@@ -122,8 +123,17 @@ export async function getMatchEvents(eventId: string): Promise<SummaryEvent[]> {
   return out;
 }
 
+// Fetch + parse the matches for a specific date (YYYYMMDD) — used to backfill
+// finished games that have dropped off the live scoreboard.
+export async function getMatchesForDate(dates: string): Promise<EspnMatch[]> {
+  return parseScoreboard(await getScoreboard(dates));
+}
+
 async function getRealMatches(): Promise<EspnMatch[]> {
-  const data = await getScoreboard();
+  return parseScoreboard(await getScoreboard());
+}
+
+function parseScoreboard(data: any): EspnMatch[] {
   const out: EspnMatch[] = [];
   for (const e of data.events ?? []) {
     const comp = e.competitions?.[0];
