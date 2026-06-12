@@ -78,7 +78,9 @@ const frac = (n?: number, total?: number) =>
 
 export default function MatchCard({ m }: { m: LiveMatch }) {
   const ph = phaseOf(m);
-  const board = m.board;
+  // Once a game's under way, rank predictions by the points they'd score at the
+  // current scoreline; before kick-off (points null) the order is unchanged.
+  const board = [...m.board].sort((a, b) => (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name));
   const { data: me } = useMe();
   const myId = me?.entrantId;
   const [show, setShow] = useState(false);
