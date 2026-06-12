@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe, logout } from "./auth.js";
-import Login from "./pages/Login.js";
 import Home from "./pages/Home.js";
 import Leaderboard from "./pages/Leaderboard.js";
 import LiveScores from "./pages/LiveScores.js";
@@ -131,7 +130,7 @@ export default function App() {
               {me ? (
                 <button onClick={handleLogout} className={tab({ isActive: false })}>Sign out</button>
               ) : (
-                <NavLink to="/login" className={adminBtn}>Sign in</NavLink>
+                <NavLink to="/" className={adminBtn}>Sign in</NavLink>
               )}
             </nav>
           </div>
@@ -148,7 +147,7 @@ export default function App() {
               {me ? (
                 <button onClick={handleLogout} className="rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Sign out</button>
               ) : (
-                <NavLink to="/login" className={mobileItem}>Sign in</NavLink>
+                <NavLink to="/" className={mobileItem}>Sign in</NavLink>
               )}
             </nav>
           )}
@@ -169,7 +168,6 @@ export default function App() {
           <Route path="/stats/groups" element={<WCGroups />} />
           <Route path="/stats/knockout" element={<WCKnockout />} />
           <Route path="/live/*" element={<Navigate to="/stats/scores" replace />} />
-          <Route path="/login" element={<Login />} />
           <Route path="/players" element={<Players />} />
           <Route path="/prizes" element={<Prizes />} />
           <Route path="/entrant/:id" element={<Entrant />} />

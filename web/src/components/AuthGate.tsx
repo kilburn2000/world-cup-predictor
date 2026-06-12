@@ -8,7 +8,7 @@ export default function AuthGate({ children, admin = false }: { children: ReactN
   const loc = useLocation();
 
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Checking…</p>;
-  if (!me) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
+  if (!me) return <Navigate to="/" state={{ from: loc.pathname }} replace />;
   if (admin && !me.isAdmin)
     return (
       <div className="fl-enter mx-auto max-w-md text-center">
