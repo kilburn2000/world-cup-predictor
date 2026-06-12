@@ -87,6 +87,15 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => b.total - a.total || a.name.localeCompare(b.name),
   );
+  // Standard competition ranking: ties share a position; the first of a tied
+  // group shows the number, the rest show "=". The next distinct total skips.
+  const reals = list.filter((x) => !x.consensus);
+  const rankLabel = (e: Row): string => {
+    const rank = 1 + reals.filter((x) => x.total > e.total).length;
+    if (e.consensus) return String(rank);
+    const idx = reals.indexOf(e);
+    return idx > 0 && reals[idx - 1].total === e.total ? "=" : String(rank);
+  };
   return (
     <>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -101,10 +110,11 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div>
           <div className="text-center">R32</div><div className="text-right">Pts</div>
         </div>
-        {list.map((e, i) =>
-          e.consensus ? (
+        {list.map((e) => {
+          const label = rankLabel(e);
+          return e.consensus ? (
             <div key="everyone" className={cols + " border-t border-line bg-gold-soft px-4 py-2.5 text-[13px]"}>
-              <div className="pl-1.5 font-mono text-xs text-gold">{i + 1}</div>
+              <div className="pl-1.5 font-mono text-xs text-gold">{label}</div>
               <div className="flex min-w-0 items-center gap-1.5">
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
@@ -118,7 +128,11 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           ) : (
             <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
               <div className="font-mono text-xs">
-                {i < 3 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
+                {label !== "=" && Number(label) <= 3 ? (
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span>
+                ) : (
+                  <span className="pl-1.5 text-muted">{label}</span>
+                )}
               </div>
               <div className="flex min-w-0 items-center gap-1.5">
                 <span className="truncate text-cream">{e.name}</span>
@@ -131,8 +145,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <div className="text-center font-mono text-[11px] text-muted">{cell(e.r32, started?.r32)}</div>
               <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
             </Link>
-          ),
-        )}
+          );
+        })}
       </div>
     </>
   );
@@ -220,6 +234,8 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
 
 function TopScorers() {
   const { data, isLoading, error } = useTopScorer();
+  const { data: me } = useMe();
+  const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the top scorer table.</p>;
   const list = data ?? [];
@@ -234,7 +250,7 @@ function TopScorers() {
           <Link
             key={e.entrantId}
             to={`/entrant/${e.entrantId}`}
-            className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft"}
+            className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
           >
             <div className="font-mono text-xs">
               {i < 3 && e.total > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
@@ -242,6 +258,7 @@ function TopScorers() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-[13.5px] text-cream">
                 <span className="truncate">{e.name}</span>
+                {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted">
