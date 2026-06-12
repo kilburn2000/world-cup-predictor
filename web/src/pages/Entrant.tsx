@@ -12,7 +12,7 @@ function Stat({ label, value, accent }: { label: string; value: string | number;
   return (
     <div className="fl-card px-3 py-3 text-center">
       <div
-        className={(isNum ? "font-mono text-2xl" : "font-display text-lg") + " leading-tight"}
+        className={(isNum ? "font-mono text-2xl" : "font-display text-2xl") + " leading-tight"}
         style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}
       >
         {value}
@@ -112,14 +112,13 @@ export default function Entrant() {
       </div>
 
       {/* stat cards */}
-      <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        <Stat label="Total points" value={me?.total ?? data.totals.total} accent />
+      <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Overall position" value={overallPos} />
         <Stat label="Knockout" value={knockoutPos} />
-        <Stat label="Week 1" value={me?.week1 ?? 0} />
-        <Stat label="Week 2" value={me?.week2 ?? 0} />
-        <Stat label="Week 3" value={me?.week3 ?? 0} />
-        <Stat label="Round of 32" value={me?.r32 ?? 0} />
+        <Stat label="Week 1 Points" value={me?.week1 ?? 0} />
+        <Stat label="Week 2 Points" value={me?.week2 ?? 0} />
+        <Stat label="Week 3 Points" value={me?.week3 ?? 0} />
+        <Stat label="Round of 32 Points" value={me?.r32 ?? 0} />
       </div>
 
       {/* group stage */}
