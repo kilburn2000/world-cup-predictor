@@ -4,41 +4,28 @@ import { flagFor } from "../flags.js";
 
 interface Toast {
   id: string;
-  icon: string;
-  title: string;
-  subtitle: string;
   accent: string;
+  label: string;
+  home: string;
+  away: string;
+  score: string | null; // null before kick-off ("v")
+  highlight: "home" | "away" | null; // team to emphasise (goal / card)
 }
 
 function eventToast(id: string, m: LiveMatch, e: LiveEvent): Toast {
-  const teamName = e.team === "home" ? m.home : m.away;
-  const flag = flagFor(teamName);
-  const at = `${e.player ? e.player + " · " : ""}${e.minute}'`;
-  if (e.type === "goal") {
-    return {
-      id,
-      icon: "⚽",
-      title: `${flag} GOAL — ${teamName}`,
-      subtitle: `${at}  ·  ${m.home} ${m.homeScore}–${m.awayScore} ${m.away}`,
-      accent: "#c9a86a",
-    };
-  }
-  if (e.type === "red") {
-    return { id, icon: "🟥", title: `${flag} Red card — ${teamName}`, subtitle: at, accent: "#d9534f" };
-  }
-  return { id, icon: "🟨", title: `${flag} Yellow card — ${teamName}`, subtitle: at, accent: "#e3c558" };
+  const score = `${m.homeScore}–${m.awayScore}`;
+  const at = `${e.minute}'`;
+  if (e.type === "goal") return { id, accent: "#c9a86a", label: `Goal · ${at}`, home: m.home, away: m.away, score, highlight: e.team };
+  if (e.type === "red") return { id, accent: "#d9534f", label: `Red card · ${at}`, home: m.home, away: m.away, score, highlight: e.team };
+  return { id, accent: "#e3c558", label: `Yellow card · ${at}`, home: m.home, away: m.away, score, highlight: e.team };
 }
 
 type Kind = "kickoff" | "half" | "full";
 function stateToast(id: string, m: LiveMatch, kind: Kind): Toast {
-  const score = `${m.home} ${m.homeScore}–${m.awayScore} ${m.away}`;
-  if (kind === "kickoff")
-    return {
-      id, icon: "🟢", title: `Kick-off — ${m.home} v ${m.away}`,
-      subtitle: m.stage === "GROUP" && m.group ? `Group ${m.group}` : m.stage, accent: "#6bbf86",
-    };
-  if (kind === "half") return { id, icon: "⏸️", title: "Half-time", subtitle: score, accent: "#e3c558" };
-  return { id, icon: "🏁", title: "Full-time", subtitle: score, accent: "#c9a86a" };
+  const score = `${m.homeScore}–${m.awayScore}`;
+  if (kind === "kickoff") return { id, accent: "#6bbf86", label: "Kick-off", home: m.home, away: m.away, score: null, highlight: null };
+  if (kind === "half") return { id, accent: "#e3c558", label: "Half-time", home: m.home, away: m.away, score, highlight: null };
+  return { id, accent: "#c9a86a", label: "Full-time", home: m.home, away: m.away, score, highlight: null };
 }
 
 type Phase = "PRE" | "LIVE" | "HT" | "FT";
@@ -52,7 +39,7 @@ function phaseOf(m: LiveMatch): Phase {
 }
 
 // Global live-event ticker — polls the live feed regardless of page and drops a
-// toast in from the top for kick-off, goals, cards, half-time and full-time.
+// toast in for kick-off, goals, cards, half-time and full-time.
 export default function LiveToasts() {
   const { data } = useLiveMatches();
   const seen = useRef<Set<string>>(new Set());
@@ -71,7 +58,6 @@ export default function LiveToasts() {
         phase.current.set(m.id, now);
         if (initialised.current) {
           if (now === "LIVE" && prev !== "HT") {
-            // fresh kick-off — purge this match's seen events so a re-run re-fires them
             for (const k of seen.current) if (k.startsWith(`${m.id}-`)) seen.current.delete(k);
             fresh.push(stateToast(`${m.id}-ko`, m, "kickoff"));
           } else if (now === "HT") {
@@ -100,18 +86,26 @@ export default function LiveToasts() {
   }, [data]);
 
   if (!toasts.length) return null;
+  const teamCls = (t: Toast, side: "home" | "away") =>
+    t.highlight === null ? "text-cream" : t.highlight === side ? "font-semibold text-cream" : "text-muted";
+
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-3 z-[60] flex flex-col-reverse items-stretch gap-2 px-2 sm:bottom-auto sm:top-3 sm:flex-col sm:items-center sm:px-3">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="toast-drop pointer-events-auto flex w-full items-center gap-3 rounded-xl border border-gold px-4 py-3 sm:max-w-sm"
-          style={{ background: "#c9a86a", boxShadow: "0 10px 34px rgba(0,0,0,0.5)" }}
+          className="toast-drop pointer-events-auto w-full overflow-hidden rounded-xl border border-line sm:max-w-sm"
+          style={{ background: "rgba(11,21,14,0.97)", boxShadow: "0 10px 34px rgba(0,0,0,0.5)", borderLeft: `3px solid ${t.accent}` }}
         >
-          <span className="text-xl">{t.icon}</span>
-          <div className="min-w-0">
-            <div className="truncate font-display text-sm font-semibold text-pitch-950">{t.title}</div>
-            <div className="truncate text-[11px] font-medium text-pitch-950/70">{t.subtitle}</div>
+          <div className="flex flex-col gap-1 px-4 py-2.5">
+            <div className="text-[10px] font-semibold uppercase tracking-[1.5px]" style={{ color: t.accent }}>{t.label}</div>
+            <div className="flex items-center gap-1.5 text-[13.5px]">
+              <span>{flagFor(t.home)}</span>
+              <span className={"truncate " + teamCls(t, "home")}>{t.home}</span>
+              <span className="px-1 font-mono text-cream">{t.score ?? "v"}</span>
+              <span className={"truncate " + teamCls(t, "away")}>{t.away}</span>
+              <span>{flagFor(t.away)}</span>
+            </div>
           </div>
         </div>
       ))}
