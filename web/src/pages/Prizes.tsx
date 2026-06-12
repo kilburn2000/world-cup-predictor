@@ -16,10 +16,12 @@ const OVERALL_PRIZES = [
   { place: 4, amount: 175 }, { place: 5, amount: 150 }, { place: 6, amount: 125 },
   { place: 7, amount: 100 }, { place: 8, amount: 90 }, { place: 9, amount: 80 }, { place: 10, amount: 80 },
 ];
+const prizeAt = (place: number) => OVERALL_PRIZES.find((p) => p.place === place)?.amount ?? 0;
 const LAST_AMOUNT = 75; // wooden spoon
 const TOP_SCORER_AMOUNT = 125; // side competition
 
-const gbp = (n: number) => "£" + n.toLocaleString("en-GB");
+const gbp = (n: number) =>
+  "£" + n.toLocaleString("en-GB", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
 const total = LAST_AMOUNT + TOP_SCORER_AMOUNT + [...PHASE_PRIZES, ...OVERALL_PRIZES].reduce((s, p) => s + p.amount, 0);
 const ordinal = (n: number) => {
   const s = ["th", "st", "nd", "rd"];
@@ -30,6 +32,15 @@ const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 const holderText = (names: string[]) =>
   names.length === 0 ? "-" : names.length === 1 ? names[0] : `${names.length} entrants`;
+
+interface PrizeGroup {
+  start: number;
+  end: number;
+  size: number;
+  names: string[];
+  pool: number;
+  share: number;
+}
 
 export default function Prizes() {
   const { data } = useLeaderboard();
@@ -52,16 +63,29 @@ export default function Prizes() {
   const phaseHolder = (field: Field) =>
     field === "r16" ? "Not played yet" : field === "knockout" ? "Not decided yet" : weeklyLeader(field);
 
-  // who's currently contesting a given overall position. rows arrive sorted by
-  // total; everyone tied on that position's total is in contention for it (so a
-  // big tie at the top shows the same group across 1st–10th).
-  const overallHolder = (place: number) => {
-    if (rows.length < place) return "-";
-    const t = rows[place - 1].total;
-    return holderText(rows.filter((e) => e.total === t).map((e) => e.name));
-  };
+  // Project the prize table from the current standings: entrants level on points
+  // are joint, and pool the prize money for the positions they collectively
+  // occupy, splitting it equally. (rows arrive sorted by total desc.)
+  const groups: PrizeGroup[] = [];
+  let i = 0;
+  let place = 1;
+  while (i < rows.length && place <= 10) {
+    const t = rows[i].total;
+    let j = i;
+    while (j < rows.length && rows[j].total === t) j++;
+    const size = j - i;
+    const start = place;
+    const end = place + size - 1;
+    let pool = 0;
+    for (let p = start; p <= end; p++) pool += prizeAt(p);
+    groups.push({ start, end, size, names: rows.slice(i, j).map((e) => e.name), pool, share: pool / size });
+    place = end + 1;
+    i = j;
+  }
+
   const minTotal = rows.length ? Math.min(...rows.map((e) => e.total)) : null;
-  const lastHolder = minTotal === null ? "-" : holderText(rows.filter((e) => e.total === minTotal).map((e) => e.name));
+  const lastNames = minTotal === null ? [] : rows.filter((e) => e.total === minTotal).map((e) => e.name);
+  const lastShare = lastNames.length ? LAST_AMOUNT / lastNames.length : LAST_AMOUNT;
 
   return (
     <div className="fl-enter">
@@ -78,10 +102,15 @@ export default function Prizes() {
 
       <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">Overall standings</h2>
       <div className="fl-card mb-7 overflow-hidden">
-        {OVERALL_PRIZES.map((p) => {
-          const top3 = p.place <= 3;
+        {groups.length === 0 && (
+          <div className="px-4 py-4 text-[13px] text-muted">Standings will appear once games are played.</div>
+        )}
+        {groups.map((g) => {
+          const top3 = g.start <= 3;
+          const joint = g.size > 1;
+          const posLabel = joint ? `Joint ${ordinal(g.start)}` : `${ordinal(g.start)} overall`;
           return (
-            <div key={p.place} className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-line px-4 py-3 first:border-t-0">
+            <div key={g.start} className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-line px-4 py-3 first:border-t-0">
               <div className="flex min-w-0 items-center gap-2.5">
                 <span
                   className={
@@ -89,14 +118,21 @@ export default function Prizes() {
                     (top3 ? "bg-gold/15 font-semibold text-gold" : "border border-line text-muted")
                   }
                 >
-                  {MEDAL[p.place] ?? p.place}
+                  {MEDAL[g.start] ?? g.start}
                 </span>
                 <div className="min-w-0">
-                  <div className={top3 ? "text-cream" : "text-muted"}>{ordinal(p.place)} overall</div>
-                  <div className="truncate text-[11px] text-muted">{overallHolder(p.place)}</div>
+                  <div className={top3 ? "text-cream" : "text-muted"}>{posLabel}</div>
+                  <div className="truncate text-[11px] text-muted">{holderText(g.names)}</div>
                 </div>
               </div>
-              <div className="font-mono text-base font-semibold text-gold">{gbp(p.amount)}</div>
+              <div className="text-right">
+                <div className="font-mono text-base font-semibold text-gold">
+                  {gbp(g.share)}{joint ? " each" : ""}
+                </div>
+                {joint && (
+                  <div className="text-[10px] text-muted">{gbp(g.pool)} shared across {ordinal(g.start)}–{ordinal(g.end)}</div>
+                )}
+              </div>
             </div>
           );
         })}
@@ -106,10 +142,12 @@ export default function Prizes() {
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-[13px]">🥄</span>
             <div className="min-w-0">
               <div className="text-muted">Wooden spoon</div>
-              <div className="truncate text-[11px] text-muted">{lastHolder}</div>
+              <div className="truncate text-[11px] text-muted">{holderText(lastNames)}</div>
             </div>
           </div>
-          <div className="font-mono text-base font-semibold text-gold">{gbp(LAST_AMOUNT)}</div>
+          <div className="font-mono text-base font-semibold text-gold">
+            {gbp(lastShare)}{lastNames.length > 1 ? " each" : ""}
+          </div>
         </div>
       </div>
 
