@@ -55,7 +55,7 @@ export default function Home() {
   }
 
   return (
-    <div className="fl-enter mx-auto max-w-lg">
+    <div className="fl-enter mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center">
       <h1 className="text-balance text-center font-display text-3xl font-medium text-cream">Welcome to Whitey’s World Cup 2026 Sweepstake</h1>
       <p className="mx-auto mb-6 mt-2 max-w-md text-pretty text-center text-sm leading-relaxed text-muted">
         Sign in to see your personalised dashboard - your points, prize money won, position in every
