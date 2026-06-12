@@ -47,7 +47,13 @@ function MatchRow({ m }: { m: WallchartMatch }) {
           <span className="truncate text-cream">{m.home}</span>
           <span>{flagFor(m.home)}</span>
         </div>
-        <div className="text-center font-mono text-gold">{m.predHome}–{m.predAway}</div>
+        <div className="text-center font-mono">
+          {finished ? (
+            <span className="text-cream">{m.actualHome}–{m.actualAway}</span>
+          ) : (
+            <span className="text-gold">{m.predHome}–{m.predAway}</span>
+          )}
+        </div>
         <div className="flex min-w-0 items-center gap-1.5">
           <span>{flagFor(m.away)}</span>
           <span className="truncate text-cream">{m.away}</span>
@@ -55,7 +61,8 @@ function MatchRow({ m }: { m: WallchartMatch }) {
       </div>
       {finished && (
         <div className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px]">
-          <span className="text-muted">FT {m.actualHome}–{m.actualAway}</span>
+          <span className="text-muted">Predicted</span>
+          <span className="font-mono text-gold">{m.predHome}–{m.predAway}</span>
           <ScoredChips pick={`${m.predHome}-${m.predAway}`} hs={m.actualHome ?? 0} as={m.actualAway ?? 0} homeCode={m.homeCode ?? ""} awayCode={m.awayCode ?? ""} />
           <span className="font-mono font-semibold text-gold">+{m.points ?? 0}</span>
         </div>
@@ -188,11 +195,6 @@ export default function Entrant() {
             <h4 className="border-b border-line px-4 py-2.5 font-display text-sm text-cream">
               Group {g.group}
             </h4>
-            <div className={MATCH_COLS + " border-b border-line px-4 py-1.5 text-[8px] uppercase tracking-[1px] text-muted"}>
-              <div className="text-right">Home</div>
-              <div className="text-center">Pick</div>
-              <div>Away</div>
-            </div>
             <div className="px-4 py-1">
               {g.matches.map((m, i) => (
                 <MatchRow key={i} m={m} />
