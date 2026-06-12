@@ -404,9 +404,25 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
   const [entrant] = await sql`select id, name from entrants where id = ${id}`;
   if (!entrant) return reply.code(404).send({ error: "not found" });
 
+  const cfg = await loadConfig();
+
+  // ESPN live enrichment so in-play group games show the live score + provisional
+  // points, rather than waiting for the poller to write the DB score.
+  const espnByPair = new Map<string, { espn: any; homeId: number }>();
+  try {
+    const byNorm = await dbNameMap();
+    for (const e of await getEspnMatches()) {
+      const h = resolveEspn(e.home, byNorm);
+      const a = resolveEspn(e.away, byNorm);
+      if (h && a) espnByPair.set([h, a].sort((x, y) => x - y).join("-"), { espn: e, homeId: h });
+    }
+  } catch {
+    /* ESPN unavailable - DB scores only */
+  }
+
   // Group predictions + the real fixture + actual result + the match's score row.
   const groupRows = await sql`
-    select m.group_name grp, m.matchday, m.status, m.home_team_id mh,
+    select m.group_name grp, m.matchday, m.status, m.home_team_id mh, m.away_team_id ma,
            m.home_goals ah, m.away_goals aa,
            ht.name home, ht.tla home_code, at.name away, at.tla away_code,
            p.pred_home_team_id ph, p.pred_home_goals phg, p.pred_away_goals pag,
@@ -425,6 +441,21 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
     // align the prediction to the fixture's home/away
     const predHome = r.ph === r.mh ? r.phg : r.pag;
     const predAway = r.ph === r.mh ? r.pag : r.phg;
+
+    // in-play: use the live ESPN score + provisional points; finished: the stored score.
+    let ah = r.ah;
+    let aa = r.aa;
+    let points = r.points ?? null;
+    if (r.status === "IN_PLAY") {
+      const enrich = espnByPair.get([r.mh, r.ma].sort((x: number, y: number) => x - y).join("-"));
+      if (enrich) {
+        const ours = enrich.homeId === r.mh;
+        ah = ours ? enrich.espn.homeScore : enrich.espn.awayScore;
+        aa = ours ? enrich.espn.awayScore : enrich.espn.homeScore;
+      }
+      if (ah != null && aa != null) points = scoreGroupMatch(predHome, predAway, ah, aa, cfg).points;
+    }
+
     const match = {
       home: r.home,
       homeCode: r.home_code,
@@ -432,10 +463,10 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
       awayCode: r.away_code,
       predHome,
       predAway,
-      actualHome: r.ah,
-      actualAway: r.aa,
+      actualHome: ah,
+      actualAway: aa,
       status: r.status,
-      points: r.points ?? null,
+      points,
       breakdown: r.breakdown ?? null,
     };
     if (!groupsMap.has(r.grp)) groupsMap.set(r.grp, []);

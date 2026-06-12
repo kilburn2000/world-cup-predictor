@@ -1,8 +1,9 @@
-function Chip({ label, tone }: { label: string; tone: "gold" | "green" | "team" }) {
+function Chip({ label, tone }: { label: string; tone: "gold" | "green" | "team" | "red" }) {
   const s = {
     gold: { background: "rgba(201,168,106,0.18)", color: "#c9a86a" },
     green: { background: "rgba(107,191,134,0.16)", color: "#6bbf86" },
     team: { background: "rgba(232,228,216,0.10)", color: "#cfc8b6" },
+    red: { background: "rgba(217,83,79,0.16)", color: "#e08a84" },
   }[tone];
   return <span className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={s}>{label}</span>;
 }
@@ -21,6 +22,6 @@ export default function ScoredChips({
   if (Math.sign(ph - pa) === Math.sign(hs - as)) chips.push(<Chip key="r" label="Result" tone="green" />);
   if (homeOk) chips.push(<Chip key="h" label={`${homeCode} ${hs}`} tone="team" />);
   if (awayOk) chips.push(<Chip key="a" label={`${awayCode} ${as}`} tone="team" />);
-  if (!chips.length) return <span className="font-mono text-[11px] text-muted">-</span>;
+  if (!chips.length) return <Chip label="No Score" tone="red" />;
   return <div className="flex flex-wrap justify-center gap-1">{chips}</div>;
 }

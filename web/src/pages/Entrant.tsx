@@ -8,7 +8,7 @@ import EntrantSummary from "../components/EntrantSummary.js";
 const MATCH_COLS = "grid grid-cols-[1fr_46px_1fr] items-center gap-1.5";
 
 function MatchRow({ m }: { m: WallchartMatch }) {
-  const finished = m.status === "FINISHED" && m.actualHome != null;
+  const played = (m.status === "FINISHED" || m.status === "IN_PLAY") && m.actualHome != null;
   return (
     <div className="border-t border-line py-2 first:border-t-0">
       <div className={MATCH_COLS + " text-[12.5px]"}>
@@ -17,7 +17,7 @@ function MatchRow({ m }: { m: WallchartMatch }) {
           <span>{flagFor(m.home)}</span>
         </div>
         <div className="text-center font-mono">
-          {finished ? (
+          {played ? (
             <span className="text-cream">{m.actualHome}–{m.actualAway}</span>
           ) : (
             <span className="text-gold">{m.predHome}–{m.predAway}</span>
@@ -28,7 +28,7 @@ function MatchRow({ m }: { m: WallchartMatch }) {
           <span className="truncate text-cream">{m.away}</span>
         </div>
       </div>
-      {finished && (
+      {played && (
         <div className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px]">
           <span className="text-muted">Predicted</span>
           <span className="font-mono text-gold">{m.predHome}–{m.predAway}</span>
