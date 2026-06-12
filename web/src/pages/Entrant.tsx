@@ -1,5 +1,7 @@
 import { useParams, Link } from "react-router-dom";
-import { useWallchart, useLeaderboard, useGroups, useWcGroups, useTopScorer, type WallchartMatch, type LeaderboardRow } from "../api.js";
+import { useWallchart, useLeaderboard, useGroups, useWcGroups, useTopScorer, usePhasesStarted, type WallchartMatch } from "../api.js";
+import { flagFor } from "../flags.js";
+import ScoredChips from "../components/ScoredChips.js";
 
 const ordinal = (n: number) => {
   const s = ["th", "st", "nd", "rd"];
@@ -8,57 +10,49 @@ const ordinal = (n: number) => {
 };
 const gbp = (n: number) => "£" + n.toLocaleString("en-GB");
 
-// Position label among `all` values, with "Joint" when tied with someone else.
+// Position label among `all` values; tied positions get an "=" suffix (e.g. 3rd=).
 function posLabel(value: number, all: number[]): string {
   const rank = 1 + all.filter((v) => v > value).length;
   const tied = all.filter((v) => v === value).length > 1;
-  return (tied ? "Joint " : "") + ordinal(rank);
+  return ordinal(rank) + (tied ? "=" : "");
 }
 
 const OVERALL_PRIZE: Record<number, number> = {
   1: 500, 2: 325, 3: 200, 4: 175, 5: 150, 6: 125, 7: 100, 8: 90, 9: 80, 10: 80,
 };
 
-function Stat({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
+function Stat({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div className="fl-card px-3 py-3 text-center">
-      <div className="font-mono text-lg leading-tight" style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
-      {sub && <div className="mt-0.5 font-mono text-[11px] text-gold">{sub}</div>}
+      <div className="font-mono text-base leading-tight" style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
       <div className="mt-1.5 text-[10px] uppercase tracking-[1px] text-muted">{label}</div>
     </div>
   );
 }
 
+const MATCH_COLS = "grid grid-cols-[1fr_46px_1fr] items-center gap-1.5";
+
 function MatchRow({ m }: { m: WallchartMatch }) {
   const finished = m.status === "FINISHED" && m.actualHome != null;
-  const pts = m.points ?? 0;
   return (
-    <div className="flex items-center gap-2 border-t border-line py-1.5 text-[13px] first:border-t-0">
-      <span className="flex-1 truncate text-right text-cream">{m.home}</span>
-      <span className="w-11 text-center font-mono text-gold">
-        {m.predHome}–{m.predAway}
-      </span>
-      <span className="flex-1 truncate text-cream">{m.away}</span>
-      {finished ? (
-        <span className="flex w-[72px] items-center justify-end gap-1.5">
-          <span className="font-mono text-[11px] text-muted">
-            {m.actualHome}–{m.actualAway}
-          </span>
-          <span
-            className="rounded px-1.5 py-0.5 font-mono text-[11px]"
-            style={
-              pts > 0
-                ? { background: "rgba(201,168,106,0.18)", color: "#c9a86a" }
-                : { background: "rgba(217,146,106,0.14)", color: "#d9926a" }
-            }
-          >
-            {pts}
-          </span>
-        </span>
-      ) : (
-        <span className="w-[72px] text-right font-mono text-[10px] uppercase tracking-wider text-muted">
-          -
-        </span>
+    <div className="border-t border-line py-2 first:border-t-0">
+      <div className={MATCH_COLS + " text-[12.5px]"}>
+        <div className="flex min-w-0 items-center justify-end gap-1.5">
+          <span className="truncate text-cream">{m.home}</span>
+          <span>{flagFor(m.home)}</span>
+        </div>
+        <div className="text-center font-mono text-gold">{m.predHome}–{m.predAway}</div>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span>{flagFor(m.away)}</span>
+          <span className="truncate text-cream">{m.away}</span>
+        </div>
+      </div>
+      {finished && (
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px]">
+          <span className="text-muted">FT {m.actualHome}–{m.actualAway}</span>
+          <ScoredChips pick={`${m.predHome}-${m.predAway}`} hs={m.actualHome ?? 0} as={m.actualAway ?? 0} homeCode={m.homeCode ?? ""} awayCode={m.awayCode ?? ""} />
+          <span className="font-mono font-semibold text-gold">+{m.points ?? 0}</span>
+        </div>
       )}
     </div>
   );
@@ -71,6 +65,7 @@ export default function Entrant() {
   const { data: groups } = useGroups();
   const { data: wcGroups } = useWcGroups();
   const { data: topScorer } = useTopScorer();
+  const { data: phases } = usePhasesStarted();
 
   if (isLoading)
     return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
@@ -82,44 +77,50 @@ export default function Entrant() {
 
   type Phase = "week1" | "week2" | "week3" | "r32";
   const overallPos = me ? posLabel(me.total, lb.map((e) => e.total)) : "-";
-  // position bracket for a week/round (only once someone has scored in it)
-  const phaseSub = (f: Phase): string | undefined => {
-    if (!me) return undefined;
+  const phaseStarted: Record<Phase, boolean | undefined> = {
+    week1: phases?.week1, week2: phases?.week2, week3: phases?.week3, r32: phases?.r32,
+  };
+  // "X pts, Nth=" once the period has started; a dash before it kicks off.
+  const phaseValue = (f: Phase): string => {
+    if (!me || !phaseStarted[f]) return "-";
     const all = lb.map((e) => e[f]);
-    return Math.max(0, ...all) > 0 ? `(${posLabel(me[f], all)})` : undefined;
+    return `${me[f]} pts, ${posLabel(me[f], all)}`;
   };
 
-  // Knockout: their entrant group + position in it, or Eliminated.
+  // Knockout: "E (1st=)" - group letter + position - or "Eliminated".
   let knockoutValue = "-";
-  let knockoutSub: string | undefined;
   for (const g of groups ?? []) {
     const ge = g.entrants.find((e) => e.entrantId === eid);
     if (!ge) continue;
     const wc = wcGroups?.find((w) => w.group === g.group);
-    if (wc?.decided && !ge.qualifying) {
-      knockoutValue = "Eliminated";
-    } else {
-      knockoutValue = `Group ${g.group}`;
-      knockoutSub = `(${posLabel(ge.total, g.entrants.map((x) => x.total))})`;
-    }
+    knockoutValue = wc?.decided && !ge.qualifying
+      ? "Eliminated"
+      : `${g.group} (${posLabel(ge.total, g.entrants.map((x) => x.total))})`;
     break;
   }
 
-  // Provisional prize money (what they'd win at the current standings).
+  // Prize money WON: only counts a prize once its period is fully decided -
+  // a week/round when all its games are played, and the overall / wooden spoon /
+  // top-scorer prizes only when the whole tournament is finished.
   let prize = 0;
   if (me && lb.length) {
-    const rank = 1 + lb.filter((e) => e.total > me.total).length;
-    if (rank <= 10) prize += OVERALL_PRIZE[rank] ?? 0;
-    const highestIn = (f: Phase | "total") => {
+    const highestIn = (f: Phase) => {
       const max = Math.max(0, ...lb.map((e) => e[f]));
-      return max > 0 && (me as LeaderboardRow)[f] === max;
+      return max > 0 && me[f] === max;
     };
-    for (const f of ["week1", "week2", "week3", "r32"] as Phase[]) if (highestIn(f)) prize += 125;
-    if (me.total === Math.min(...lb.map((e) => e.total))) prize += 75; // wooden spoon
-  }
-  if (topScorer?.length) {
-    const top = topScorer[0].total;
-    if (top > 0 && topScorer.find((t) => t.entrantId === eid)?.total === top) prize += 125;
+    const done: Record<Phase, boolean | undefined> = {
+      week1: phases?.week1Done, week2: phases?.week2Done, week3: phases?.week3Done, r32: phases?.r32Done,
+    };
+    for (const f of ["week1", "week2", "week3", "r32"] as Phase[]) if (done[f] && highestIn(f)) prize += 125;
+    if (phases?.done) {
+      const rank = 1 + lb.filter((e) => e.total > me.total).length;
+      if (rank <= 10) prize += OVERALL_PRIZE[rank] ?? 0;
+      if (me.total === Math.min(...lb.map((e) => e.total))) prize += 75; // wooden spoon
+      if (topScorer?.length) {
+        const top = topScorer[0].total;
+        if (top > 0 && topScorer.find((t) => t.entrantId === eid)?.total === top) prize += 125;
+      }
+    }
   }
 
   const byRound = new Map<string, typeof data.knockout>();
@@ -150,14 +151,15 @@ export default function Entrant() {
           <div className="text-[11px] uppercase tracking-[1.5px] text-muted">Entrant</div>
           <div className="mt-0.5 font-display text-3xl text-cream">{data.entrant.name}</div>
         </div>
-        <div className="flex gap-6">
+        <div className="flex items-center gap-6">
           <div className="text-right">
             <div className="font-mono text-3xl leading-none text-gold">{data.totals.total}</div>
             <div className="mt-1 text-[11px] uppercase tracking-[1px] text-muted">Total points</div>
           </div>
+          <div className="h-10 w-px self-center bg-line" />
           <div className="text-right">
             <div className="font-mono text-3xl leading-none text-gold">{gbp(prize)}</div>
-            <div className="mt-1 text-[11px] uppercase tracking-[1px] text-muted">Prize money</div>
+            <div className="mt-1 text-[11px] uppercase tracking-[1px] text-muted">Prize money won</div>
           </div>
         </div>
       </div>
@@ -165,11 +167,11 @@ export default function Entrant() {
       {/* stat cards */}
       <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Overall position" value={overallPos} />
-        <Stat label="Knockout" value={knockoutValue} sub={knockoutSub} />
-        <Stat label="Week 1" value={me?.week1 ?? 0} sub={phaseSub("week1")} />
-        <Stat label="Week 2" value={me?.week2 ?? 0} sub={phaseSub("week2")} />
-        <Stat label="Week 3" value={me?.week3 ?? 0} sub={phaseSub("week3")} />
-        <Stat label="Round of 32" value={me?.r32 ?? 0} sub={phaseSub("r32")} />
+        <Stat label="Knockout" value={knockoutValue} />
+        <Stat label="Week 1" value={phaseValue("week1")} />
+        <Stat label="Week 2" value={phaseValue("week2")} />
+        <Stat label="Week 3" value={phaseValue("week3")} />
+        <Stat label="Round of 32" value={phaseValue("r32")} />
       </div>
 
       {/* group stage */}
@@ -180,6 +182,11 @@ export default function Entrant() {
             <h4 className="border-b border-line px-4 py-2.5 font-display text-sm text-cream">
               Group {g.group}
             </h4>
+            <div className={MATCH_COLS + " border-b border-line px-4 py-1.5 text-[8px] uppercase tracking-[1px] text-muted"}>
+              <div className="text-right">Home</div>
+              <div className="text-center">Pick</div>
+              <div>Away</div>
+            </div>
             <div className="px-4 py-1">
               {g.matches.map((m, i) => (
                 <MatchRow key={i} m={m} />
