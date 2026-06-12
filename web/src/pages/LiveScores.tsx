@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useLiveMatches, type LiveMatch, type LiveBoardRow, type LiveEvent } from "../api.js";
 import { flagFor } from "../flags.js";
+import { useMe } from "../auth.js";
 import LiveTabs from "../components/LiveTabs.js";
 import ScoredChips from "../components/ScoredChips.js";
+
+const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
 function initials(name: string) {
   return name.split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
@@ -85,6 +88,8 @@ const frac = (n?: number, total?: number) =>
 function MatchCard({ m }: { m: LiveMatch }) {
   const ph = phaseOf(m);
   const board = m.board; // all predictions
+  const { data: me } = useMe();
+  const myId = me?.entrantId;
   const [show, setShow] = useState(false);
   const finished = m.status === "FINISHED";
   const total = board.length;
@@ -153,13 +158,17 @@ function MatchCard({ m }: { m: LiveMatch }) {
         </div>
       </div>
 
-      {/* logged-in entrant's own pick for a game that's played / in play */}
-      {(m.status === "FINISHED" || m.status === "IN_PLAY") && m.myPick && (
+      {/* logged-in entrant's own pick; chips + points only once the game's under way */}
+      {m.myPick && (
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-b border-line px-5 py-2 text-[12.5px] sm:px-6">
           <span className="text-[9px] uppercase tracking-wide text-gold/80">Your pick</span>
           <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
-          <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
-          {m.myPoints != null && <span className="font-mono font-semibold text-gold">+{m.myPoints}</span>}
+          {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
+            <>
+              <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+              {m.myPoints != null && <span className="font-mono font-semibold text-gold">+{m.myPoints}</span>}
+            </>
+          )}
         </div>
       )}
 
@@ -238,13 +247,16 @@ function MatchCard({ m }: { m: LiveMatch }) {
                 const t = b.tier ? TIER[b.tier] : null;
                 return (
                   <div key={b.entrantId} className="border-t border-line">
-                    <div className="grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]">
+                    <div className={"grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
                       <div className="font-mono text-xs text-muted">{i + 1}</div>
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex min-w-0 items-center gap-2.5">
                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
                           {initials(b.name)}
                         </div>
-                        <div className="text-[13.5px] text-cream">{b.name}</div>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-[13.5px] text-cream">{b.name}</span>
+                          {b.entrantId === myId && <YouBadge />}
+                        </div>
                       </div>
                       <div className="text-center font-mono text-[13px]">{b.pick}</div>
                       <div className="hidden justify-center sm:flex">
