@@ -2,7 +2,6 @@ import { sql } from "./db/index.js";
 import {
   DEFAULT_SCORING,
   scoreGroupMatch,
-  progressionPoints,
   type ScoringConfig,
 } from "@wc/shared";
 
@@ -23,14 +22,6 @@ async function upsertScore(entrantId: number, kind: string, ref: string, points:
     do update set points = excluded.points, breakdown = excluded.breakdown, computed_at = now()
   `;
 }
-
-const PROGRESSION = [
-  { round: "LAST_32", stage: "LAST_32", slotLike: "R32-%" },
-  { round: "LAST_16", stage: "LAST_16", slotLike: "R16-%" },
-  { round: "QF", stage: "QF", slotLike: "QF-%" },
-  { round: "SF", stage: "SF", slotLike: "SF-%" },
-  { round: "FINAL", stage: "FINAL", slotLike: "FINAL" },
-] as const;
 
 // Recompute every score from scratch. Deterministic; safe to run any time a
 // result changes.
@@ -66,43 +57,49 @@ export async function recomputeAll(): Promise<number> {
     written++;
   }
 
-  // --- KNOCKOUTS: team progression per round ---
-  const entrants = await sql`select id from entrants`;
-  for (const { round, stage, slotLike } of PROGRESSION) {
-    // teams that actually reached this round
-    const koMatches = await sql`
-      select home_team_id, away_team_id from matches
-      where stage = ${stage} and (home_team_id is not null or away_team_id is not null)
+  // --- KNOCKOUTS: slot-positional scoring ---
+  // A knockout prediction only scores when the entrant put the right team in the
+  // right bracket slot AND on the right side of it. Per tie:
+  //   +knockoutTeam   for each correctly-positioned team (home pick == actual
+  //                   home team, and/or away pick == actual away team)
+  //   +scoreline      ONLY when BOTH teams are correctly positioned (an exact
+  //                   matchup in the right slot) — then the goals/result/exact
+  //                   bonus apply, aligned by side, up to +5.
+  // So the max is 7 a tie. If group placings swap a team into a different slot,
+  // it earns nothing here even if the same two teams meet via another route —
+  // the slot (and side) is what's being predicted, not just the fixture.
+  //
+  // Team-in-position points land as soon as the tie is drawn (teams resolved);
+  // the scoreline is added once the tie finishes. The actual fixture's home/away
+  // ordering must follow the same bracket template the entrants predicted against
+  // (winner-side vs runner-up-side), which is how the import + draw are built.
+  const koFixtures = await sql`
+    select id, bracket_slot, home_team_id, away_team_id, home_goals, away_goals, status
+    from matches
+    where stage <> 'GROUP' and bracket_slot is not null
+      and home_team_id is not null and away_team_id is not null
+  `;
+  for (const m of koFixtures as any[]) {
+    const resolved = m.status === "FINISHED" && m.home_goals != null && m.away_goals != null;
+    const preds = await sql`
+      select entrant_id, pred_home_team_id, pred_away_team_id, pred_home_goals, pred_away_goals
+      from predictions where scope = 'SLOT' and bracket_slot = ${m.bracket_slot}
     `;
-    const actualTeams = new Set<number>();
-    for (const m of koMatches as any[]) {
-      if (m.home_team_id) actualTeams.add(m.home_team_id);
-      if (m.away_team_id) actualTeams.add(m.away_team_id);
-    }
-    if (actualTeams.size === 0) continue; // round not drawn yet
-
-    for (const e of entrants as any[]) {
-      const preds = await sql`
-        select pred_home_team_id, pred_away_team_id from predictions
-        where entrant_id = ${e.id} and scope = 'SLOT' and bracket_slot like ${slotLike}
-      `;
-      const predicted: number[] = [];
-      for (const p of preds as any[]) {
-        if (p.pred_home_team_id) predicted.push(p.pred_home_team_id);
-        if (p.pred_away_team_id) predicted.push(p.pred_away_team_id);
+    for (const p of preds as any[]) {
+      const homeTeam = p.pred_home_team_id === m.home_team_id;
+      const awayTeam = p.pred_away_team_id === m.away_team_id;
+      let points = (homeTeam ? cfg.knockoutTeam : 0) + (awayTeam ? cfg.knockoutTeam : 0);
+      const breakdown: any = { homeTeam, awayTeam, scoreline: null };
+      // Scoreline only when the exact matchup is correctly positioned.
+      if (homeTeam && awayTeam && resolved) {
+        const b = scoreGroupMatch(p.pred_home_goals, p.pred_away_goals, m.home_goals, m.away_goals, cfg);
+        points += b.points;
+        breakdown.scoreline = b;
       }
-      const r = progressionPoints(predicted, [...actualTeams], cfg.knockoutTeam);
-      await upsertScore(e.id, "PROGRESSION", `prog:${round}`, r.points, r);
+      await upsertScore(p.entrant_id, "KNOCKOUT", `match:${m.id}`, points, breakdown);
       written++;
     }
   }
-
-  // KNOCKOUT RULES (confirmed): each tie is scored like a group game — outcome +
-  // each team's goals + exact bonus (up to 5) — PLUS cfg.knockoutTeam per
-  // correctly-positioned team (2 a tie → up to +2), so up to 7 total. The
-  // per-match scoreline+position scoring above replaces the old progression once
-  // the knockout bracket resolves; the team-in-position bonus uses cfg.knockoutTeam
-  // (currently applied set-wise as a stopgap until the R32 fixtures are drawn).
 
   return written;
 }
