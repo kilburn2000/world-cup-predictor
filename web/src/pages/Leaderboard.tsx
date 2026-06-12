@@ -96,7 +96,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
-  const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_52px_44px] items-center gap-1";
+  const cols = "grid grid-cols-[30px_1fr_52px_44px] sm:grid-cols-[30px_1fr_30px_30px_30px_38px_52px_44px] items-center gap-1";
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => b.total - a.total || a.name.localeCompare(b.name),
   );
@@ -112,8 +112,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       <div className="fl-card overflow-hidden">
         <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div>#</div><div>Entrant</div>
-          <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div>
-          <div className="text-center">R32</div><div className="text-center leading-tight">Exact Scores</div><div className="text-right">Pts</div>
+          <div className="hidden text-center sm:block">W1</div><div className="hidden text-center sm:block">W2</div><div className="hidden text-center sm:block">W3</div>
+          <div className="hidden text-center sm:block">R32</div><div className="text-center leading-tight">Exact Scores</div><div className="text-right">Pts</div>
         </div>
         {list.map((e) => {
           const label = rankLabel(e);
@@ -124,10 +124,10 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.week1, started?.week1)}</div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.week2, started?.week2)}</div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.week3, started?.week3)}</div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.r32, started?.r32)}</div>
+              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week1, started?.week1)}</div>
+              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week2, started?.week2)}</div>
+              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week3, started?.week3)}</div>
+              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.r32, started?.r32)}</div>
               <div className="text-center font-mono text-[11px] text-gold/80">{e.exactCount ?? "–"}</div>
               <div className="text-right font-mono text-sm font-semibold text-gold">{e.total}</div>
             </div>
@@ -145,10 +145,10 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
-              <div className="text-center font-mono text-[11px] text-muted">{cell(e.week1, started?.week1)}</div>
-              <div className="text-center font-mono text-[11px] text-muted">{cell(e.week2, started?.week2)}</div>
-              <div className="text-center font-mono text-[11px] text-muted">{cell(e.week3, started?.week3)}</div>
-              <div className="text-center font-mono text-[11px] text-muted">{cell(e.r32, started?.r32)}</div>
+              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week1, started?.week1)}</div>
+              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week2, started?.week2)}</div>
+              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week3, started?.week3)}</div>
+              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.r32, started?.r32)}</div>
               <div className="text-center font-mono text-[11px] text-muted">{e.exactCount ?? 0}</div>
               <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
             </Link>
