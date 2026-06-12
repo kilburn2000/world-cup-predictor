@@ -69,6 +69,45 @@ export interface PhasesStarted {
 export const usePhasesStarted = () =>
   useQuery({ queryKey: ["phases"], queryFn: () => get<PhasesStarted>("/api/phases"), refetchInterval: 30_000 });
 
+// ---- Top Scorer side competition ----
+export interface ScorerPick {
+  name: string;
+  country: string;
+  goals: number;
+}
+export interface TopScorerRow {
+  entrantId: number;
+  name: string;
+  nameIncomplete?: boolean;
+  players: ScorerPick[];
+  total: number;
+}
+export const useTopScorer = () =>
+  useQuery({ queryKey: ["top-scorer"], queryFn: () => get<TopScorerRow[]>("/api/top-scorer"), refetchInterval: 30_000 });
+
+export interface AdminScorerPlayer {
+  id: number;
+  name: string;
+  country: string;
+  feedGoals: number;
+  manualGoals: number | null;
+  goals: number;
+}
+export async function getScorerPlayers(adminToken: string) {
+  const res = await fetch("/api/admin/scorer-players", { headers: { "x-admin-token": adminToken } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<AdminScorerPlayer[]>;
+}
+export async function setScorerGoals(id: number, manualGoals: number | null, adminToken: string) {
+  const res = await fetch(`/api/admin/scorer-players/${id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", "x-admin-token": adminToken },
+    body: JSON.stringify({ manualGoals }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export interface StatLeader {
   value: number;
   name: string | null;

@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted } from "../api.js";
+import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted } from "../api.js";
 import TabSelect from "../components/TabSelect.js";
+import { flagFor } from "../flags.js";
+
+// Pick country code -> country name flagFor() understands.
+const SCORER_COUNTRY: Record<string, string> = {
+  POR: "Portugal", ENG: "England", NED: "Netherlands", BRA: "Brazil", ARG: "Argentina",
+  SPA: "Spain", FRA: "France", COL: "Colombia", GER: "Germany", NOR: "Norway",
+};
 
 // A points cell: the number once there's a score, "0" once the phase has kicked
 // off (so a started week reads 0, not blank), and "–" before it begins.
@@ -199,17 +206,63 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   );
 }
 
-type Tab = "overall" | "knockout" | Phase;
+function TopScorers() {
+  const { data, isLoading, error } = useTopScorer();
+  if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
+  if (error) return <p className="text-down">Couldn’t load the top scorer table.</p>;
+  const list = data ?? [];
+  const cols = "grid grid-cols-[28px_1fr_auto] items-center gap-2";
+  return (
+    <>
+      <div className="fl-card overflow-hidden">
+        <div className={cols + " border-b border-line px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
+          <div>#</div><div>Entrant &amp; players</div><div className="text-right">Goals</div>
+        </div>
+        {list.map((e, i) => (
+          <Link
+            key={e.entrantId}
+            to={`/entrant/${e.entrantId}`}
+            className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft"}
+          >
+            <div className="font-mono text-xs">
+              {i < 3 && e.total > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[13.5px] text-cream">
+                <span className="truncate">{e.name}</span>
+                {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted">
+                {e.players.map((p) => (
+                  <span key={p.name} className="inline-flex items-center gap-1">
+                    <span className="text-cream">{p.name}</span>
+                    <span className="text-[10px] uppercase tracking-wide">{p.country}</span>
+                    <span>{flagFor(SCORER_COUNTRY[p.country] ?? p.country)}</span>
+                    <span className="font-mono text-gold">{p.goals}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="text-right font-mono text-lg font-semibold text-cream">{e.total}</div>
+          </Link>
+        ))}
+      </div>
+    </>
+  );
+}
+
+type Tab = "overall" | "knockout" | "topscorer" | Phase;
 const TABS: { key: Tab; label: string }[] = [
   { key: "overall", label: "Overall" },
   { key: "knockout", label: "Knockout" },
+  { key: "topscorer", label: "Top Scorer" },
   { key: "week1", label: "Week 1" },
   { key: "week2", label: "Week 2" },
   { key: "week3", label: "Week 3" },
   { key: "r32", label: "Round of 32" },
 ];
 const TITLES: Record<Tab, string> = {
-  overall: "Overall", knockout: "Knockout competition",
+  overall: "Overall", knockout: "Knockout competition", topscorer: "Top Scorer",
   week1: "Week 1", week2: "Week 2", week3: "Week 3", r32: "Round of 32",
 };
 
@@ -217,12 +270,13 @@ export default function Leaderboard() {
   const [tab, setTab] = useState<Tab>("overall");
   const [showConsensus, setShowConsensus] = useState(false);
   const { data: consensus } = useConsensus();
-  const consensusTab = tab !== "knockout";
+  const consensusTab = tab !== "knockout" && tab !== "topscorer";
   const everyone = showConsensus && consensusTab ? consensus ?? null : null;
 
   const sub =
     tab === "overall" ? "The main competition - every entrant ranked on all their predictions across the whole tournament."
     : tab === "knockout" ? "A second competition: entrant groups, scored on each player’s own World Cup group, top two into the bracket."
+    : tab === "topscorer" ? "Each entrant has two players - the pair with the most combined goals across the tournament wins."
     : `Points scored in ${TITLES[tab]} only.`;
 
   return (
@@ -275,7 +329,7 @@ export default function Leaderboard() {
         </div>
       </div>
 
-      {tab === "overall" ? <Overall everyone={everyone} /> : tab === "knockout" ? <Knockout /> : <PhaseBoard phase={tab} everyone={everyone} />}
+      {tab === "overall" ? <Overall everyone={everyone} /> : tab === "knockout" ? <Knockout /> : tab === "topscorer" ? <TopScorers /> : <PhaseBoard phase={tab} everyone={everyone} />}
     </div>
   );
 }

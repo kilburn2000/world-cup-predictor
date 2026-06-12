@@ -21,6 +21,12 @@ const CARDS = [
     blurb: "Set the points for each outcome - result, goal difference, exact score, knockout progression. Saving re-scores everyone.",
   },
   {
+    to: "/scorers",
+    icon: "⚽",
+    title: "Top Scorer goals",
+    blurb: "Goals for the Top Scorer competition auto-fill from the feed; override any player here if the feed gets one wrong.",
+  },
+  {
     to: "/table",
     icon: "▦",
     title: "Group Tables",

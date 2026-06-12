@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { syncMatches, syncFromEspn } from "./sync.js";
 import { recomputeAll } from "./score.js";
+import { syncScorers } from "./scorers.js";
 
 // Live scores come from ESPN's free feed every 30s. A slow football-data pass
 // every 10 min keeps the bracket structure fresh (knockout team resolution),
@@ -17,6 +18,7 @@ async function liveTick() {
       const n = await recomputeAll();
       console.log(`[espn] ${changed} match(es) changed → rescored ${n} predictions`);
     }
+    await syncScorers(); // tally goal scorers for the Top Scorer competition
   } catch (e: any) {
     console.warn(`[espn] ${e.message}`);
   } finally {

@@ -1,4 +1,4 @@
-import { useLeaderboard } from "../api.js";
+import { useLeaderboard, useTopScorer } from "../api.js";
 
 type Field = "week1" | "week2" | "week3" | "r32" | "r16" | "knockout";
 
@@ -17,9 +17,10 @@ const OVERALL_PRIZES = [
   { place: 7, amount: 100 }, { place: 8, amount: 90 }, { place: 9, amount: 80 }, { place: 10, amount: 80 },
 ];
 const LAST_AMOUNT = 75; // wooden spoon
+const TOP_SCORER_AMOUNT = 125; // side competition
 
 const gbp = (n: number) => "£" + n.toLocaleString("en-GB");
-const total = LAST_AMOUNT + [...PHASE_PRIZES, ...OVERALL_PRIZES].reduce((s, p) => s + p.amount, 0);
+const total = LAST_AMOUNT + TOP_SCORER_AMOUNT + [...PHASE_PRIZES, ...OVERALL_PRIZES].reduce((s, p) => s + p.amount, 0);
 const ordinal = (n: number) => {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
@@ -33,6 +34,14 @@ const holderText = (names: string[]) =>
 export default function Prizes() {
   const { data } = useLeaderboard();
   const rows = data ?? [];
+  const { data: scorers } = useTopScorer();
+  const scorerRows = scorers ?? [];
+  const topGoals = scorerRows[0]?.total ?? 0;
+  const scorerHolder = !scorerRows.length
+    ? "-"
+    : topGoals === 0
+      ? "Not scored yet"
+      : holderText(scorerRows.filter((e) => e.total === topGoals).map((e) => e.name));
 
   const weeklyLeader = (field: "week1" | "week2" | "week3" | "r32") => {
     if (!rows.length) return "-";
@@ -115,6 +124,15 @@ export default function Prizes() {
             <div className="mt-1 truncate text-[11px] text-muted">{phaseHolder(p.field)}</div>
           </div>
         ))}
+      </div>
+
+      <h2 className="mb-3 mt-7 text-[11px] uppercase tracking-[1.8px] text-gold">Top scorer</h2>
+      <div className="fl-card px-4 py-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[13.5px] text-cream">Most combined goals from your two players</span>
+          <span className="font-mono text-base font-semibold text-gold">{gbp(TOP_SCORER_AMOUNT)}</span>
+        </div>
+        <div className="mt-1 truncate text-[11px] text-muted">{scorerHolder}</div>
       </div>
     </div>
   );

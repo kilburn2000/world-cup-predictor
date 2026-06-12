@@ -16,6 +16,7 @@ import { scoreGroupMatch } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout } from "./wc.js";
+import { topScorerStandings } from "./scorers.js";
 import { runImport, savePredictions, checkUnresolved } from "./importSheet.js";
 import { extractFromPhoto, toPredictions } from "./photoImport.js";
 import { startPoller } from "./poller.js";
@@ -146,6 +147,29 @@ app.get("/api/phases", async () => {
     from matches
   `;
   return r;
+});
+
+// Top Scorer side competition: each entrant's player pair + combined goals.
+app.get("/api/top-scorer", async () => topScorerStandings());
+
+// Admin: list all tracked players with their feed + manual goal tallies.
+app.get("/api/admin/scorer-players", async (req: any, reply) => {
+  if (!requireAdmin(req, reply)) return;
+  return await sql`
+    select id, name, country, feed_goals as "feedGoals", manual_goals as "manualGoals",
+           coalesce(manual_goals, feed_goals) as goals
+    from scorer_players order by name
+  `;
+});
+
+// Admin: set (or clear, with null) a player's manual goal override.
+app.patch("/api/admin/scorer-players/:id", async (req: any, reply) => {
+  if (!requireAdmin(req, reply)) return;
+  const id = Number(req.params.id);
+  const raw = req.body?.manualGoals;
+  const manual = raw === null || raw === undefined || raw === "" ? null : Math.max(0, Math.trunc(Number(raw)));
+  await sql`update scorer_players set manual_goals = ${manual} where id = ${id}`;
+  return { ok: true };
 });
 
 // The "Everyone" consensus: a virtual entrant who, for every game, picks the

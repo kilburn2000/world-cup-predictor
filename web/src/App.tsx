@@ -8,6 +8,7 @@ import WCGroups from "./pages/WCGroups.js";
 import WCKnockout from "./pages/WCKnockout.js";
 import LiveTable from "./pages/LiveTable.js";
 import Scoring from "./pages/Scoring.js";
+import ScorerAdmin from "./pages/ScorerAdmin.js";
 import Upload from "./pages/Upload.js";
 import Entrant from "./pages/Entrant.js";
 import Players from "./pages/Players.js";
@@ -143,6 +144,7 @@ export default function App() {
           <Route path="/admin" element={<AuthGate><Admin /></AuthGate>} />
           <Route path="/upload" element={<AuthGate><Upload /></AuthGate>} />
           <Route path="/scoring" element={<AuthGate><Scoring /></AuthGate>} />
+          <Route path="/scorers" element={<AuthGate><ScorerAdmin /></AuthGate>} />
           <Route path="/manage" element={<AuthGate><ManageEntrants /></AuthGate>} />
         </Routes>
       </main>
