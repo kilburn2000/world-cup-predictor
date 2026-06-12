@@ -135,18 +135,23 @@ export default function Prizes() {
           ));
         })}
         {/* wooden spoon */}
-        <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-line px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-[13px]">🥄</span>
-            <div className="min-w-0">
-              <div className="text-muted">Wooden Spoon</div>
-              <div className="text-[11px] text-muted">{holderText(lastNames)}</div>
+        {lastNames.map((name, idx) => (
+          <div key={`spoon-${idx}`} className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-line px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-[13px]">🥄</span>
+              <div className="min-w-0">
+                <div className="text-cream">{name}</div>
+                <div className="text-[11px] text-muted">Wooden Spoon</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-mono text-base font-semibold text-gold">{gbp(lastShare)}</div>
+              {lastNames.length > 1 && (
+                <div className="text-[10px] text-muted">{gbp(LAST_AMOUNT)} across {lastNames.length} entrants</div>
+              )}
             </div>
           </div>
-          <div className="font-mono text-base font-semibold text-gold">
-            {gbp(lastShare)}{lastNames.length > 1 ? " each" : ""}
-          </div>
-        </div>
+        ))}
       </div>
 
       <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">Weekly &amp; round prizes</h2>
