@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { type LiveMatch, type LiveBoardRow } from "../api.js";
+import { type LiveMatch } from "../api.js";
 import { flagFor } from "../flags.js";
 import { useMe } from "../auth.js";
 import ScoredChips from "./ScoredChips.js";
@@ -23,13 +23,6 @@ function stageLabel(m: LiveMatch) {
   if (m.stage === "GROUP") return m.group ? `Group ${m.group}` : "Group stage";
   return STAGE_LABELS[m.stage] ?? m.stage;
 }
-
-const TIER: Record<NonNullable<LiveBoardRow["tier"]>, { label: string; bg: string; fg: string }> = {
-  exact: { label: "Exact", bg: "rgba(201,168,106,0.18)", fg: "#c9a86a" },
-  result: { label: "Result", bg: "rgba(107,191,134,0.16)", fg: "#6bbf86" },
-  diff: { label: "Partial", bg: "rgba(141,147,136,0.18)", fg: "#b9bdb4" },
-  miss: { label: "No points", bg: "rgba(217,146,106,0.12)", fg: "#d9926a" },
-};
 
 /** Small football icon - clearly distinct from a yellow card. */
 function BallIcon({ size = 16 }: { size?: number }) {
@@ -90,10 +83,8 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   const myId = me?.entrantId;
   const [show, setShow] = useState(false);
   const finished = m.status === "FINISHED";
-  // a predicted score takes its chip's colour - the scoreline matches the logged-in
-  // entrant's chip, each board row matches its own
-  const PICK_TONE: Record<string, string> = { exact: "#c9a86a", result: "#6bbf86", diff: "#6bbf86", miss: "#e08a84" };
-  const scoreColor = m.myTier ? PICK_TONE[m.myTier] : undefined;
+  // a points figure takes its chip's colour (gold exact / green points / red none)
+  const PTS_TONE: Record<string, string> = { exact: "#c9a86a", result: "#6bbf86", diff: "#6bbf86", miss: "#e08a84" };
   const total = board.length;
   const exactN = board.filter((b) => b.tier === "exact").length;
   const resultN = board.filter((b) => b.tier === "exact" || b.tier === "result").length;
@@ -140,7 +131,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.homeCode}</div>
           </div>
-          <div className="flex items-center gap-3.5 font-mono text-[34px] tracking-wide sm:text-[38px]" style={scoreColor ? { color: scoreColor } : undefined}>
+          <div className="flex items-center gap-3.5 font-mono text-[34px] tracking-wide sm:text-[38px]">
             {m.status === "SCHEDULED" ? (
               <span className="text-xl text-muted">v</span>
             ) : (
@@ -168,7 +159,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
             <>
               <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
-              {m.myPoints != null && <PointsPill points={m.myPoints} />}
+              {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
             </>
           )}
         </div>
@@ -246,7 +237,6 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                 <div className="text-right">Pts</div>
               </div>
               {board.map((b, i) => {
-                const t = b.tier ? TIER[b.tier] : null;
                 return (
                   <div key={b.entrantId} className="border-t border-line">
                     <div className={"grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
@@ -260,11 +250,11 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                           {b.entrantId === myId && <YouBadge />}
                         </div>
                       </div>
-                      <div className="text-center font-mono text-[13px]" style={b.tier ? { color: PICK_TONE[b.tier] } : undefined}>{b.pick}</div>
+                      <div className="text-center font-mono text-[13px]">{b.pick}</div>
                       <div className="hidden justify-center sm:flex">
                         {b.points != null && <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />}
                       </div>
-                      <div className="text-right font-mono text-base" style={{ color: t?.fg ?? "#8d9388" }}>
+                      <div className="text-right font-mono text-base font-semibold" style={{ color: b.tier ? PTS_TONE[b.tier] : "#8d9388" }}>
                         {b.points != null ? `${b.points}${b.points === 1 ? "pt" : "pts"}` : "–"}
                       </div>
                     </div>
