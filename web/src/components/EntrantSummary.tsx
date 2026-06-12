@@ -147,12 +147,12 @@ export default function EntrantSummary({ id, eyebrow = "Entrant" }: { id: string
           )}
         </div>
         <div className="flex items-center gap-6">
-          <div className="text-right">
+          <div className="text-center sm:text-right">
             <div className="font-mono text-3xl leading-none text-gold">{data.totals.total}</div>
             <div className="mt-1 text-[11px] uppercase tracking-[1px] text-muted">Total points</div>
           </div>
           <div className="h-10 w-px self-center bg-line" />
-          <div className="text-right">
+          <div className="text-center sm:text-right">
             <div className="font-mono text-3xl leading-none text-gold">{gbp(prize)}</div>
             <div className="mt-1 text-[11px] uppercase tracking-[1px] text-muted">Prize money won</div>
           </div>
