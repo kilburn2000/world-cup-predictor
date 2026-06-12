@@ -8,7 +8,6 @@ import { longDate } from "../dates.js";
 export default function DashboardFixtures() {
   const today = useLiveMatches(0).data ?? [];
   const yesterday = useLiveMatches(-1).data ?? [];
-  const tomorrow = useLiveMatches(1).data ?? [];
 
   const [hy, hmo, hd] = new Date()
     .toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" })
@@ -23,7 +22,6 @@ export default function DashboardFixtures() {
   const days = [
     { offset: -1, label: "Yesterday", items: sortDay(yesterday) },
     { offset: 0, label: "Today", items: sortDay(today) },
-    { offset: 1, label: "Tomorrow", items: sortDay(tomorrow) },
   ];
 
   return (
