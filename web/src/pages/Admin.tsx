@@ -44,7 +44,7 @@ export default function Admin() {
           <h1 className="font-display text-4xl font-medium tracking-tight text-cream">Manage the sweepstake</h1>
           <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted">Add entrants, fix names, and tune the scoring.</p>
         </div>
-        <button onClick={() => { logout(); nav("/"); }} className="btn-ghost shrink-0 px-3.5 py-1.5 text-sm">Log out</button>
+        <button onClick={() => { logout(); nav("/"); }} className="btn-ghost shrink-0 px-3.5 py-1.5 text-sm">Sign out</button>
       </div>
 
       <div className="mt-7 grid gap-4 sm:grid-cols-2">

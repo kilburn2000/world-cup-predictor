@@ -126,9 +126,9 @@ export default function App() {
               {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={tab}>My predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={adminBtn}>Admin</NavLink>}
               {me ? (
-                <button onClick={handleLogout} className={tab({ isActive: false })}>Log out</button>
+                <button onClick={handleLogout} className={tab({ isActive: false })}>Sign out</button>
               ) : (
-                <NavLink to="/login" className={adminBtn}>Log in</NavLink>
+                <NavLink to="/login" className={adminBtn}>Sign in</NavLink>
               )}
             </nav>
           </div>
@@ -143,9 +143,9 @@ export default function App() {
               {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={mobileItem}>My predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={mobileItem}>Admin</NavLink>}
               {me ? (
-                <button onClick={handleLogout} className="rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Log out</button>
+                <button onClick={handleLogout} className="rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Sign out</button>
               ) : (
-                <NavLink to="/login" className={mobileItem}>Log in</NavLink>
+                <NavLink to="/login" className={mobileItem}>Sign in</NavLink>
               )}
             </nav>
           )}
