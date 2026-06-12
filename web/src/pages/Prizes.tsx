@@ -50,7 +50,7 @@ export default function Prizes() {
   const scorerHolder = !scorerRows.length
     ? "-"
     : topGoals === 0
-      ? "Not scored yet"
+      ? "No goals scored as yet"
       : holderText(scorerRows.filter((e) => e.total === topGoals).map((e) => e.name));
 
   const weeklyLeaders = (field: "week1" | "week2" | "week3" | "r32"): string[] => {
