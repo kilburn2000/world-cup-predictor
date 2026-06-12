@@ -83,6 +83,27 @@ export default function FixtureDetail() {
         </div>
       </div>
 
+      {data.events.length > 0 && (
+        <div className="fl-card mb-5 px-5 py-4">
+          <div className="mb-2 text-[10px] uppercase tracking-[1.5px] text-muted">Key events</div>
+          <div className="space-y-1.5">
+            {data.events.map((ev, i) => {
+              const colour = ev.type === "goal" ? "#c9a86a" : ev.type === "red" ? "#d9534f" : "#e3c558";
+              const tag = ev.type === "goal" ? "Goal" : ev.type === "red" ? "Red" : ev.type === "yellow" ? "Yellow" : "";
+              const team = ev.team === "home" ? m.home : m.away;
+              return (
+                <div key={i} className="flex items-center gap-2.5 text-[13px]">
+                  <span className="w-9 shrink-0 font-mono text-[12px] text-muted">{ev.minute}'</span>
+                  <span>{flagFor(team)}</span>
+                  <span className="truncate text-cream">{ev.player ?? team}</span>
+                  <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase tracking-wide" style={{ color: colour }}>{tag}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {data.board.length > 0 && (
         <div className="mb-5 grid grid-cols-2 gap-3">
           <div className="fl-card p-4">

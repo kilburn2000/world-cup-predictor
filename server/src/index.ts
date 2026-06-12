@@ -16,7 +16,7 @@ import { scoreGroupMatch } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout } from "./wc.js";
-import { topScorerStandings, liveMatchEvents } from "./scorers.js";
+import { topScorerStandings, eventsForMatches, matchEvents } from "./scorers.js";
 import { runImport, savePredictions, checkUnresolved } from "./importSheet.js";
 import { extractFromPhoto, toPredictions } from "./photoImport.js";
 import { startPoller } from "./poller.js";
@@ -608,6 +608,8 @@ app.get("/api/live", async (req: any) => {
     /* ESPN unavailable - fall back to DB-only (no minute/events) */
   }
 
+  const evMap = await eventsForMatches((rows as any[]).map((m) => m.id));
+
   return (rows as any[]).map((m) => {
     const hg = m.hg ?? 0;
     const ag = m.ag ?? 0;
@@ -638,7 +640,7 @@ app.get("/api/live", async (req: any) => {
     let period: number | null = null;
     // real key events from the summary feed (goals + cards with the scorer's
     // name); fall back to the synthesised goal log if the feed hasn't filled yet.
-    const feedEvents = liveMatchEvents.get(m.id);
+    const feedEvents = evMap.get(m.id);
     const events: any[] = (feedEvents?.length ? feedEvents : liveEvents.get(m.id) ?? []).slice().sort((a, b) => a.minute - b.minute);
     if (enrich) {
       const liveNow = m.status === "IN_PLAY";
@@ -790,6 +792,7 @@ app.get("/api/fixtures/:id", async (req: any, reply) => {
     },
     played,
     board,
+    events: await matchEvents(id),
   };
 });
 

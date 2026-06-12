@@ -369,6 +369,7 @@ export interface FixtureDetail {
   };
   played: boolean;
   board: LiveBoardRow[];
+  events: LiveEvent[];
 }
 export const useFixture = (id: string | number) =>
   useQuery({ queryKey: ["fixture", id], queryFn: () => get<FixtureDetail>(`/api/fixtures/${id}`), refetchInterval: 30_000 });

@@ -7,15 +7,15 @@ import { dbNameMap, resolveEspn } from "./sync.js";
 // to the current scoreboard window), and persisted match_scorers keep totals.
 const captured = new Set<string>();
 
-// Live key events per DB match id (goals + cards with player/minute), aligned to
-// the match's home/away. The live feed reads this; the toasts read it too.
+// Key events per match (goals + cards with player/minute), aligned to the match's
+// home/away. Persisted to match_events so they survive on each fixture's detail
+// page (not just live), and read by the live feed + toasts.
 export interface LiveEventRow {
   minute: number;
   type: "goal" | "yellow" | "red";
   team: "home" | "away";
   player?: string;
 }
-export const liveMatchEvents = new Map<number, LiveEventRow[]>();
 
 // "Top Scorer" side competition: each entrant has a pair of players; their
 // combined goal tally over the tournament decides a single prize. Goals come
@@ -80,11 +80,14 @@ export async function syncScorers(): Promise<void> {
       `;
     }
     if (dbMatch) {
-      const rows: LiveEventRow[] = events.map((e) => {
+      await sql`delete from match_events where match_id = ${dbMatch.id}`;
+      for (const e of events) {
         const tid = resolveEspn(e.country, byNorm);
-        return { minute: e.minute, type: e.type, team: tid === dbMatch.home_team_id ? "home" : "away", player: e.player };
-      });
-      liveMatchEvents.set(dbMatch.id, rows);
+        await sql`
+          insert into match_events (match_id, minute, type, team, player)
+          values (${dbMatch.id}, ${e.minute}, ${e.type}, ${tid === dbMatch.home_team_id ? "home" : "away"}, ${e.player ?? null})
+        `;
+      }
     }
 
     // Tally goal scorers (own goals don't count for the player).
@@ -119,6 +122,28 @@ export async function syncScorers(): Promise<void> {
     }
     await sql`update scorer_players set feed_goals = ${total} where id = ${p.id}`;
   }
+}
+
+// Key events for a set of matches (for the live feed), keyed by match id.
+export async function eventsForMatches(ids: number[]): Promise<Map<number, LiveEventRow[]>> {
+  const map = new Map<number, LiveEventRow[]>();
+  if (!ids.length) return map;
+  const rows = await sql`
+    select match_id, minute, type, team, player from match_events
+    where match_id in ${sql(ids)} order by match_id, minute
+  `;
+  for (const r of rows as any[]) {
+    const arr = map.get(r.match_id) ?? [];
+    arr.push({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined });
+    map.set(r.match_id, arr);
+  }
+  return map;
+}
+
+// Key events for one fixture (for its detail page).
+export async function matchEvents(matchId: number): Promise<LiveEventRow[]> {
+  const rows = await sql`select minute, type, team, player from match_events where match_id = ${matchId} order by minute`;
+  return (rows as any[]).map((r) => ({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined }));
 }
 
 // Each entrant's pair + combined goals (manual override wins over the feed),
