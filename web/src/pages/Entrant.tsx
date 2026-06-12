@@ -26,7 +26,7 @@ function Stat({ label, value, pos, accent }: { label: string; value: ReactNode; 
   return (
     <div className="fl-card px-3 py-3 text-center">
       <div className="font-mono text-base leading-tight" style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
-      {pos && <div className="mt-0.5 text-[11px] text-gold">({pos})</div>}
+      {pos && <div className="mt-1.5 text-[11px] text-gold">({pos})</div>}
       <div className="mt-1.5 text-[10px] uppercase tracking-[1px] text-muted">{label}</div>
     </div>
   );
