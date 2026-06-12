@@ -5,7 +5,7 @@ import { useDemoMatches, setDemoMatches } from "../demo.js";
 import type { LiveMatch, LiveEvent, LiveTier } from "../api.js";
 
 // Type "demo" anywhere (outside a text field) to play a ~30s scripted England v
-// Brazil match: kick-off, four goals, half-time and full-time - driving the real
+// Croatia match: kick-off, four goals, half-time and full-time - driving the real
 // toasts, the live score card, the Your-prediction line and the predictions board.
 
 const MYPICK = "2-1";
@@ -34,7 +34,7 @@ function scorePick(pick: string, hs: number, as: number): { points: number; tier
 
 const G = (minute: number, team: "home" | "away", player: string): LiveEvent => ({ minute, type: "goal", team, player });
 const g1 = G(23, "home", "Harry Kane");
-const g2 = G(39, "away", "Vinícius Júnior");
+const g2 = G(39, "away", "Andrej Kramarić");
 const g3 = G(67, "home", "Jude Bellingham");
 const g4 = G(78, "home", "Bukayo Saka");
 
@@ -80,8 +80,8 @@ function buildMatch(s: Step): LiveMatch {
 
   return {
     id: 990000,
-    home: "England", away: "Brazil", homeCode: "ENG", awayCode: "BRA",
-    stage: "GROUP", group: "A", venue: "Demo Stadium",
+    home: "England", away: "Croatia", homeCode: "ENG", awayCode: "CRO",
+    stage: "GROUP", group: "L",
     status: s.status ?? "IN_PLAY",
     minute: s.minute ?? null,
     half: s.half ?? null,
