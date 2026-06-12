@@ -1,15 +1,29 @@
-// Admin auth. Login exchanges email+password for the session token, which is
-// stored in localStorage and sent as x-admin-token on admin requests.
-const KEY = "wc_admin_token";
+import { useQuery } from "@tanstack/react-query";
 
-export const getToken = () => localStorage.getItem(KEY) ?? "";
-
-export function logout() {
-  localStorage.removeItem(KEY);
+// Session auth: the server sets an httpOnly cookie on login (same-origin, so the
+// browser sends it automatically). We just ask "who am I?" via /api/me.
+export interface Me {
+  id: number;
+  entrantId: number | null;
+  name: string | null;
+  email: string | null;
+  isAdmin: boolean;
 }
 
-export async function login(email: string, password: string): Promise<void> {
-  const res = await fetch("/api/admin/login", {
+export const useMe = () =>
+  useQuery({
+    queryKey: ["me"],
+    queryFn: async (): Promise<Me | null> => {
+      const res = await fetch("/api/me");
+      if (!res.ok) return null;
+      const d = await res.json();
+      return (d.user ?? null) as Me | null;
+    },
+    staleTime: 60_000,
+  });
+
+export async function login(email: string, password: string): Promise<Me> {
+  const res = await fetch("/api/login", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -18,17 +32,13 @@ export async function login(email: string, password: string): Promise<void> {
     const e = await res.json().catch(() => ({}));
     throw new Error(e.error || "Login failed");
   }
-  const { token } = await res.json();
-  localStorage.setItem(KEY, token);
+  return (await res.json()).user as Me;
 }
 
-export async function checkAuth(): Promise<boolean> {
-  const token = getToken();
-  if (!token) return false;
-  try {
-    const r = await fetch("/api/admin/check", { headers: { "x-admin-token": token } });
-    return r.ok;
-  } catch {
-    return false;
-  }
+export async function logout(): Promise<void> {
+  await fetch("/api/logout", { method: "POST" });
 }
+
+// Back-compat: admin API helpers still pass an x-admin-token header; the server
+// now ignores it and authorises via the session cookie. No token to store.
+export const getToken = () => "";

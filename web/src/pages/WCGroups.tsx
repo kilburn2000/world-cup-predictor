@@ -5,7 +5,7 @@ import LiveTabs from "../components/LiveTabs.js";
 function Row({ t, pos }: { t: WcStanding; pos: number }) {
   const qualify = pos <= 2;
   return (
-    <div className="grid grid-cols-[22px_1fr_22px_22px_22px_30px_34px] items-center gap-1 border-t border-line px-3 py-1.5 text-[12.5px] first:border-t-0">
+    <div className="grid grid-cols-[22px_1fr_22px_22px_22px_22px_30px_34px] items-center gap-1 border-t border-line px-3 py-1.5 text-[12.5px] first:border-t-0">
       <div className="font-mono text-[11px] text-muted">{pos}</div>
       <div className="flex min-w-0 items-center gap-1.5">
         <span>{flagFor(t.name)}</span>
@@ -13,6 +13,7 @@ function Row({ t, pos }: { t: WcStanding; pos: number }) {
       </div>
       <div className="text-center font-mono text-[11px] text-muted">{t.played}</div>
       <div className="text-center font-mono text-[11px] text-muted">{t.won}</div>
+      <div className="text-center font-mono text-[11px] text-muted">{t.drawn}</div>
       <div className="text-center font-mono text-[11px] text-muted">{t.lost}</div>
       <div className="text-center font-mono text-[11px] text-muted">{t.gd > 0 ? `+${t.gd}` : t.gd}</div>
       <div className="text-right font-mono text-sm font-semibold text-cream">{t.points}</div>
@@ -39,9 +40,10 @@ export default function WCGroups() {
           <div key={g.group} className="fl-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
               <div className="font-display text-base text-cream">Group {g.group}</div>
-              <div className="grid grid-cols-[22px_22px_22px_30px_34px] gap-1 text-[9px] uppercase tracking-wide text-muted">
+              <div className="grid grid-cols-[22px_22px_22px_22px_30px_34px] gap-1 text-[9px] uppercase tracking-wide text-muted">
                 <div className="text-center">P</div>
                 <div className="text-center">W</div>
+                <div className="text-center">D</div>
                 <div className="text-center">L</div>
                 <div className="text-center">GD</div>
                 <div className="text-right">Pts</div>

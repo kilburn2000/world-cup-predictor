@@ -1,5 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Routes, Route, NavLink, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMe, logout } from "./auth.js";
+import Login from "./pages/Login.js";
 import Leaderboard from "./pages/Leaderboard.js";
 import LiveScores from "./pages/LiveScores.js";
 import Fixtures from "./pages/Fixtures.js";
@@ -52,10 +55,19 @@ function labelFor(pathname: string): string {
 
 export default function App() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: me } = useMe();
   const [loading, setLoading] = useState(true);
   const [label, setLabel] = useState("Whitey’s World Cup Sweepstake");
   const [menuOpen, setMenuOpen] = useState(false);
   const firstLoad = useRef(true);
+
+  const handleLogout = async () => {
+    await logout();
+    await qc.invalidateQueries({ queryKey: ["me"] });
+    navigate("/");
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 1100);
@@ -108,7 +120,13 @@ export default function App() {
               <NavLink to="/standings/overall" className={tab({ isActive: location.pathname === "/" || location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={tab}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
-              <NavLink to="/admin" className={adminBtn}>Admin</NavLink>
+              {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={tab}>My predictions</NavLink>}
+              {me?.isAdmin && <NavLink to="/admin" className={adminBtn}>Admin</NavLink>}
+              {me ? (
+                <button onClick={handleLogout} className={tab({ isActive: false })}>Log out</button>
+              ) : (
+                <NavLink to="/login" className={adminBtn}>Log in</NavLink>
+              )}
             </nav>
           </div>
 
@@ -118,7 +136,13 @@ export default function App() {
               <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname === "/" || location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={() => mobileItem({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
-              <NavLink to="/admin" className={mobileItem}>Admin</NavLink>
+              {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={mobileItem}>My predictions</NavLink>}
+              {me?.isAdmin && <NavLink to="/admin" className={mobileItem}>Admin</NavLink>}
+              {me ? (
+                <button onClick={handleLogout} className="rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Log out</button>
+              ) : (
+                <NavLink to="/login" className={mobileItem}>Log in</NavLink>
+              )}
             </nav>
           )}
         </div>
@@ -138,16 +162,17 @@ export default function App() {
           <Route path="/stats/groups" element={<WCGroups />} />
           <Route path="/stats/knockout" element={<WCKnockout />} />
           <Route path="/live/*" element={<Navigate to="/stats/scores" replace />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/players" element={<Players />} />
           <Route path="/prizes" element={<Prizes />} />
           <Route path="/entrant/:id" element={<Entrant />} />
-          <Route path="/entrant/:id/edit" element={<AuthGate><EditPredictions /></AuthGate>} />
+          <Route path="/entrant/:id/edit" element={<AuthGate admin><EditPredictions /></AuthGate>} />
           <Route path="/table" element={<LiveTable />} />
-          <Route path="/admin" element={<AuthGate><Admin /></AuthGate>} />
-          <Route path="/upload" element={<AuthGate><Upload /></AuthGate>} />
-          <Route path="/scoring" element={<AuthGate><Scoring /></AuthGate>} />
-          <Route path="/scorers" element={<AuthGate><ScorerAdmin /></AuthGate>} />
-          <Route path="/manage" element={<AuthGate><ManageEntrants /></AuthGate>} />
+          <Route path="/admin" element={<AuthGate admin><Admin /></AuthGate>} />
+          <Route path="/upload" element={<AuthGate admin><Upload /></AuthGate>} />
+          <Route path="/scoring" element={<AuthGate admin><Scoring /></AuthGate>} />
+          <Route path="/scorers" element={<AuthGate admin><ScorerAdmin /></AuthGate>} />
+          <Route path="/manage" element={<AuthGate admin><ManageEntrants /></AuthGate>} />
         </Routes>
       </main>
 

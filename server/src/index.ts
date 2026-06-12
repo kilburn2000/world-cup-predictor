@@ -1,8 +1,8 @@
 import "dotenv/config";
-import { scryptSync, timingSafeEqual } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
+import cookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -17,6 +17,7 @@ import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents } from "./scorers.js";
+import { loginByEmail, userForToken, deleteSession, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved } from "./importSheet.js";
 import { extractFromPhoto, toPredictions } from "./photoImport.js";
 import { startPoller } from "./poller.js";
@@ -29,51 +30,56 @@ const ScoringConfigSchema = z.object({
 });
 
 const PORT = Number(process.env.PORT ?? 8790);
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "";
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").toLowerCase();
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH ?? "";
-
-function verifyPassword(password: string): boolean {
-  if (!ADMIN_PASSWORD_HASH.includes(":")) return false;
-  const [salt, hash] = ADMIN_PASSWORD_HASH.split(":");
-  const stored = Buffer.from(hash, "hex");
-  const derived = scryptSync(password, salt, stored.length);
-  return derived.length === stored.length && timingSafeEqual(derived, stored);
-}
 
 const app = Fastify({ logger: true });
-await app.register(cors, { origin: true });
+await app.register(cors, { origin: true, credentials: true });
 await app.register(multipart, { limits: { fileSize: 8 * 1024 * 1024 } });
+await app.register(cookie);
+
+// Attach the logged-in user (from the session cookie) to every request.
+app.addHook("preHandler", async (req: any) => {
+  req.user = await userForToken(req.cookies?.[SESSION_COOKIE]);
+});
 
 function requireAdmin(req: any, reply: any): boolean {
-  if (!ADMIN_TOKEN || req.headers["x-admin-token"] !== ADMIN_TOKEN) {
+  if (!req.user?.isAdmin) {
     reply.code(401).send({ error: "unauthorized" });
     return false;
   }
   return true;
 }
 
+function setSessionCookie(reply: any, token: string) {
+  reply.setCookie(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
 app.get("/api/health", async () => ({ ok: true }));
 
-// Admin login: verify email + password, hand back the session token the admin
-// endpoints already expect (x-admin-token).
-app.post("/api/admin/login", async (req: any, reply) => {
-  const email = String(req.body?.email ?? "").trim().toLowerCase();
+// --- Auth: email + password, httpOnly session cookie ---
+app.post("/api/login", async (req: any, reply) => {
+  const email = String(req.body?.email ?? "").trim();
   const password = String(req.body?.password ?? "");
-  if (email === ADMIN_EMAIL && verifyPassword(password)) {
-    return { token: ADMIN_TOKEN };
-  }
-  reply.code(401).send({ error: "Invalid email or password" });
+  if (!email || !password) return reply.code(400).send({ error: "Email and password required" });
+  const token = await loginByEmail(email, password);
+  if (!token) return reply.code(401).send({ error: "Invalid email or password" });
+  setSessionCookie(reply, token);
+  return { user: await userForToken(token) };
 });
 
-// Cheap check that a stored token is still valid (for the auth gate).
-app.get("/api/admin/check", async (req: any, reply) => {
-  if (!ADMIN_TOKEN || req.headers["x-admin-token"] !== ADMIN_TOKEN) {
-    reply.code(401).send({ ok: false });
-    return;
-  }
+app.post("/api/logout", async (req: any, reply) => {
+  await deleteSession(req.cookies?.[SESSION_COOKIE]);
+  reply.clearCookie(SESSION_COOKIE, { path: "/" });
   return { ok: true };
 });
+
+// The current user (null if not logged in).
+app.get("/api/me", async (req: any) => ({ user: (req.user as SessionUser) ?? null }));
 
 // Provisional points from group matches IN PLAY right now - so everything moves
 // mid-game. Returns entrantId -> list of their in-play games with the breakdown.
