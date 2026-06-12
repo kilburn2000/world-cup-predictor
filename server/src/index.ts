@@ -149,7 +149,13 @@ app.get("/api/phases", async () => {
       coalesce(bool_or(stage = 'GROUP'   and matchday = 1 and status <> 'SCHEDULED'), false) as week1,
       coalesce(bool_or(stage = 'GROUP'   and matchday = 2 and status <> 'SCHEDULED'), false) as week2,
       coalesce(bool_or(stage = 'GROUP'   and matchday = 3 and status <> 'SCHEDULED'), false) as week3,
-      coalesce(bool_or(stage = 'LAST_32' and status <> 'SCHEDULED'), false) as r32
+      coalesce(bool_or(stage = 'LAST_32' and status <> 'SCHEDULED'), false) as r32,
+      -- "done" = every game in that period is finished (prizes lock in then)
+      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 1), false) as "week1Done",
+      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 2), false) as "week2Done",
+      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 3), false) as "week3Done",
+      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'LAST_32'), false) as "r32Done",
+      coalesce(bool_and(status = 'FINISHED'), false) as done
     from matches
   `;
   return r;
@@ -402,7 +408,7 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
   const groupRows = await sql`
     select m.group_name grp, m.matchday, m.status, m.home_team_id mh,
            m.home_goals ah, m.away_goals aa,
-           ht.name home, at.name away,
+           ht.name home, ht.tla home_code, at.name away, at.tla away_code,
            p.pred_home_team_id ph, p.pred_home_goals phg, p.pred_away_goals pag,
            s.points, s.breakdown
     from predictions p
@@ -421,7 +427,9 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
     const predAway = r.ph === r.mh ? r.pag : r.phg;
     const match = {
       home: r.home,
+      homeCode: r.home_code,
       away: r.away,
+      awayCode: r.away_code,
       predHome,
       predAway,
       actualHome: r.ah,
@@ -618,8 +626,18 @@ app.get("/api/live", async (req: any) => {
   const evMap = await eventsForMatches((rows as any[]).map((m) => m.id));
 
   return (rows as any[]).map((m) => {
-    const hg = m.hg ?? 0;
-    const ag = m.ag ?? 0;
+    // ESPN live enrichment (minute + live score + events), keyed by team-id pair.
+    const enrich = espnByPair.get([m.mh, m.ma].sort((x, y) => x - y).join("-"));
+
+    // For in-play matches use the live ESPN score so predictions recompute as fast
+    // as the feed; the stored DB score only refreshes on the poller's cadence.
+    let hg = m.hg ?? 0;
+    let ag = m.ag ?? 0;
+    if (enrich && m.status === "IN_PLAY") {
+      const espnHomeIsOurs = enrich.homeId === m.mh;
+      hg = espnHomeIsOurs ? enrich.espn.homeScore : enrich.espn.awayScore;
+      ag = espnHomeIsOurs ? enrich.espn.awayScore : enrich.espn.homeScore;
+    }
     const scored = m.status === "IN_PLAY" || m.status === "FINISHED";
 
     // board for every group fixture - points/tier once it's in play/finished,
@@ -641,7 +659,6 @@ app.get("/api/live", async (req: any) => {
     }
 
     // attach ESPN minute/events, aligning event side to our home/away
-    const enrich = espnByPair.get([m.mh, m.ma].sort((x, y) => x - y).join("-"));
     let minute: number | null = null;
     let half: string | null = null;
     let period: number | null = null;
