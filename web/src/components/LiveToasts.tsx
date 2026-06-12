@@ -101,11 +101,11 @@ export default function LiveToasts() {
 
   if (!toasts.length) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3">
+    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-[60] flex flex-col-reverse items-stretch gap-2 px-2 sm:bottom-auto sm:top-3 sm:flex-col sm:items-center sm:px-3">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="toast-drop pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-xl border border-gold px-4 py-3"
+          className="toast-drop pointer-events-auto flex w-full items-center gap-3 rounded-xl border border-gold px-4 py-3 sm:max-w-sm"
           style={{ background: "#c9a86a", boxShadow: "0 10px 34px rgba(0,0,0,0.5)" }}
         >
           <span className="text-xl">{t.icon}</span>
