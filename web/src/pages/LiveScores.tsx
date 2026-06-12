@@ -50,8 +50,8 @@ export default function LiveScores({ day = 0 }: { day?: number }) {
 
       <div className="flex flex-col gap-5">
         {live.map((m) => <MatchCard key={m.id} m={m} />)}
-        {upcoming.map((m) => <MatchCard key={m.id} m={m} />)}
         {finished.map((m) => <MatchCard key={m.id} m={m} />)}
+        {upcoming.map((m) => <MatchCard key={m.id} m={m} />)}
       </div>
     </div>
   );
