@@ -106,9 +106,9 @@ export default function FixtureTable({ items }: { items: Fixture[] }) {
             {/* Logged-in entrant's own pick - with the outcome chips once the game
                 is under way, mirroring the live match cards. */}
             {f.myPick && (
-              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px]">
-                <span className="text-[8.5px] uppercase tracking-[1.5px] text-gold/80">Your pick</span>
-                <span className="font-mono text-cream">{f.myPick.replace("-", "–")}</span>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-line pt-2 text-[11px]">
+                <span className="text-[8.5px] uppercase leading-none tracking-[1.5px] text-gold/80">Your pick</span>
+                <span className="font-mono leading-none text-cream">{f.myPick.replace("-", "–")}</span>
                 {(done || live) && f.homeScore != null && f.awayScore != null && (
                   <>
                     <ScoredChips pick={f.myPick} hs={f.homeScore} as={f.awayScore} homeCode={f.homeCode ?? ""} awayCode={f.awayCode ?? ""} />
