@@ -41,11 +41,11 @@ function LiveDot() {
   return <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />;
 }
 
-function GroupRow({ e, started }: { e: GroupEntrant; started?: PhasesStarted }) {
+function GroupRow({ e, started, myId }: { e: GroupEntrant; started?: PhasesStarted; myId?: number | null }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
-      className="grid grid-cols-[28px_1fr_34px_34px_34px_44px] items-center gap-1 border-t border-line px-3 py-2 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft"
+      className={"grid grid-cols-[28px_1fr_34px_34px_34px_44px] items-center gap-1 border-t border-line px-3 py-2 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
     >
       <div className="font-mono text-xs">
         {e.qualifying ? (
@@ -56,6 +56,7 @@ function GroupRow({ e, started }: { e: GroupEntrant; started?: PhasesStarted }) 
       </div>
       <div className="flex min-w-0 items-center gap-1.5">
         <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
+        {e.entrantId === myId && <YouBadge />}
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
         {e.live && <LiveDot />}
       </div>
@@ -140,6 +141,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
 function Knockout() {
   const { data, isLoading, error } = useGroups();
   const { data: started } = usePhasesStarted();
+  const { data: me } = useMe();
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the groups.</p>;
   if (!data?.length) return <p className="text-muted">No groups set yet.</p>;
@@ -160,7 +162,7 @@ function Knockout() {
             </div>
             {g.entrants.map((e, i) => (
               <div key={e.entrantId}>
-                <GroupRow e={e} started={started} />
+                <GroupRow e={e} started={started} myId={me?.entrantId} />
                 {i === 1 && <div className="border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
               </div>
             ))}
@@ -175,6 +177,8 @@ type Phase = "week1" | "week2" | "week3" | "r32";
 
 function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
+  const { data: me } = useMe();
+  const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const cols = "grid grid-cols-[36px_1fr_52px] items-center gap-1";
@@ -197,12 +201,13 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             <div className="text-right font-mono text-sm font-semibold text-gold">{e[phase]}</div>
           </div>
         ) : (
-          <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft"}>
+          <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
             <div className="font-mono text-xs">
               {i < 3 && e[phase] > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{i + 1}</span> : <span className="pl-1.5 text-muted">{i + 1}</span>}
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="truncate text-cream">{e.name}</span>
+              {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
             </div>
             <div className="text-right font-mono text-sm font-semibold text-cream">{e[phase]}</div>

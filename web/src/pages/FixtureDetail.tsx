@@ -1,7 +1,10 @@
 import { useParams, useLocation, Link } from "react-router-dom";
 import { useFixture } from "../api.js";
 import { flagFor } from "../flags.js";
+import { useMe } from "../auth.js";
 import ScoredChips from "../components/ScoredChips.js";
+
+const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
 const TIER: Record<string, { label: string; bg: string; fg: string }> = {
   exact: { label: "Exact", bg: "rgba(201,168,106,0.18)", fg: "#c9a86a" },
@@ -23,6 +26,8 @@ export default function FixtureDetail() {
   const backTo = back.from ?? "/stats/fixtures";
   const backLabel = back.label ?? "Fixtures";
   const { data, isLoading, error } = useFixture(id!);
+  const { data: me } = useMe();
+  const myId = me?.entrantId;
 
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error || !data) return <p className="text-down">Couldn’t load this fixture.</p>;
@@ -142,11 +147,14 @@ export default function FixtureDetail() {
           {data.board.map((b, i) => {
             const t = b.tier ? TIER[b.tier] : null;
             return (
-              <Link key={b.entrantId} to={`/entrant/${b.entrantId}`} className="grid grid-cols-[28px_minmax(0,1fr)_46px_108px_42px] items-center border-t border-line px-4 py-2.5 transition-colors hover:bg-gold-soft">
+              <Link key={b.entrantId} to={`/entrant/${b.entrantId}`} className={"grid grid-cols-[28px_minmax(0,1fr)_46px_108px_42px] items-center border-t border-line px-4 py-2.5 transition-colors hover:bg-gold-soft" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
                 <div className="font-mono text-xs text-muted">{i + 1}</div>
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">{initials(b.name)}</div>
-                  <div className="text-[13.5px] text-cream">{b.name}</div>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-[13.5px] text-cream">{b.name}</span>
+                    {b.entrantId === myId && <YouBadge />}
+                  </div>
                 </div>
                 <div className="text-center font-mono text-[13px]">{b.pick}</div>
                 <div className="flex justify-center">
