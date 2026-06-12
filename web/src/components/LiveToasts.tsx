@@ -95,7 +95,7 @@ export default function LiveToasts() {
         <div
           key={t.id}
           className="toast-drop pointer-events-auto flex w-full overflow-hidden rounded-xl sm:max-w-sm"
-          style={{ background: "rgba(11,21,14,0.97)", border: "1px solid rgba(255,255,255,0.16)", boxShadow: "0 10px 34px rgba(0,0,0,0.5)" }}
+          style={{ background: "rgba(11,21,14,0.97)", border: "1px solid rgba(232,228,216,0.45)", boxShadow: "0 10px 34px rgba(0,0,0,0.5)" }}
         >
           <span className="w-1 shrink-0" style={{ background: t.accent }} aria-hidden />
           <div className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-2.5">
