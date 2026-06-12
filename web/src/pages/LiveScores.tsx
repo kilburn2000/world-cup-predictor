@@ -223,7 +223,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
             onClick={() => setShow((v) => !v)}
             className="block w-full px-5 py-2.5 text-center text-[11.5px] uppercase tracking-wide text-muted transition-colors hover:text-cream sm:px-6"
           >
-            {show ? "Hide predictions ▴" : "Show predictions ▾"}
+            {show ? "Hide all predictions ▴" : "Show all predictions ▾"}
           </button>
           {show && (
             <div className="px-5 pb-5 sm:px-6">
