@@ -91,9 +91,9 @@ export default function Entrant() {
   };
   type Card = { value: string; pos?: string };
 
-  // "X pts" + "Joint Nth" once the period has started; a dash before it kicks off.
+  // "X pts" + "Joint Nth" once the period has started; "-" / "TBC" before it kicks off.
   const phaseValue = (f: Phase): Card => {
-    if (!me || !phaseStarted[f]) return { value: "-" };
+    if (!me || !phaseStarted[f]) return { value: "-", pos: "TBC" };
     const all = lb.map((e) => e[f]);
     return { value: `${me[f]} pts`, pos: posLabel(me[f], all) };
   };
@@ -110,14 +110,14 @@ export default function Entrant() {
     break;
   }
 
-  // Top scorer: combined goals of their two players + position (once anyone scores).
+  // Top scorer: combined goals of their two players + position. The competition
+  // runs the whole tournament, so it shows a real position as soon as it starts.
   const ts = topScorer?.find((t) => t.entrantId === eid);
-  const tsHasGoals = (topScorer ?? []).some((t) => t.total > 0);
   const tsCard: Card = !ts
-    ? { value: "-" }
+    ? { value: "-", pos: "TBC" }
     : {
         value: `${ts.total} ${ts.total === 1 ? "goal" : "goals"}`,
-        pos: tsHasGoals ? posLabel(ts.total, topScorer!.map((t) => t.total)) : undefined,
+        pos: phases?.week1 ? posLabel(ts.total, topScorer!.map((t) => t.total)) : "TBC",
       };
 
   // Prize money WON: only counts a prize once its period is fully decided -
