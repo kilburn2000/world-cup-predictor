@@ -65,7 +65,7 @@ export interface Consensus {
   total: number;
 }
 export const useConsensus = () =>
-  useQuery({ queryKey: ["consensus"], queryFn: () => get<Consensus>("/api/consensus") });
+  useQuery({ queryKey: ["consensus"], queryFn: () => get<Consensus>("/api/consensus"), refetchInterval: 15_000 });
 
 export interface PhasesStarted {
   week1: boolean;
@@ -136,7 +136,7 @@ export interface Stats {
   longestResultStreak: StatLeader;
 }
 export const useStats = () =>
-  useQuery({ queryKey: ["stats"], queryFn: () => get<Stats>("/api/stats") });
+  useQuery({ queryKey: ["stats"], queryFn: () => get<Stats>("/api/stats"), refetchInterval: 15_000 });
 
 export const useTable = () =>
   useQuery({ queryKey: ["table"], queryFn: () => get<GroupTable[]>("/api/table") });
