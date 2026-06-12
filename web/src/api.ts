@@ -28,7 +28,7 @@ export interface GroupTable {
 }
 
 export const useLeaderboard = () =>
-  useQuery({ queryKey: ["leaderboard"], queryFn: () => get<LeaderboardRow[]>("/api/leaderboard") });
+  useQuery({ queryKey: ["leaderboard"], queryFn: () => get<LeaderboardRow[]>("/api/leaderboard"), refetchInterval: 15_000 });
 
 export interface GroupEntrant {
   entrantId: number;
@@ -47,7 +47,7 @@ export interface EntrantGroup {
   entrants: GroupEntrant[];
 }
 export const useGroups = () =>
-  useQuery({ queryKey: ["groups"], queryFn: () => get<EntrantGroup[]>("/api/groups") });
+  useQuery({ queryKey: ["groups"], queryFn: () => get<EntrantGroup[]>("/api/groups"), refetchInterval: 15_000 });
 
 export interface Consensus {
   name: string;
@@ -65,6 +65,12 @@ export interface PhasesStarted {
   week2: boolean;
   week3: boolean;
   r32: boolean;
+  // "done" = every game in that period is finished (prizes lock in then).
+  week1Done: boolean;
+  week2Done: boolean;
+  week3Done: boolean;
+  r32Done: boolean;
+  done: boolean;
 }
 export const usePhasesStarted = () =>
   useQuery({ queryKey: ["phases"], queryFn: () => get<PhasesStarted>("/api/phases"), refetchInterval: 30_000 });
@@ -150,7 +156,9 @@ export async function saveScoringConfig(cfg: ScoringConfig, adminToken: string) 
 
 export interface WallchartMatch {
   home: string;
+  homeCode: string | null;
   away: string;
+  awayCode: string | null;
   predHome: number;
   predAway: number;
   actualHome: number | null;
@@ -166,7 +174,7 @@ export interface Wallchart {
 }
 
 export const useWallchart = (id: string | number) =>
-  useQuery({ queryKey: ["wallchart", id], queryFn: () => get<Wallchart>(`/api/entrants/${id}/wallchart`) });
+  useQuery({ queryKey: ["wallchart", id], queryFn: () => get<Wallchart>(`/api/entrants/${id}/wallchart`), refetchInterval: 15_000 });
 
 export interface EditGroup {
   matchId: number;

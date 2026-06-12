@@ -11,26 +11,22 @@ const ordinal = (n: number) => {
 };
 const gbp = (n: number) => "£" + n.toLocaleString("en-GB");
 
-// Position label among `all` values; tied positions get an "=" suffix (e.g. 3rd=).
+// Position label among `all` values; ties are prefixed "Joint" (e.g. Joint 3rd).
 function posLabel(value: number, all: number[]): string {
   const rank = 1 + all.filter((v) => v > value).length;
   const tied = all.filter((v) => v === value).length > 1;
   return (tied ? "Joint " : "") + ordinal(rank);
 }
 
-// A position rendered in brackets: smaller and muted next to the main value.
-function Pos({ children }: { children: ReactNode }) {
-  return <span className="text-[11px] text-muted">({children})</span>;
-}
-
 const OVERALL_PRIZE: Record<number, number> = {
   1: 500, 2: 325, 3: 200, 4: 175, 5: 150, 6: 125, 7: 100, 8: 90, 9: 80, 10: 80,
 };
 
-function Stat({ label, value, accent }: { label: string; value: ReactNode; accent?: boolean }) {
+function Stat({ label, value, pos, accent }: { label: string; value: ReactNode; pos?: string; accent?: boolean }) {
   return (
     <div className="fl-card px-3 py-3 text-center">
       <div className="font-mono text-base leading-tight" style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
+      {pos && <div className="mt-0.5 text-[11px] text-muted">{pos}</div>}
       <div className="mt-1.5 text-[10px] uppercase tracking-[1px] text-muted">{label}</div>
     </div>
   );
@@ -93,33 +89,36 @@ export default function Entrant() {
   const phaseStarted: Record<Phase, boolean | undefined> = {
     week1: phases?.week1, week2: phases?.week2, week3: phases?.week3, r32: phases?.r32,
   };
-  // "X pts (Joint Nth)" once the period has started; a dash before it kicks off.
-  const phaseValue = (f: Phase): ReactNode => {
-    if (!me || !phaseStarted[f]) return "-";
+  type Card = { value: string; pos?: string };
+
+  // "X pts" + "Joint Nth" once the period has started; a dash before it kicks off.
+  const phaseValue = (f: Phase): Card => {
+    if (!me || !phaseStarted[f]) return { value: "-" };
     const all = lb.map((e) => e[f]);
-    return <>{me[f]} pts <Pos>{posLabel(me[f], all)}</Pos></>;
+    return { value: `${me[f]} pts`, pos: posLabel(me[f], all) };
   };
 
-  // Knockout: "E (Joint 1st)" - group letter + position - or "Eliminated".
-  let knockoutValue: ReactNode = "-";
+  // Knockout: "Group E" + position - or "Eliminated".
+  let knockout: Card = { value: "-" };
   for (const g of groups ?? []) {
     const ge = g.entrants.find((e) => e.entrantId === eid);
     if (!ge) continue;
     const wc = wcGroups?.find((w) => w.group === g.group);
-    knockoutValue = wc?.decided && !ge.qualifying
-      ? "Eliminated"
-      : <>Group {g.group} <Pos>{posLabel(ge.total, g.entrants.map((x) => x.total))}</Pos></>;
+    knockout = wc?.decided && !ge.qualifying
+      ? { value: "Eliminated" }
+      : { value: `Group ${g.group}`, pos: posLabel(ge.total, g.entrants.map((x) => x.total)) };
     break;
   }
 
   // Top scorer: combined goals of their two players + position (once anyone scores).
   const ts = topScorer?.find((t) => t.entrantId === eid);
   const tsHasGoals = (topScorer ?? []).some((t) => t.total > 0);
-  const tsValue: ReactNode = !ts
-    ? "-"
-    : tsHasGoals
-      ? <>{ts.total} {ts.total === 1 ? "goal" : "goals"} <Pos>{posLabel(ts.total, topScorer!.map((t) => t.total))}</Pos></>
-      : `${ts.total} goals`;
+  const tsCard: Card = !ts
+    ? { value: "-" }
+    : {
+        value: `${ts.total} ${ts.total === 1 ? "goal" : "goals"}`,
+        pos: tsHasGoals ? posLabel(ts.total, topScorer!.map((t) => t.total)) : undefined,
+      };
 
   // Prize money WON: only counts a prize once its period is fully decided -
   // a week/round when all its games are played, and the overall / wooden spoon /
@@ -189,12 +188,12 @@ export default function Entrant() {
 
       {/* stat cards */}
       <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Knockout" value={knockoutValue} />
-        <Stat label="Week 1" value={phaseValue("week1")} />
-        <Stat label="Week 2" value={phaseValue("week2")} />
-        <Stat label="Week 3" value={phaseValue("week3")} />
-        <Stat label="Round of 32" value={phaseValue("r32")} />
-        <Stat label="Top scorer" value={tsValue} />
+        <Stat label="Knockout" {...knockout} />
+        <Stat label="Top scorer" {...tsCard} />
+        <Stat label="Week 1" {...phaseValue("week1")} />
+        <Stat label="Week 2" {...phaseValue("week2")} />
+        <Stat label="Week 3" {...phaseValue("week3")} />
+        <Stat label="Round of 32" {...phaseValue("r32")} />
       </div>
 
       {/* group stage */}
