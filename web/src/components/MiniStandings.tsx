@@ -7,7 +7,7 @@ export default function MiniStandings({ entrantId }: { entrantId: number }) {
   return (
     <MiniTable
       entrantId={entrantId}
-      title="Overall standings"
+      title="Overall Standings"
       fullTo="/standings/overall"
       rows={data.map((r) => ({ entrantId: r.entrantId, name: r.name, nameIncomplete: r.nameIncomplete, value: r.total }))}
     />

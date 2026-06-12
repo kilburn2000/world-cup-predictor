@@ -7,7 +7,7 @@ export default function MiniTopScorer({ entrantId }: { entrantId: number }) {
   return (
     <MiniTable
       entrantId={entrantId}
-      title="Top scorer"
+      title="Top Scorer Standings"
       fullTo="/standings/top-scorer"
       rows={data.map((r) => ({ entrantId: r.entrantId, name: r.name, nameIncomplete: r.nameIncomplete, value: r.total }))}
     />
