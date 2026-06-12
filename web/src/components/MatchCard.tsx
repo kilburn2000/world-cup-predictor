@@ -90,8 +90,10 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   const myId = me?.entrantId;
   const [show, setShow] = useState(false);
   const finished = m.status === "FINISHED";
-  // a board row's predicted score takes its chip's colour
+  // a predicted score takes its chip's colour - the scoreline matches the logged-in
+  // entrant's chip, each board row matches its own
   const PICK_TONE: Record<string, string> = { exact: "#c9a86a", result: "#6bbf86", diff: "#6bbf86", miss: "#e08a84" };
+  const scoreColor = m.myTier ? PICK_TONE[m.myTier] : undefined;
   const total = board.length;
   const exactN = board.filter((b) => b.tier === "exact").length;
   const resultN = board.filter((b) => b.tier === "exact" || b.tier === "result").length;
@@ -138,7 +140,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.homeCode}</div>
           </div>
-          <div className="flex items-center gap-3.5 font-mono text-[34px] tracking-wide sm:text-[38px]">
+          <div className="flex items-center gap-3.5 font-mono text-[34px] tracking-wide sm:text-[38px]" style={scoreColor ? { color: scoreColor } : undefined}>
             {m.status === "SCHEDULED" ? (
               <span className="text-xl text-muted">v</span>
             ) : (
