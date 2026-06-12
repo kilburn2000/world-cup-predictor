@@ -15,7 +15,7 @@ const gbp = (n: number) => "£" + n.toLocaleString("en-GB");
 function posLabel(value: number, all: number[]): string {
   const rank = 1 + all.filter((v) => v > value).length;
   const tied = all.filter((v) => v === value).length > 1;
-  return ordinal(rank) + (tied ? " =" : "");
+  return (tied ? "Joint " : "") + ordinal(rank);
 }
 
 // A position rendered in brackets: smaller and muted next to the main value.
@@ -86,14 +86,14 @@ export default function Entrant() {
   const phaseStarted: Record<Phase, boolean | undefined> = {
     week1: phases?.week1, week2: phases?.week2, week3: phases?.week3, r32: phases?.r32,
   };
-  // "X pts (Nth =)" once the period has started; a dash before it kicks off.
+  // "X pts (Joint Nth)" once the period has started; a dash before it kicks off.
   const phaseValue = (f: Phase): ReactNode => {
     if (!me || !phaseStarted[f]) return "-";
     const all = lb.map((e) => e[f]);
     return <>{me[f]} pts <Pos>{posLabel(me[f], all)}</Pos></>;
   };
 
-  // Knockout: "E (1st =)" - group letter + position - or "Eliminated".
+  // Knockout: "E (Joint 1st)" - group letter + position - or "Eliminated".
   let knockoutValue: ReactNode = "-";
   for (const g of groups ?? []) {
     const ge = g.entrants.find((e) => e.entrantId === eid);
