@@ -90,9 +90,8 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   const myId = me?.entrantId;
   const [show, setShow] = useState(false);
   const finished = m.status === "FINISHED";
-  // colour the scoreline to match the logged-in entrant's prediction chip
-  const SCORE_TONE: Record<string, string> = { exact: "#c9a86a", result: "#6bbf86", diff: "#6bbf86", miss: "#e08a84" };
-  const scoreColor = m.myTier ? SCORE_TONE[m.myTier] : undefined;
+  // a board row's predicted score takes its chip's colour
+  const PICK_TONE: Record<string, string> = { exact: "#c9a86a", result: "#6bbf86", diff: "#6bbf86", miss: "#e08a84" };
   const total = board.length;
   const exactN = board.filter((b) => b.tier === "exact").length;
   const resultN = board.filter((b) => b.tier === "exact" || b.tier === "result").length;
@@ -139,7 +138,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.homeCode}</div>
           </div>
-          <div className="flex items-center gap-3.5 font-mono text-[34px] tracking-wide sm:text-[38px]" style={scoreColor ? { color: scoreColor } : undefined}>
+          <div className="flex items-center gap-3.5 font-mono text-[34px] tracking-wide sm:text-[38px]">
             {m.status === "SCHEDULED" ? (
               <span className="text-xl text-muted">v</span>
             ) : (
@@ -259,7 +258,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                           {b.entrantId === myId && <YouBadge />}
                         </div>
                       </div>
-                      <div className="text-center font-mono text-[13px]">{b.pick}</div>
+                      <div className="text-center font-mono text-[13px]" style={b.tier ? { color: PICK_TONE[b.tier] } : undefined}>{b.pick}</div>
                       <div className="hidden justify-center sm:flex">
                         {b.points != null && <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />}
                       </div>
