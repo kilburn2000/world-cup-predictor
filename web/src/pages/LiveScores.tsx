@@ -153,6 +153,20 @@ function MatchCard({ m }: { m: LiveMatch }) {
         </div>
       </div>
 
+      {/* logged-in entrant's own pick for a game that's played / in play */}
+      {(m.status === "FINISHED" || m.status === "IN_PLAY") && m.myPick && (
+        <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-1 border-b border-line px-5 py-2 text-[12.5px] sm:px-6">
+          <span className="text-[9px] uppercase tracking-wide text-gold/80">Your pick</span>
+          <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
+          {m.myTier && (
+            <span className="self-center rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: TIER[m.myTier].bg, color: TIER[m.myTier].fg }}>
+              {TIER[m.myTier].label}
+            </span>
+          )}
+          {m.myPoints != null && <span className="font-mono font-semibold text-gold">+{m.myPoints}</span>}
+        </div>
+      )}
+
       {/* finished → who got it right; otherwise → the crowd's most-predicted */}
       {m.mostCommonScore && (
         <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[12.5px] text-muted sm:px-6">

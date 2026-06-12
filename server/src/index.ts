@@ -554,6 +554,7 @@ app.get("/api/entrants/:id/edit", async (req: any, reply) => {
 // that scoreline) and, for in-play games, ESPN's live minute + goal/card events.
 app.get("/api/live", async (req: any) => {
   const cfg = await loadConfig();
+  const myId = req.user?.entrantId ?? null;
   const day = Math.max(-1, Math.min(1, Math.trunc(Number(req.query?.day) || 0))); // -1 yesterday, 0 today, +1 tomorrow
   const rows = await sql`
     select m.id, m.stage, m.group_name grp, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
@@ -656,9 +657,13 @@ app.get("/api/live", async (req: any) => {
     }
 
     const mc = m.stage === "GROUP" ? mostCommon(predsByMatch.get(m.id) ?? [], m.mh) : { score: null, result: null };
+    const mine = myId ? board.find((b) => b.entrantId === myId) : null;
 
     return {
       id: m.id,
+      myPick: mine?.pick ?? null,
+      myPoints: mine?.points ?? null,
+      myTier: mine?.tier ?? null,
       home: m.home,
       away: m.away,
       homeCode: m.home_code ?? "",

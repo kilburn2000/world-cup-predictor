@@ -326,6 +326,10 @@ export interface LiveMatch {
   period?: number | null;
   homeScore: number;
   awayScore: number;
+  /** the logged-in entrant's own pick/points/tier for this match (null if not). */
+  myPick?: string | null;
+  myPoints?: number | null;
+  myTier?: LiveTier | null;
   mostCommonScore?: string | null;
   mostCommonScoreCount?: number;
   mostCommonResult?: "HOME" | "DRAW" | "AWAY" | null;
