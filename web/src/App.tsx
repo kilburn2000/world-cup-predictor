@@ -119,7 +119,7 @@ export default function App() {
 
             {/* Desktop: inline nav. */}
             <nav className="hidden items-center gap-5 sm:flex">
-              <NavLink to="/" className={tab({ isActive: location.pathname === "/" })}>Dashboard</NavLink>
+              {me && <NavLink to="/" className={tab({ isActive: location.pathname === "/" })}>Dashboard</NavLink>}
               <NavLink to="/standings/overall" className={tab({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={tab}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
@@ -136,7 +136,7 @@ export default function App() {
           {/* Mobile: dropdown nav panel. */}
           {menuOpen && (
             <nav className="mt-3 flex flex-col gap-1 border-t border-line pt-3 sm:hidden">
-              <NavLink to="/" className={() => mobileItem({ isActive: location.pathname === "/" })}>Dashboard</NavLink>
+              {me && <NavLink to="/" className={() => mobileItem({ isActive: location.pathname === "/" })}>Dashboard</NavLink>}
               <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={() => mobileItem({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
