@@ -112,6 +112,15 @@ export default function Entrant() {
     break;
   }
 
+  // Top scorer: combined goals of their two players + position (once anyone scores).
+  const ts = topScorer?.find((t) => t.entrantId === eid);
+  const tsHasGoals = (topScorer ?? []).some((t) => t.total > 0);
+  const tsValue: ReactNode = !ts
+    ? "-"
+    : tsHasGoals
+      ? <>{ts.total} {ts.total === 1 ? "goal" : "goals"} <Pos>{posLabel(ts.total, topScorer!.map((t) => t.total))}</Pos></>
+      : `${ts.total} goals`;
+
   // Prize money WON: only counts a prize once its period is fully decided -
   // a week/round when all its games are played, and the overall / wooden spoon /
   // top-scorer prizes only when the whole tournament is finished.
@@ -179,12 +188,13 @@ export default function Entrant() {
       </div>
 
       {/* stat cards */}
-      <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Knockout" value={knockoutValue} />
         <Stat label="Week 1" value={phaseValue("week1")} />
         <Stat label="Week 2" value={phaseValue("week2")} />
         <Stat label="Week 3" value={phaseValue("week3")} />
         <Stat label="Round of 32" value={phaseValue("r32")} />
+        <Stat label="Top scorer" value={tsValue} />
       </div>
 
       {/* group stage */}
