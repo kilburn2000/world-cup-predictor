@@ -42,9 +42,12 @@ function stateToast(id: string, m: LiveMatch, kind: Kind): Toast {
 }
 
 type Phase = "PRE" | "LIVE" | "HT" | "FT";
+// ESPN labels the break "Halftime" / "Half Time" / "HT" in type.description; match
+// all spellings (hyphen, space or none).
+const HALFTIME = /half[\s-]?time|^ht$/i;
 function phaseOf(m: LiveMatch): Phase {
   if (m.status === "FINISHED") return "FT";
-  if (m.status === "IN_PLAY") return m.half && /half-?time/i.test(m.half) ? "HT" : "LIVE";
+  if (m.status === "IN_PLAY") return m.half && HALFTIME.test(m.half) ? "HT" : "LIVE";
   return "PRE";
 }
 
@@ -102,13 +105,13 @@ export default function LiveToasts() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="toast-drop pointer-events-auto flex max-w-sm items-center gap-3 rounded-xl border px-4 py-2.5 backdrop-blur-md"
-          style={{ borderColor: t.accent + "66", background: "rgba(13,27,19,0.92)", boxShadow: "0 8px 30px rgba(0,0,0,0.45)" }}
+          className="toast-drop pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-xl border border-gold px-4 py-3"
+          style={{ background: "#c9a86a", boxShadow: "0 10px 34px rgba(0,0,0,0.5)" }}
         >
           <span className="text-xl">{t.icon}</span>
           <div className="min-w-0">
-            <div className="truncate font-display text-sm text-cream">{t.title}</div>
-            <div className="truncate text-[11px] text-muted">{t.subtitle}</div>
+            <div className="truncate font-display text-sm font-semibold text-pitch-950">{t.title}</div>
+            <div className="truncate text-[11px] font-medium text-pitch-950/70">{t.subtitle}</div>
           </div>
         </div>
       ))}

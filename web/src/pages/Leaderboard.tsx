@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useGroups, useLeaderboard, useStats, useConsensus, type GroupEntrant, type StatLeader, type Consensus } from "../api.js";
+import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted } from "../api.js";
 import TabSelect from "../components/TabSelect.js";
+
+// A points cell: the number once there's a score, "0" once the phase has kicked
+// off (so a started week reads 0, not blank), and "–" before it begins.
+const cell = (v: number, started?: boolean) => (v > 0 ? v : started ? 0 : "–");
 
 function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeader; unit: string; unitPlural?: string }) {
   const has = l && l.name && l.value > 0;
@@ -26,7 +30,7 @@ function LiveDot() {
   return <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />;
 }
 
-function GroupRow({ e }: { e: GroupEntrant }) {
+function GroupRow({ e, started }: { e: GroupEntrant; started?: PhasesStarted }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
@@ -44,9 +48,9 @@ function GroupRow({ e }: { e: GroupEntrant }) {
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
         {e.live && <LiveDot />}
       </div>
-      <div className="text-center font-mono text-[11px] text-muted">{e.week1 || "–"}</div>
-      <div className="text-center font-mono text-[11px] text-muted">{e.week2 || "–"}</div>
-      <div className="text-center font-mono text-[11px] text-muted">{e.week3 || "–"}</div>
+      <div className="text-center font-mono text-[11px] text-muted">{cell(e.week1, started?.week1)}</div>
+      <div className="text-center font-mono text-[11px] text-muted">{cell(e.week2, started?.week2)}</div>
+      <div className="text-center font-mono text-[11px] text-muted">{cell(e.week3, started?.week3)}</div>
       <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
     </Link>
   );
@@ -62,6 +66,7 @@ const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week
 function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: stats } = useStats();
+  const { data: started } = usePhasesStarted();
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const cols = "grid grid-cols-[30px_1fr_30px_30px_30px_38px_44px] items-center gap-1";
@@ -90,10 +95,10 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{e.week1 || "–"}</div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{e.week2 || "–"}</div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{e.week3 || "–"}</div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{e.r32 || "–"}</div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.week1, started?.week1)}</div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.week2, started?.week2)}</div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.week3, started?.week3)}</div>
+              <div className="text-center font-mono text-[11px] text-gold/80">{cell(e.r32, started?.r32)}</div>
               <div className="text-right font-mono text-sm font-semibold text-gold">{e.total}</div>
             </div>
           ) : (
@@ -105,10 +110,10 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="truncate text-cream">{e.name}</span>
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
-              <div className="text-center font-mono text-[11px] text-muted">{e.week1 || "–"}</div>
-              <div className="text-center font-mono text-[11px] text-muted">{e.week2 || "–"}</div>
-              <div className="text-center font-mono text-[11px] text-muted">{e.week3 || "–"}</div>
-              <div className="text-center font-mono text-[11px] text-muted">{e.r32 || "–"}</div>
+              <div className="text-center font-mono text-[11px] text-muted">{cell(e.week1, started?.week1)}</div>
+              <div className="text-center font-mono text-[11px] text-muted">{cell(e.week2, started?.week2)}</div>
+              <div className="text-center font-mono text-[11px] text-muted">{cell(e.week3, started?.week3)}</div>
+              <div className="text-center font-mono text-[11px] text-muted">{cell(e.r32, started?.r32)}</div>
               <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
             </Link>
           ),
@@ -120,6 +125,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
 
 function Knockout() {
   const { data, isLoading, error } = useGroups();
+  const { data: started } = usePhasesStarted();
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the groups.</p>;
   if (!data?.length) return <p className="text-muted">No groups set yet.</p>;
@@ -140,7 +146,7 @@ function Knockout() {
             </div>
             {g.entrants.map((e, i) => (
               <div key={e.entrantId}>
-                <GroupRow e={e} />
+                <GroupRow e={e} started={started} />
                 {i === 1 && <div className="border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
               </div>
             ))}

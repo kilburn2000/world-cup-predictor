@@ -240,7 +240,8 @@ export async function buildKnockout() {
     }
     if (s.type === "third") return { label: `3rd ${s.groups.join("/")}`, team: null, projected: false };
     if (s.type === "ml") return { label: `Loser of match ${s.m}`, team: null, projected: false };
-    return { label: `Winner of match ${s.m}`, team: null, projected: false };
+    if (s.type === "mw") return { label: `Winner of match ${s.m}`, team: null, projected: false };
+    return { label: "TBD", team: null, projected: false };
   };
 
   const withSched = (m: { match: number; a: Src; b: Src }) => ({

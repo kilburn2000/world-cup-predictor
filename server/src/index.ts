@@ -134,6 +134,20 @@ app.get("/api/leaderboard", async () => {
   return rows;
 });
 
+// Which scoring phases have kicked off (any game no longer SCHEDULED). Used by
+// the standings to show "0" rather than "–" once a week is under way.
+app.get("/api/phases", async () => {
+  const [r] = await sql`
+    select
+      coalesce(bool_or(stage = 'GROUP'   and matchday = 1 and status <> 'SCHEDULED'), false) as week1,
+      coalesce(bool_or(stage = 'GROUP'   and matchday = 2 and status <> 'SCHEDULED'), false) as week2,
+      coalesce(bool_or(stage = 'GROUP'   and matchday = 3 and status <> 'SCHEDULED'), false) as week3,
+      coalesce(bool_or(stage = 'LAST_32' and status <> 'SCHEDULED'), false) as r32
+    from matches
+  `;
+  return r;
+});
+
 // The "Everyone" consensus: a virtual entrant who, for every game, picks the
 // most-predicted scoreline (and most-predicted result for the outcome point),
 // scored live. Not a real entrant — only shown as a toggle-on comparison in the

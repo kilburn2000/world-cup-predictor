@@ -60,6 +60,15 @@ export interface Consensus {
 export const useConsensus = () =>
   useQuery({ queryKey: ["consensus"], queryFn: () => get<Consensus>("/api/consensus") });
 
+export interface PhasesStarted {
+  week1: boolean;
+  week2: boolean;
+  week3: boolean;
+  r32: boolean;
+}
+export const usePhasesStarted = () =>
+  useQuery({ queryKey: ["phases"], queryFn: () => get<PhasesStarted>("/api/phases"), refetchInterval: 30_000 });
+
 export interface StatLeader {
   value: number;
   name: string | null;
