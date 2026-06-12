@@ -13,7 +13,10 @@ export default function Loader({ label = "Whitey’s World Cup Sweepstake" }: { 
         animation: "loaderVeil 0.18s ease both",
       }}
     >
-      <div className="relative flex h-[270px] w-[270px] items-center justify-center">
+      <div
+        className="relative flex h-[270px] w-[270px] items-center justify-center"
+        style={{ animation: "loaderRise 0.3s ease both" }}
+      >
         <span
           className="absolute h-[250px] w-[250px] rounded-full border border-gold"
           style={{ animation: "crestRing 1.7s ease-out infinite" }}
@@ -29,7 +32,10 @@ export default function Loader({ label = "Whitey’s World Cup Sweepstake" }: { 
           style={{ animation: "crestPulse 1.7s ease-in-out infinite" }}
         />
       </div>
-      <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[3px] text-gold">
+      <div
+        className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[3px] text-gold"
+        style={{ animation: "loaderRise 0.3s ease both 0.05s" }}
+      >
         <span>{label}</span>
         <span className="inline-flex gap-1">
           <span className="h-1 w-1 rounded-full bg-gold" style={{ animation: "loadDots 1.2s infinite 0s" }} />

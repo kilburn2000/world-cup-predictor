@@ -159,9 +159,9 @@ function MatchCard({ m }: { m: LiveMatch }) {
           {finished ? (
             <>
               <span className="text-[9px] uppercase tracking-wide">Got it right</span>
-              <span><span className="font-mono text-cream">{exactN}</span> exact ({pctOf(exactN)}%)</span>
+              <span><span className="mr-1.5 font-mono text-cream">{exactN}</span>Exact ({pctOf(exactN)}%)</span>
               <span>·</span>
-              <span><span className="font-mono text-cream">{resultN}</span> result ({pctOf(resultN)}%)</span>
+              <span><span className="mr-1.5 font-mono text-cream">{resultN}</span>Result ({pctOf(resultN)}%)</span>
             </>
           ) : (
             <>

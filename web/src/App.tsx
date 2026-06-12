@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Routes, Route, NavLink, Navigate, useLocation } from "react-router-dom";
 import Leaderboard from "./pages/Leaderboard.js";
 import LiveScores from "./pages/LiveScores.js";
@@ -55,7 +55,9 @@ export default function App() {
     return () => clearTimeout(t);
   }, []);
 
-  useEffect(() => {
+  // Flip to the loading state *before* the browser paints the new route, so the
+  // overlay covers the incoming page instead of the page flashing in first.
+  useLayoutEffect(() => {
     if (firstLoad.current) {
       firstLoad.current = false;
       return;

@@ -86,7 +86,10 @@ input[type="number"] { -moz-appearance: textfield; }
 .btn-ghost:hover { border-color: var(--color-gold); }
 
 /* ===== loader keyframes ===== */
-@keyframes loaderVeil { from { opacity: 0; } to { opacity: 1; } }
+/* Veil is fully opaque from frame 1 (so the incoming page never peeks through);
+   only the inner content does a subtle fade/scale entrance. */
+@keyframes loaderVeil { from { opacity: 1; } to { opacity: 1; } }
+@keyframes loaderRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes crestPulse {
   0%, 100% { transform: scale(0.9); opacity: 0.8; filter: drop-shadow(0 0 10px rgba(201, 168, 106, 0.25)); }
   50% { transform: scale(1.04); opacity: 1; filter: drop-shadow(0 0 26px rgba(201, 168, 106, 0.5)); }
