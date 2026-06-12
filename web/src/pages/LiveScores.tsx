@@ -155,7 +155,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
 
       {/* finished → who got it right; otherwise → the crowd's most-predicted */}
       {m.mostCommonScore && (
-        <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[11.5px] text-muted sm:px-6">
+        <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[12.5px] text-muted sm:px-6">
           {finished ? (
             <>
               <span className="text-[9px] uppercase tracking-wide">Got it right</span>
@@ -170,16 +170,16 @@ function MatchCard({ m }: { m: LiveMatch }) {
                 <span className="font-mono text-cream">{m.mostCommonScore.replace("-", "–")}</span> {frac(m.mostCommonScoreCount, m.mostCommonTotal)}
               </span>
               <span>·</span>
-              <span className="inline-flex items-center gap-1">
+              <span>
                 {m.mostCommonResult === "DRAW" ? (
-                  <span>Draw</span>
+                  <span className="font-mono text-cream">Draw</span>
                 ) : (
                   <>
-                    <span>{flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}</span>
-                    <span>{(m.mostCommonResult === "HOME" ? m.homeCode : m.awayCode)} Win</span>
+                    <span className="mr-1">{flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}</span>
+                    <span className="font-mono text-cream">{m.mostCommonResult === "HOME" ? m.homeCode : m.awayCode}</span> Win
                   </>
-                )}
-                <span>{frac(m.mostCommonResultCount, m.mostCommonTotal)}</span>
+                )}{" "}
+                {frac(m.mostCommonResultCount, m.mostCommonTotal)}
               </span>
             </>
           )}
