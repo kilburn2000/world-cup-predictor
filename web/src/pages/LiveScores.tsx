@@ -161,7 +161,7 @@ function MatchCard({ m }: { m: LiveMatch }) {
       {/* logged-in entrant's own pick; chips + points only once the game's under way */}
       {m.myPick && (
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-b border-line px-5 py-2 text-[12.5px] sm:px-6">
-          <span className="text-[9px] uppercase tracking-wide text-gold/80">Your pick</span>
+          <span className="text-[9px] uppercase tracking-wide text-gold/80">Your prediction</span>
           <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
           {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
             <>
