@@ -118,7 +118,7 @@ export default function App() {
               onClick={() => setMenuOpen((v) => !v)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
-              className="absolute right-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg border border-gold bg-gold-soft text-gold transition-colors hover:bg-gold hover:text-pitch-950 sm:hidden"
+              className="absolute right-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg border border-gold bg-gold-soft text-gold transition-colors hover:bg-gold hover:text-pitch-950 min-[992px]:hidden"
             >
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -126,7 +126,7 @@ export default function App() {
             </button>
 
             {/* Desktop: inline nav. */}
-            <nav className="hidden items-center gap-5 sm:flex">
+            <nav className="hidden items-center gap-5 min-[992px]:flex">
               {me && <NavLink to="/" className={tab({ isActive: location.pathname === "/" })}>Dashboard</NavLink>}
               <NavLink to="/standings/overall" className={tab({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={tab}>Prizes</NavLink>
@@ -143,7 +143,7 @@ export default function App() {
 
           {/* Mobile: dropdown nav panel. */}
           {menuOpen && (
-            <nav className="mt-3 flex flex-col gap-1 border-t border-line pt-3 sm:hidden">
+            <nav className="mt-3 flex flex-col gap-1 border-t border-line pt-3 min-[992px]:hidden">
               {me && <NavLink to="/" className={() => mobileItem({ isActive: location.pathname === "/" })}>Dashboard</NavLink>}
               <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
