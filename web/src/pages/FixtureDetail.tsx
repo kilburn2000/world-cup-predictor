@@ -1,4 +1,4 @@
-import { useParams, useLocation, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useFixture } from "../api.js";
 import { flagFor } from "../flags.js";
 import { useMe } from "../auth.js";
@@ -21,10 +21,6 @@ const STAGE: Record<string, string> = { GROUP: "Group", LAST_32: "Round of 32", 
 
 export default function FixtureDetail() {
   const { id } = useParams();
-  const loc = useLocation();
-  const back = (loc.state as { from?: string; label?: string } | null) ?? {};
-  const backTo = back.from ?? "/stats/fixtures";
-  const backLabel = back.label ?? "Fixtures";
   const { data, isLoading, error } = useFixture(id!);
   const { data: me } = useMe();
   const myId = me?.entrantId;
@@ -60,9 +56,6 @@ export default function FixtureDetail() {
 
   return (
     <div className="fl-enter mx-auto max-w-2xl">
-      <div className="mb-3 text-[11px] uppercase tracking-[1.8px]">
-        <Link to={backTo} className="text-muted hover:text-cream">← {backLabel}</Link>
-      </div>
 
       <div className="fl-card mb-5 px-5 py-5">
         <div className="mb-3 flex items-center justify-between text-[11px] uppercase tracking-[1px] text-muted">

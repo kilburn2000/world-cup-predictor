@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useWallchart, type WallchartMatch } from "../api.js";
 import { flagFor } from "../flags.js";
 import ScoredChips from "../components/ScoredChips.js";
@@ -52,13 +52,7 @@ export default function Entrant() {
 
   return (
     <div className="fl-enter">
-      <Link to="/standings/overall" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-cream">
-        ← Back to standings
-      </Link>
-
-      <div className="mt-4">
-        <EntrantSummary id={id!} />
-      </div>
+      <EntrantSummary id={id!} />
 
       {data && (
         <>

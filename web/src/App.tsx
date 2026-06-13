@@ -69,6 +69,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [label, setLabel] = useState("Whitey’s World Cup Sweepstake");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [referrer, setReferrer] = useState<string | null>(null);
+  const prevPath = useRef<string | null>(null);
   const firstLoad = useRef(true);
 
   const handleLogout = async () => {
@@ -92,8 +94,12 @@ export default function App() {
     window.scrollTo(0, 0);
     if (firstLoad.current) {
       firstLoad.current = false;
+      prevPath.current = location.pathname;
       return;
     }
+    // the page we came from becomes this page's "back" target (referrer)
+    setReferrer(prevPath.current);
+    prevPath.current = location.pathname;
     setLabel(labelFor(location.pathname));
     setLoading(true);
     const t = setTimeout(() => setLoading(false), 3000);
@@ -164,6 +170,14 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-8">
+        {referrer && (
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-cream"
+          >
+            <span aria-hidden>←</span> Back to {labelFor(referrer)}
+          </button>
+        )}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/standings" element={<Navigate to="/standings/overall" replace />} />
