@@ -82,11 +82,10 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   // current scoreline; before kick-off (points null) the order is unchanged.
   const board = [...m.board].sort((a, b) => (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name));
   // Standard competition rank on points: ties share a position (first shows the
-  // number, the rest "="). Before kick-off (points null) it's just the list order.
+  // number, the rest "="). Before kick-off everyone's points are null, so all are joint 1st.
   const rankFor = (i: number): string | number => {
-    const pts = board[i].points;
-    if (pts == null) return i + 1;
-    if (i > 0 && board[i - 1].points === pts) return "=";
+    const pts = board[i].points ?? -1;
+    if (i > 0 && (board[i - 1].points ?? -1) === pts) return "=";
     return 1 + board.filter((x) => (x.points ?? -1) > pts).length;
   };
   const { data: me } = useMe();
