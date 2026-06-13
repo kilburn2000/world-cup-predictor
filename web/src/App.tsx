@@ -96,9 +96,15 @@ export default function App() {
     // The page we came from becomes this page's "back" target - but only on a
     // genuine navigation (the path actually changed). Guards against the very
     // first load and StrictMode's double-invoke setting the page as its own.
-    const prev = prevPath.current;
-    if (prev !== null && prev !== location.pathname) setReferrer(prev);
-    prevPath.current = location.pathname;
+    // Redirect-only paths (/standings -> /standings/overall etc) are skipped so
+    // the real destination inherits the true previous page as its referrer.
+    const isRedirect =
+      location.pathname === "/standings" || location.pathname === "/stats" || location.pathname.startsWith("/live");
+    if (!isRedirect) {
+      const prev = prevPath.current;
+      if (prev !== null && prev !== location.pathname) setReferrer(prev);
+      prevPath.current = location.pathname;
+    }
 
     if (firstLoad.current) {
       firstLoad.current = false;
@@ -176,7 +182,7 @@ export default function App() {
       <main className="mx-auto max-w-5xl px-4 py-8">
         {referrer && (
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(referrer)}
             className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-cream"
           >
             <span aria-hidden>←</span> Back to {labelFor(referrer)}

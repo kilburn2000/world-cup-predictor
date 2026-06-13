@@ -180,7 +180,7 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
       </div>
 
       {/* stat cards */}
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="mt-4 flex flex-wrap justify-center gap-2 [&>*]:basis-[calc(50%-0.25rem)] sm:[&>*]:basis-[calc(25%-0.375rem)] lg:[&>*]:basis-[calc((100%-3rem)/7)]">
         <Stat label="Knockout" {...knockout} to={linkCards ? "/standings/knockout" : undefined} />
         <Stat label="Top scorer" {...tsCard} to={linkCards ? "/standings/top-scorer" : undefined} />
         <Stat label="Week 1" {...phaseValue("week1")} to={linkCards ? "/standings/week-1" : undefined} />
