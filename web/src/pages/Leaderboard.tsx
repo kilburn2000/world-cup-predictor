@@ -104,10 +104,10 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   return (
     <>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Most correct scores" l={stats?.mostExact} unit="exact score" />
+        <StatCard label="Most Exact Scores" l={stats?.mostExact} unit="exact score" />
         <StatCard label="Most correct results" l={stats?.mostResults} unit="result" />
-        <StatCard label="Longest exact streak" l={stats?.longestExactStreak} unit="in a row" unitPlural="in a row" />
-        <StatCard label="Longest result streak" l={stats?.longestResultStreak} unit="in a row" unitPlural="in a row" />
+        <StatCard label="Longest Exact Score Streak" l={stats?.longestExactStreak} unit="in a row" unitPlural="in a row" />
+        <StatCard label="Longest Correct Result Streak" l={stats?.longestResultStreak} unit="in a row" unitPlural="in a row" />
       </div>
       <div className="fl-card overflow-hidden">
         <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
