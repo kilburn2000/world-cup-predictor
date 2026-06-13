@@ -64,10 +64,10 @@ async function captureMatch(espnId: string, dbMatch: any, events: FeedEvent[], b
   if (dbMatch) {
     await sql`delete from match_events where match_id = ${dbMatch.id}`;
     for (const e of events) {
+      // ESPN attributes an event to the team it counts for (so an own goal is
+      // already on the benefiting team's side); we just record the own flag.
       const tid = resolveEspn(e.country, byNorm);
-      // the scorer's side; an own goal counts for the opposing team
-      const scorerSide = tid === dbMatch.home_team_id ? "home" : "away";
-      const side = e.own ? (scorerSide === "home" ? "away" : "home") : scorerSide;
+      const side = tid === dbMatch.home_team_id ? "home" : "away";
       await sql`
         insert into match_events (match_id, minute, type, team, player, own)
         values (${dbMatch.id}, ${e.minute}, ${e.type}, ${side}, ${e.player ?? null}, ${e.own})

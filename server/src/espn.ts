@@ -106,11 +106,14 @@ export async function getMatchEvents(eventId: string): Promise<SummaryEvent[]> {
   const out: SummaryEvent[] = [];
   for (const ev of data.keyEvents ?? []) {
     const text = String(ev.type?.text ?? "").toLowerCase();
+    // VAR review entries (e.g. "VAR - (Red) Card Upgrade") are notifications, not
+    // events in their own right - the actual goal/card has its own entry.
+    if (text.includes("var")) continue;
     const own = text.includes("own");
     // Key events are goals + red cards only (yellows are noise).
     let type: SummaryEvent["type"] | null = null;
     if (text.includes("goal") || /penalt.*scor|scor.*penalt/.test(text)) type = "goal";
-    else if (text.includes("red")) type = "red";
+    else if (text.includes("red card")) type = "red";
     if (!type) continue;
     out.push({
       type,

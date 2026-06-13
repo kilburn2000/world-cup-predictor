@@ -1058,10 +1058,10 @@ try {
   // One-time: drop finished-match key events so the poller's backfill re-captures
   // them with the own-goal flag + correct team. Guarded so it runs only once.
   await sql`create table if not exists app_meta (key text primary key)`;
-  const [recaptured] = await sql`select 1 from app_meta where key = 'own_recapture_v1'`;
+  const [recaptured] = await sql`select 1 from app_meta where key = 'own_recapture_v2'`;
   if (!recaptured) {
     await sql`delete from match_events where match_id in (select id from matches where status = 'FINISHED')`;
-    await sql`insert into app_meta (key) values ('own_recapture_v1')`;
+    await sql`insert into app_meta (key) values ('own_recapture_v2')`;
   }
 } catch (e) {
   console.error("startup migration failed", e);
