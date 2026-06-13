@@ -198,6 +198,74 @@ export async function backfillScorers(): Promise<number> {
   return filled;
 }
 
+// Verify recently-finished matches against ESPN: reconcile the final score and
+// re-capture key events, so a wrong/stale live capture is corrected even once the
+// match already has data. Returns the number of matches whose score changed (the
+// caller rescores predictions). Bounded to a recent window to limit feed calls.
+export async function verifyFinished(windowDays = 2): Promise<number> {
+  const dbMatches = (await sql`
+    select m.id, m.home_team_id mh, m.home_goals hg, m.away_goals ag,
+           (m.kickoff_utc at time zone 'America/Los_Angeles')::date::text d,
+           ht.name home, at.name away
+    from matches m
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    where m.status = 'FINISHED' and m.kickoff_utc is not null
+      and m.kickoff_utc > now() - (${windowDays} * interval '1 day')
+  `) as any[];
+  if (!dbMatches.length) return 0;
+  const byNorm = await dbNameMap();
+
+  const dates = new Set<string>();
+  for (const m of dbMatches) {
+    const base = ymd(m.d);
+    dates.add(plusDays(base, -1));
+    dates.add(base);
+    dates.add(plusDays(base, 1));
+  }
+  const poolById = new Map<string, any>();
+  for (const date of dates) {
+    try {
+      for (const e of await getMatchesForDate(date)) poolById.set(e.id, e);
+    } catch {
+      /* skip date */
+    }
+  }
+  const pool = [...poolById.values()];
+
+  let changed = 0;
+  for (const dbm of dbMatches) {
+    const hId = resolveEspn(dbm.home, byNorm);
+    const aId = resolveEspn(dbm.away, byNorm);
+    const ev = pool.find((e) => {
+      const eh = resolveEspn(e.home, byNorm), ea = resolveEspn(e.away, byNorm);
+      return (eh === hId && ea === aId) || (eh === aId && ea === hId);
+    });
+    if (!ev || ev.state !== "post") continue;
+
+    // align ESPN's authoritative final score to our home/away
+    const espnHomeIsOurs = resolveEspn(ev.home, byNorm) === dbm.mh;
+    const hg = espnHomeIsOurs ? ev.homeScore : ev.awayScore;
+    const ag = espnHomeIsOurs ? ev.awayScore : ev.homeScore;
+    if (hg !== dbm.hg || ag !== dbm.ag) {
+      await sql`update matches set home_goals = ${hg}, away_goals = ${ag} where id = ${dbm.id}`;
+      changed++;
+    }
+
+    // re-capture key events from the post-match summary (corrects own goals, VAR
+    // mislabels, late events, etc); keep existing if the fetch fails.
+    let events: FeedEvent[] = [];
+    try {
+      events = await getMatchEvents(ev.id);
+    } catch {
+      /* keep existing */
+    }
+    if (events.length) await captureMatch(ev.id, { id: dbm.id, home_team_id: hId }, events, byNorm);
+  }
+  await recomputeFeedGoals();
+  return changed;
+}
+
 // Key events for a set of matches (for the live feed), keyed by match id.
 export async function eventsForMatches(ids: number[]): Promise<Map<number, LiveEventRow[]>> {
   const map = new Map<number, LiveEventRow[]>();

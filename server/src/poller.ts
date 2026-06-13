@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { syncMatches, syncFromEspn } from "./sync.js";
 import { recomputeAll } from "./score.js";
-import { syncScorers, backfillScorers } from "./scorers.js";
+import { syncScorers, backfillScorers, verifyFinished } from "./scorers.js";
 
 // Live scores come from ESPN's free feed every 30s. A slow football-data pass
 // every 10 min keeps the bracket structure fresh (knockout team resolution),
@@ -55,6 +55,25 @@ async function backfillTick() {
   }
 }
 
+// Verify recently-finished matches against ESPN (score + key events) so a stale
+// live capture gets corrected after the fact.
+let verifyRunning = false;
+async function verifyTick() {
+  if (verifyRunning) return;
+  verifyRunning = true;
+  try {
+    const changed = await verifyFinished();
+    if (changed > 0) {
+      const n = await recomputeAll();
+      console.log(`[verify] corrected ${changed} finished-match score(s) → rescored ${n} predictions`);
+    }
+  } catch (e: any) {
+    console.warn(`[verify] ${e.message}`);
+  } finally {
+    verifyRunning = false;
+  }
+}
+
 async function structTick() {
   if (structRunning) return;
   structRunning = true;
@@ -71,6 +90,7 @@ export function startPoller() {
   cron.schedule("*/15 * * * * *", liveTick); // every 15 seconds
   cron.schedule("*/10 * * * * *", scorerTick); // Top Scorer feed + live events, every 10s
   cron.schedule("0 */5 * * * *", backfillTick); // backfill finished matches every 5 min
+  cron.schedule("0 */20 * * * *", verifyTick); // verify recent finished matches every 20 min
   console.log("[poller] ESPN live scores every 15s, scorer/events feed every 10s");
   // football-data structure sync is OFF: it overwrote ESPN's live scores with
   // stale/null data. ESPN is the source of truth for all live scores/results.
@@ -79,4 +99,5 @@ export function startPoller() {
   liveTick();
   scorerTick();
   backfillTick();
+  verifyTick();
 }
