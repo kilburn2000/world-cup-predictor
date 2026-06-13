@@ -81,6 +81,14 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   // Once a game's under way, rank predictions by the points they'd score at the
   // current scoreline; before kick-off (points null) the order is unchanged.
   const board = [...m.board].sort((a, b) => (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name));
+  // Standard competition rank on points: ties share a position (first shows the
+  // number, the rest "="). Before kick-off (points null) it's just the list order.
+  const rankFor = (i: number): string | number => {
+    const pts = board[i].points;
+    if (pts == null) return i + 1;
+    if (i > 0 && board[i - 1].points === pts) return "=";
+    return 1 + board.filter((x) => (x.points ?? -1) > pts).length;
+  };
   const { data: me } = useMe();
   const myId = me?.entrantId;
   const [show, setShow] = useState(false);
@@ -242,7 +250,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                 return (
                   <div key={b.entrantId} className="border-t border-line">
                     <div className={"grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
-                      <div className="font-mono text-xs text-muted">{i + 1}</div>
+                      <div className="font-mono text-xs text-muted">{rankFor(i)}</div>
                       <div className="flex min-w-0 items-center gap-2.5">
                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
                           {initials(b.name)}
