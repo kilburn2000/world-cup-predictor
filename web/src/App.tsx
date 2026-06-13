@@ -14,6 +14,7 @@ import Scoring from "./pages/Scoring.js";
 import ScorerAdmin from "./pages/ScorerAdmin.js";
 import Upload from "./pages/Upload.js";
 import Entrant from "./pages/Entrant.js";
+import MyPredictions from "./pages/MyPredictions.js";
 import Players from "./pages/Players.js";
 import Prizes from "./pages/Prizes.js";
 import Admin from "./pages/Admin.js";
@@ -57,6 +58,7 @@ function labelFor(pathname: string): string {
   if (pathname.startsWith("/upload")) return "Add Entrant";
   if (pathname.startsWith("/scoring")) return "Scoring";
   if (pathname.endsWith("/edit")) return "Edit predictions";
+  if (pathname.startsWith("/my-predictions")) return "My Predictions";
   if (pathname.startsWith("/entrant")) return "Entrant";
   return "Whitey’s World Cup Sweepstake";
 }
@@ -134,7 +136,7 @@ export default function App() {
               <NavLink to="/standings/overall" className={tab({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={tab}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
-              {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={tab}>My Predictions</NavLink>}
+              {me?.entrantId && <NavLink to="/my-predictions" className={tab}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={adminBtn}>Admin</NavLink>}
               {me ? (
                 <button onClick={handleLogout} className={signOutBtn()}>Sign Out</button>
@@ -151,7 +153,7 @@ export default function App() {
               <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
               <NavLink to="/stats/scores" className={() => mobileItem({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
-              {me?.entrantId && <NavLink to={`/entrant/${me.entrantId}`} className={mobileItem}>My Predictions</NavLink>}
+              {me?.entrantId && <NavLink to="/my-predictions" className={mobileItem}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={mobileItem}>Admin</NavLink>}
               {me ? (
                 <button onClick={handleLogout} className="cursor-pointer rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-gold-soft hover:text-cream">Sign Out</button>
@@ -180,6 +182,7 @@ export default function App() {
           <Route path="/players" element={<Players />} />
           <Route path="/prizes" element={<Prizes />} />
           <Route path="/entrant/:id" element={<Entrant />} />
+          <Route path="/my-predictions" element={<AuthGate><MyPredictions /></AuthGate>} />
           <Route path="/entrant/:id/edit" element={<AuthGate admin><EditPredictions /></AuthGate>} />
           <Route path="/table" element={<LiveTable />} />
           <Route path="/admin" element={<AuthGate admin><Admin /></AuthGate>} />
