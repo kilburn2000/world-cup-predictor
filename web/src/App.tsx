@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Routes, Route, NavLink, Navigate, useLocation, useNavigate, useNavigationType } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe, logout } from "./auth.js";
 import Home from "./pages/Home.js";
@@ -64,23 +64,12 @@ function labelFor(pathname: string): string {
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const navType = useNavigationType();
   const qc = useQueryClient();
   const { data: me } = useMe();
   const [loading, setLoading] = useState(true);
   const [label, setLabel] = useState("Whitey’s World Cup Sweepstake");
   const [menuOpen, setMenuOpen] = useState(false);
-  // A trail of in-app pages: a forward (PUSH) navigation appends, a back (POP)
-  // pops, a redirect (REPLACE) swaps the top. The back link points at the entry
-  // below the current one, and goes back rather than starting a new trail.
-  const [referrer, setReferrer] = useState<string | null>(null);
-  const stack = useRef<string[]>([]);
-  const lastPath = useRef<string | null>(null);
-  // Each page's <h1> text, keyed by path, so the back link can name the actual
-  // page rather than a generic label.
-  const titleMap = useRef<Record<string, string>>({});
-  const pathRef = useRef(location.pathname);
-  pathRef.current = location.pathname;
+  const firstLoad = useRef(true);
 
   const handleLogout = async () => {
     setLabel("Signing you out");
@@ -96,49 +85,15 @@ export default function App() {
     return () => clearTimeout(t);
   }, []);
 
-  // Record each page's <h1> text as it renders (it may appear after data loads,
-  // hence the observer) so the back link can show the real page title.
-  useEffect(() => {
-    const main = document.querySelector("main");
-    if (!main) return;
-    const capture = () => {
-      const h1 = main.querySelector("h1")?.textContent?.trim();
-      if (h1) titleMap.current[pathRef.current] = h1;
-    };
-    capture();
-    const obs = new MutationObserver(capture);
-    obs.observe(main, { childList: true, subtree: true, characterData: true });
-    return () => obs.disconnect();
-  }, []);
-
   // Flip to the loading state *before* the browser paints the new route, so the
   // overlay covers the incoming page instead of the page flashing in first.
   useLayoutEffect(() => {
     setMenuOpen(false);
     window.scrollTo(0, 0);
-
-    // StrictMode double-invokes the mount effect with the same path; ignore it.
-    if (lastPath.current === location.pathname) return;
-    const first = lastPath.current === null;
-    lastPath.current = location.pathname;
-
-    // Maintain the trail: first load seeds it, a back (POP) pops, a redirect
-    // (REPLACE) swaps the top, a forward (PUSH) appends. The "back" target is the
-    // entry directly below the current page.
-    if (first) {
-      stack.current = [location.pathname];
-    } else if (navType === "POP") {
-      stack.current.pop();
-    } else if (navType === "REPLACE") {
-      if (stack.current.length) stack.current[stack.current.length - 1] = location.pathname;
-      else stack.current.push(location.pathname);
-    } else {
-      const top = stack.current[stack.current.length - 1];
-      if (top !== location.pathname) stack.current.push(location.pathname);
+    if (firstLoad.current) {
+      firstLoad.current = false;
+      return;
     }
-    setReferrer(stack.current.length >= 2 ? stack.current[stack.current.length - 2] : null);
-
-    if (first) return;
     setLabel(labelFor(location.pathname));
     setLoading(true);
     const t = setTimeout(() => setLoading(false), 3000);
@@ -209,14 +164,6 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-8">
-        {referrer && (
-          <button
-            onClick={() => navigate(-1)}
-            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-cream"
-          >
-            <span aria-hidden>←</span> Back to {titleMap.current[referrer] ?? labelFor(referrer)}
-          </button>
-        )}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/standings" element={<Navigate to="/standings/overall" replace />} />
