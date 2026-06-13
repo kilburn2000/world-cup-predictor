@@ -1050,5 +1050,13 @@ if (existsSync(webDist)) {
   });
 }
 
+// Idempotent data migrations - safe to run on every boot (so production picks
+// them up on deploy without a manual step).
+try {
+  await sql`update teams set name = 'Bosnia' where name = 'Bosnia-Herzegovina'`;
+} catch (e) {
+  console.error("startup migration failed", e);
+}
+
 await app.listen({ port: PORT, host: "0.0.0.0" });
 startPoller();

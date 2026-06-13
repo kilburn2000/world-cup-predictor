@@ -76,6 +76,11 @@ export default function App() {
   const [referrer, setReferrer] = useState<string | null>(null);
   const stack = useRef<string[]>([]);
   const lastPath = useRef<string | null>(null);
+  // Each page's <h1> text, keyed by path, so the back link can name the actual
+  // page rather than a generic label.
+  const titleMap = useRef<Record<string, string>>({});
+  const pathRef = useRef(location.pathname);
+  pathRef.current = location.pathname;
 
   const handleLogout = async () => {
     setLabel("Signing you out");
@@ -89,6 +94,21 @@ export default function App() {
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 1100);
     return () => clearTimeout(t);
+  }, []);
+
+  // Record each page's <h1> text as it renders (it may appear after data loads,
+  // hence the observer) so the back link can show the real page title.
+  useEffect(() => {
+    const main = document.querySelector("main");
+    if (!main) return;
+    const capture = () => {
+      const h1 = main.querySelector("h1")?.textContent?.trim();
+      if (h1) titleMap.current[pathRef.current] = h1;
+    };
+    capture();
+    const obs = new MutationObserver(capture);
+    obs.observe(main, { childList: true, subtree: true, characterData: true });
+    return () => obs.disconnect();
   }, []);
 
   // Flip to the loading state *before* the browser paints the new route, so the
@@ -194,7 +214,7 @@ export default function App() {
             onClick={() => navigate(-1)}
             className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-cream"
           >
-            <span aria-hidden>←</span> Back to {labelFor(referrer)}
+            <span aria-hidden>←</span> Back to {titleMap.current[referrer] ?? labelFor(referrer)}
           </button>
         )}
         <Routes>

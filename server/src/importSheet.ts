@@ -6,7 +6,7 @@ import { sql } from "./db/index.js";
 // names. Used by the resolver shared between the spreadsheet and photo importers.
 const norm = (s: string) => String(s).toLowerCase().replace(/[^a-z]/g, "");
 const ALIAS: Record<string, string> = {
-  [norm("Bosnia - Hertz")]: norm("Bosnia-Herzegovina"),
+  [norm("Bosnia - Hertz")]: norm("Bosnia"),
   [norm("Cape Verde")]: norm("Cape Verde Islands"),
   [norm("IR Iran")]: norm("Iran"),
   [norm("Rep. of Korea")]: norm("South Korea"),
