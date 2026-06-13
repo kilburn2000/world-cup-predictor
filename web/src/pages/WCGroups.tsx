@@ -26,11 +26,12 @@ export default function WCGroups() {
 
   return (
     <div className="fl-enter">
-      <LiveTabs />
-      <h1 className="mb-1 font-display text-3xl font-medium text-cream">Groups</h1>
-      <p className="mb-6 text-[13px] text-muted">
+      <div className="text-[11px] uppercase tracking-[1.8px] text-gold">Statistics</div>
+      <h1 className="mb-1 mt-2 font-display text-3xl font-medium text-cream">Groups</h1>
+      <p className="mb-5 text-[13px] text-muted">
         The real World Cup groups. Top two qualify automatically; the best third-placed teams also go through.
       </p>
+      <LiveTabs />
 
       {isLoading && <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>}
       {error && <p className="text-down">Couldn’t load group tables.</p>}

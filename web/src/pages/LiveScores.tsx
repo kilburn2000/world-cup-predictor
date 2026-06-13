@@ -17,8 +17,7 @@ export default function LiveScores({ day = 0 }: { day?: number }) {
 
   return (
     <div className="fl-enter">
-      <LiveTabs />
-      <div className="mb-6">
+      <div className="mb-5">
         <div className="text-[11px] uppercase tracking-[1.8px] text-gold">Statistics</div>
         <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">{dayLabel}’s Games</h1>
         <div className="mt-1 font-mono text-[12px] text-gold">{dateLabel}</div>
@@ -35,6 +34,7 @@ export default function LiveScores({ day = 0 }: { day?: number }) {
             </div>
           ))}
       </div>
+      <LiveTabs />
 
       {isLoading && <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>}
       {error && <p className="text-down">Couldn’t load live scores.</p>}

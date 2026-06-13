@@ -23,9 +23,11 @@ export default function Fixtures() {
 
   return (
     <div className="fl-enter">
-      <LiveTabs />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-medium text-cream">All Fixtures &amp; Results</h1>
+        <div>
+          <div className="text-[11px] uppercase tracking-[1.8px] text-gold">Statistics</div>
+          <h1 className="mt-2 font-display text-3xl font-medium text-cream">All Fixtures &amp; Results</h1>
+        </div>
         <button
           onClick={() => setShowFinished((v) => !v)}
           className={"rounded-lg border px-3.5 py-1.5 text-sm transition-colors " + (showFinished ? "border-gold bg-gold-soft text-cream" : "border-line text-muted hover:text-cream")}
@@ -33,6 +35,7 @@ export default function Fixtures() {
           {showFinished ? "✓ Showing finished" : "Finished hidden"}
         </button>
       </div>
+      <LiveTabs />
 
       {isLoading && <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>}
       {error && <p className="text-down">Couldn’t load fixtures.</p>}

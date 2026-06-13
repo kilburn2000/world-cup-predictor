@@ -29,12 +29,13 @@ export default function WCKnockout() {
 
   return (
     <div className="fl-enter">
-      <LiveTabs />
-      <h1 className="mb-1 font-display text-3xl font-medium text-cream">Knockout</h1>
-      <p className="mb-6 text-[13px] text-muted">
+      <div className="text-[11px] uppercase tracking-[1.8px] text-gold">Statistics</div>
+      <h1 className="mb-1 mt-2 font-display text-3xl font-medium text-cream">Knockout</h1>
+      <p className="mb-5 text-[13px] text-muted">
         Who qualifies into each game. Each team appears only once its group is confirmed; until then you’ll
         see the qualifier it’s waiting on (e.g. “Winner E”, “3rd A/B/C/D/F”). Times in British Summer Time.
       </p>
+      <LiveTabs />
 
       {isLoading && <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>}
       {error && <p className="text-down">Couldn’t load the bracket.</p>}
