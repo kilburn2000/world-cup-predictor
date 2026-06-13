@@ -330,6 +330,8 @@ export interface LiveEvent {
   team: "home" | "away";
   player?: string;
   detail?: string;
+  /** own goal (counts for `team`, scored by a `player` of the other team) */
+  own?: boolean;
 }
 export interface LiveMatch {
   id: number;

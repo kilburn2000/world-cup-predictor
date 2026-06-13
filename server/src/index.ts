@@ -1054,6 +1054,7 @@ if (existsSync(webDist)) {
 // them up on deploy without a manual step).
 try {
   await sql`update teams set name = 'Bosnia' where name = 'Bosnia-Herzegovina'`;
+  await sql`alter table match_events add column if not exists own boolean not null default false`;
 } catch (e) {
   console.error("startup migration failed", e);
 }

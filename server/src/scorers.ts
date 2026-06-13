@@ -15,6 +15,7 @@ export interface LiveEventRow {
   type: "goal" | "yellow" | "red";
   team: "home" | "away";
   player?: string;
+  own?: boolean;
 }
 
 // "Top Scorer" side competition: each entrant has a pair of players; their
@@ -64,9 +65,12 @@ async function captureMatch(espnId: string, dbMatch: any, events: FeedEvent[], b
     await sql`delete from match_events where match_id = ${dbMatch.id}`;
     for (const e of events) {
       const tid = resolveEspn(e.country, byNorm);
+      // the scorer's side; an own goal counts for the opposing team
+      const scorerSide = tid === dbMatch.home_team_id ? "home" : "away";
+      const side = e.own ? (scorerSide === "home" ? "away" : "home") : scorerSide;
       await sql`
-        insert into match_events (match_id, minute, type, team, player)
-        values (${dbMatch.id}, ${e.minute}, ${e.type}, ${tid === dbMatch.home_team_id ? "home" : "away"}, ${e.player ?? null})
+        insert into match_events (match_id, minute, type, team, player, own)
+        values (${dbMatch.id}, ${e.minute}, ${e.type}, ${side}, ${e.player ?? null}, ${e.own})
       `;
     }
   }
@@ -199,12 +203,12 @@ export async function eventsForMatches(ids: number[]): Promise<Map<number, LiveE
   const map = new Map<number, LiveEventRow[]>();
   if (!ids.length) return map;
   const rows = await sql`
-    select match_id, minute, type, team, player from match_events
+    select match_id, minute, type, team, player, own from match_events
     where match_id in ${sql(ids)} order by match_id, minute
   `;
   for (const r of rows as any[]) {
     const arr = map.get(r.match_id) ?? [];
-    arr.push({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined });
+    arr.push({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined, own: r.own ?? false });
     map.set(r.match_id, arr);
   }
   return map;
@@ -212,8 +216,8 @@ export async function eventsForMatches(ids: number[]): Promise<Map<number, LiveE
 
 // Key events for one fixture (for its detail page).
 export async function matchEvents(matchId: number): Promise<LiveEventRow[]> {
-  const rows = await sql`select minute, type, team, player from match_events where match_id = ${matchId} order by minute`;
-  return (rows as any[]).map((r) => ({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined }));
+  const rows = await sql`select minute, type, team, player, own from match_events where match_id = ${matchId} order by minute`;
+  return (rows as any[]).map((r) => ({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined, own: r.own ?? false }));
 }
 
 // Each entrant's pair + combined goals (manual override wins over the feed),

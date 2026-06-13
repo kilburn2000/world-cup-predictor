@@ -128,7 +128,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           >
             <BallIcon size={18} />
             <span className="font-mono text-xs uppercase tracking-[2px] text-gold">
-              Goal - {ph.lastGoal.player ?? ""} ({ph.lastGoal.team === "home" ? m.homeCode : m.awayCode})
+              {ph.lastGoal.own ? "Own goal" : "Goal"} - {ph.lastGoal.player ?? ""} ({ph.lastGoal.team === "home" ? m.homeCode : m.awayCode})
             </span>
           </div>
         )}
@@ -213,7 +213,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           <div className="space-y-1">
             {[...m.events].sort((a, b) => a.minute - b.minute).map((ev, i) => {
               const colour = ev.type === "goal" ? "#c9a86a" : "#d9534f";
-              const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
+              const tag = ev.type === "goal" ? (ev.own ? "⚽ Own goal" : "⚽ Goal") : "🟥 Red card";
               const team = ev.team === "home" ? m.home : m.away;
               return (
                 <div key={i} className="flex items-center gap-2 text-[12.5px]">
