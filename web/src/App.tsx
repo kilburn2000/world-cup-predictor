@@ -92,14 +92,18 @@ export default function App() {
   useLayoutEffect(() => {
     setMenuOpen(false);
     window.scrollTo(0, 0);
+
+    // The page we came from becomes this page's "back" target - but only on a
+    // genuine navigation (the path actually changed). Guards against the very
+    // first load and StrictMode's double-invoke setting the page as its own.
+    const prev = prevPath.current;
+    if (prev !== null && prev !== location.pathname) setReferrer(prev);
+    prevPath.current = location.pathname;
+
     if (firstLoad.current) {
       firstLoad.current = false;
-      prevPath.current = location.pathname;
       return;
     }
-    // the page we came from becomes this page's "back" target (referrer)
-    setReferrer(prevPath.current);
-    prevPath.current = location.pathname;
     setLabel(labelFor(location.pathname));
     setLoading(true);
     const t = setTimeout(() => setLoading(false), 3000);
