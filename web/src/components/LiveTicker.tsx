@@ -30,7 +30,7 @@ export default function LiveTicker() {
   return (
     <Link
       to={live ? "/statistics/live" : "/statistics/today"}
-      className="mt-2 flex items-center gap-3 overflow-x-auto border-t border-line pt-2 text-[13px] transition-colors hover:text-cream"
+      className="mt-2 flex items-center justify-center gap-3 overflow-x-auto border-t border-line pt-2 text-[13px] transition-colors hover:text-cream"
     >
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gold font-mono text-[10px] font-semibold text-gold">
         {me.name ? initials(me.name) : "?"}
