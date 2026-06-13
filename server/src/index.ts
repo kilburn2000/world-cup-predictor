@@ -119,6 +119,7 @@ app.get("/api/leaderboard", async () => {
            coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 2 then s.points end), 0)::int as week2,
            coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 3 then s.points end), 0)::int as week3,
            coalesce(sum(case when m.stage = 'LAST_32' then s.points end), 0)::int as r32,
+           coalesce(sum(case when m.stage = 'LAST_16' then s.points end), 0)::int as r16,
            coalesce(sum(case when m.stage = 'GROUP' and coalesce((s.breakdown->>'exact')::boolean, false) then 1 else 0 end), 0)::int as "exactCount",
            coalesce(sum(s.points), 0)::int as total
     from entrants e
@@ -152,11 +153,13 @@ app.get("/api/phases", async () => {
       coalesce(bool_or(stage = 'GROUP'   and matchday = 2 and status <> 'SCHEDULED'), false) as week2,
       coalesce(bool_or(stage = 'GROUP'   and matchday = 3 and status <> 'SCHEDULED'), false) as week3,
       coalesce(bool_or(stage = 'LAST_32' and status <> 'SCHEDULED'), false) as r32,
+      coalesce(bool_or(stage = 'LAST_16' and status <> 'SCHEDULED'), false) as r16,
       -- "done" = every game in that period is finished (prizes lock in then)
       coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 1), false) as "week1Done",
       coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 2), false) as "week2Done",
       coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 3), false) as "week3Done",
       coalesce(bool_and(status = 'FINISHED') filter (where stage = 'LAST_32'), false) as "r32Done",
+      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'LAST_16'), false) as "r16Done",
       coalesce(bool_and(status = 'FINISHED'), false) as done
     from matches
   `;
@@ -197,7 +200,7 @@ app.get("/api/consensus", async () => {
     from matches
     where stage = 'GROUP' and status in ('FINISHED', 'IN_PLAY') and home_goals is not null and away_goals is not null
   `) as any[];
-  const out = { name: "Everyone", week1: 0, week2: 0, week3: 0, r32: 0, total: 0 };
+  const out = { name: "Everyone", week1: 0, week2: 0, week3: 0, r32: 0, r16: 0, total: 0 };
   if (!matches.length) return out;
 
   const ids = matches.map((m) => m.id);

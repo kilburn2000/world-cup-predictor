@@ -53,7 +53,7 @@ export default function Prizes() {
       ? "No goals scored as yet"
       : holderText(scorerRows.filter((e) => e.total === topGoals).map((e) => e.name));
 
-  const weeklyLeaders = (field: "week1" | "week2" | "week3" | "r32"): string[] => {
+  const weeklyLeaders = (field: "week1" | "week2" | "week3" | "r32" | "r16"): string[] => {
     if (!rows.length) return [];
     const max = Math.max(...rows.map((e) => e[field]));
     if (max <= 0) return [];
@@ -157,10 +157,10 @@ export default function Prizes() {
       <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">Weekly &amp; round prizes</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {PHASE_PRIZES.map((p) => {
-          const leaders = p.field === "r16" || p.field === "knockout" ? [] : weeklyLeaders(p.field);
+          const leaders = p.field === "knockout" ? [] : weeklyLeaders(p.field);
           const share = leaders.length ? p.amount / leaders.length : p.amount;
           const holder =
-            p.field === "r16" ? "Not played yet" : p.field === "knockout" ? "Not decided yet" : leaders.length ? holderText(leaders) : "Not played yet";
+            p.field === "knockout" ? "Not decided yet" : leaders.length ? holderText(leaders) : "Not played yet";
           return (
             <div key={p.label} className="fl-card px-4 py-3.5">
               <div className="flex items-center justify-between gap-2">

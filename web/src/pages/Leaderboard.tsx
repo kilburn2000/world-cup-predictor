@@ -85,8 +85,8 @@ const subTab = (active: boolean) =>
   "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
   (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
-type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; total: number; exactCount?: number; nameIncomplete?: boolean; consensus?: boolean };
-const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, total: c.total, consensus: true });
+type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; nameIncomplete?: boolean; consensus?: boolean };
+const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, r16: c.r16, total: c.total, consensus: true });
 
 function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
@@ -197,7 +197,7 @@ function Knockout() {
   );
 }
 
-type Phase = "week1" | "week2" | "week3" | "r32";
+type Phase = "week1" | "week2" | "week3" | "r32" | "r16";
 
 function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
@@ -300,7 +300,7 @@ type Tab = "overall" | "knockout" | "topscorer" | Phase;
 // Each tab is its own route: /standings/<slug>.
 const TAB_SLUG: Record<Tab, string> = {
   overall: "overall", knockout: "knockout", topscorer: "top-scorer",
-  week1: "week-1", week2: "week-2", week3: "week-3", r32: "round-of-32",
+  week1: "week-1", week2: "week-2", week3: "week-3", r32: "round-of-32", r16: "round-of-16",
 };
 const SLUG_TAB: Record<string, Tab> = Object.fromEntries(
   Object.entries(TAB_SLUG).map(([k, v]) => [v, k as Tab]),
@@ -313,10 +313,11 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "week2", label: "Week 2" },
   { key: "week3", label: "Week 3" },
   { key: "r32", label: "Round of 32" },
+  { key: "r16", label: "Round of 16" },
 ];
 const TITLES: Record<Tab, string> = {
   overall: "Overall", knockout: "Knockout competition", topscorer: "Top Scorer",
-  week1: "Week 1", week2: "Week 2", week3: "Week 3", r32: "Round of 32",
+  week1: "Week 1", week2: "Week 2", week3: "Week 3", r32: "Round of 32", r16: "Round of 16",
 };
 
 export default function Leaderboard() {
@@ -333,6 +334,7 @@ export default function Leaderboard() {
     : t.key === "week2" ? started?.week2
     : t.key === "week3" ? started?.week3
     : t.key === "r32" ? started?.r32
+    : t.key === "r16" ? started?.r16
     : true,
   );
   const consensusTab = tab !== "knockout" && tab !== "topscorer";

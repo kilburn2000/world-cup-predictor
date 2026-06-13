@@ -68,10 +68,10 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
   const lb = leaderboard ?? [];
   const me = lb.find((e) => e.entrantId === eid);
 
-  type Phase = "week1" | "week2" | "week3" | "r32";
+  type Phase = "week1" | "week2" | "week3" | "r32" | "r16";
   const overallPos = me ? posLabel(me.total, lb.map((e) => e.total)) : "-";
   const phaseStarted: Record<Phase, boolean | undefined> = {
-    week1: phases?.week1, week2: phases?.week2, week3: phases?.week3, r32: phases?.r32,
+    week1: phases?.week1, week2: phases?.week2, week3: phases?.week3, r32: phases?.r32, r16: phases?.r16,
   };
   type Card = { value: string; pos?: string };
 
@@ -114,9 +114,9 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
       return max > 0 && me[f] === max;
     };
     const done: Record<Phase, boolean | undefined> = {
-      week1: phases?.week1Done, week2: phases?.week2Done, week3: phases?.week3Done, r32: phases?.r32Done,
+      week1: phases?.week1Done, week2: phases?.week2Done, week3: phases?.week3Done, r32: phases?.r32Done, r16: phases?.r16Done,
     };
-    for (const f of ["week1", "week2", "week3", "r32"] as Phase[]) if (done[f] && highestIn(f)) prize += 125;
+    for (const f of ["week1", "week2", "week3", "r32", "r16"] as Phase[]) if (done[f] && highestIn(f)) prize += 125;
     if (phases?.done) {
       const rank = 1 + lb.filter((e) => e.total > me.total).length;
       if (rank <= 10) prize += OVERALL_PRIZE[rank] ?? 0;
@@ -180,13 +180,14 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
       </div>
 
       {/* stat cards */}
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         <Stat label="Knockout" {...knockout} to={linkCards ? "/standings/knockout" : undefined} />
         <Stat label="Top scorer" {...tsCard} to={linkCards ? "/standings/top-scorer" : undefined} />
         <Stat label="Week 1" {...phaseValue("week1")} to={linkCards ? "/standings/week-1" : undefined} />
         <Stat label="Week 2" {...phaseValue("week2")} to={linkCards ? "/standings/week-2" : undefined} />
         <Stat label="Week 3" {...phaseValue("week3")} to={linkCards ? "/standings/week-3" : undefined} />
         <Stat label="Round of 32" {...phaseValue("r32")} to={linkCards ? "/standings/round-of-32" : undefined} />
+        <Stat label="Round of 16" {...phaseValue("r16")} to={linkCards ? "/standings/round-of-16" : undefined} />
       </div>
     </>
   );

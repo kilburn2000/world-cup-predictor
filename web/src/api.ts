@@ -16,6 +16,7 @@ export interface LeaderboardRow {
   week2: number;
   week3: number;
   r32: number;
+  r16: number;
   /** number of exact group scorelines correctly predicted */
   exactCount: number;
   /** Optional (sent once the snapshot backend is enabled). */
@@ -64,6 +65,7 @@ export interface Consensus {
   week2: number;
   week3: number;
   r32: number;
+  r16: number;
   total: number;
 }
 export const useConsensus = () =>
@@ -74,11 +76,13 @@ export interface PhasesStarted {
   week2: boolean;
   week3: boolean;
   r32: boolean;
+  r16: boolean;
   // "done" = every game in that period is finished (prizes lock in then).
   week1Done: boolean;
   week2Done: boolean;
   week3Done: boolean;
   r32Done: boolean;
+  r16Done: boolean;
   done: boolean;
 }
 export const usePhasesStarted = () =>
