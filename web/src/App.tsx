@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe, logout } from "./auth.js";
 import Home from "./pages/Home.js";
@@ -64,14 +64,18 @@ function labelFor(pathname: string): string {
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
+  const navType = useNavigationType();
   const qc = useQueryClient();
   const { data: me } = useMe();
   const [loading, setLoading] = useState(true);
   const [label, setLabel] = useState("Whitey’s World Cup Sweepstake");
   const [menuOpen, setMenuOpen] = useState(false);
+  // A trail of in-app pages: a forward (PUSH) navigation appends, a back (POP)
+  // pops, a redirect (REPLACE) swaps the top. The back link points at the entry
+  // below the current one, and goes back rather than starting a new trail.
   const [referrer, setReferrer] = useState<string | null>(null);
-  const prevPath = useRef<string | null>(null);
-  const firstLoad = useRef(true);
+  const stack = useRef<string[]>([]);
+  const lastPath = useRef<string | null>(null);
 
   const handleLogout = async () => {
     setLabel("Signing you out");
@@ -93,23 +97,28 @@ export default function App() {
     setMenuOpen(false);
     window.scrollTo(0, 0);
 
-    // The page we came from becomes this page's "back" target - but only on a
-    // genuine navigation (the path actually changed). Guards against the very
-    // first load and StrictMode's double-invoke setting the page as its own.
-    // Redirect-only paths (/standings -> /standings/overall etc) are skipped so
-    // the real destination inherits the true previous page as its referrer.
-    const isRedirect =
-      location.pathname === "/standings" || location.pathname === "/stats" || location.pathname.startsWith("/live");
-    if (!isRedirect) {
-      const prev = prevPath.current;
-      if (prev !== null && prev !== location.pathname) setReferrer(prev);
-      prevPath.current = location.pathname;
-    }
+    // StrictMode double-invokes the mount effect with the same path; ignore it.
+    if (lastPath.current === location.pathname) return;
+    const first = lastPath.current === null;
+    lastPath.current = location.pathname;
 
-    if (firstLoad.current) {
-      firstLoad.current = false;
-      return;
+    // Maintain the trail: first load seeds it, a back (POP) pops, a redirect
+    // (REPLACE) swaps the top, a forward (PUSH) appends. The "back" target is the
+    // entry directly below the current page.
+    if (first) {
+      stack.current = [location.pathname];
+    } else if (navType === "POP") {
+      stack.current.pop();
+    } else if (navType === "REPLACE") {
+      if (stack.current.length) stack.current[stack.current.length - 1] = location.pathname;
+      else stack.current.push(location.pathname);
+    } else {
+      const top = stack.current[stack.current.length - 1];
+      if (top !== location.pathname) stack.current.push(location.pathname);
     }
+    setReferrer(stack.current.length >= 2 ? stack.current[stack.current.length - 2] : null);
+
+    if (first) return;
     setLabel(labelFor(location.pathname));
     setLoading(true);
     const t = setTimeout(() => setLoading(false), 3000);
@@ -182,7 +191,7 @@ export default function App() {
       <main className="mx-auto max-w-5xl px-4 py-8">
         {referrer && (
           <button
-            onClick={() => navigate(referrer)}
+            onClick={() => navigate(-1)}
             className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-cream"
           >
             <span aria-hidden>←</span> Back to {labelFor(referrer)}
