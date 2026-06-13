@@ -2,7 +2,7 @@ import { useLiveMatches, type LiveMatch } from "../api.js";
 import MatchCard from "./MatchCard.js";
 import { longDate } from "../dates.js";
 
-// Yesterday / Today / Tomorrow games, in the same card format as /statistics/scores,
+// Yesterday / Today / Tomorrow games, in the same card format as /statistics/today,
 // driven by the live feed so they update in real time during live games (and the
 // demo).
 export default function DashboardFixtures() {
