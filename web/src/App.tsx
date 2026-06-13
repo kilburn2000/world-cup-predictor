@@ -23,6 +23,7 @@ import ManageEntrants from "./pages/ManageEntrants.js";
 import EditPredictions from "./pages/EditPredictions.js";
 import Loader from "./components/Loader.js";
 import LiveToasts from "./components/LiveToasts.js";
+import LiveTicker from "./components/LiveTicker.js";
 import DemoController from "./components/DemoController.js";
 import AuthGate from "./components/AuthGate.js";
 
@@ -155,6 +156,8 @@ export default function App() {
               )}
             </nav>
           </div>
+
+          <LiveTicker />
 
           {/* Mobile: dropdown nav panel. */}
           {menuOpen && (

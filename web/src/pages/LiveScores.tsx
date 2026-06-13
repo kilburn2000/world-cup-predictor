@@ -26,18 +26,12 @@ export default function LiveScores({ day = 0, liveOnly = false }: { day?: number
           {liveOnly ? "Live Games" : `${dayLabel}’s Games`}
         </h1>
         <div className="mt-1 font-mono text-[12px] text-gold">{dateLabel}</div>
-        {(day === 0 || liveOnly) &&
-          (live.length ? (
-            <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-[#d9534f]">
-              <span className="h-2 w-2 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
-              {live.length} live now
-            </div>
-          ) : (
-            <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-muted">
-              <span className="h-2 w-2 rounded-full bg-muted" />
-              No matches in play
-            </div>
-          ))}
+        {(day === 0 || liveOnly) && live.length > 0 && (
+          <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-[#d9534f]">
+            <span className="h-2 w-2 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
+            {live.length} live now
+          </div>
+        )}
       </div>
       <LiveTabs />
 
