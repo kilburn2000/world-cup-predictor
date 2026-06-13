@@ -28,6 +28,10 @@ export default function Home() {
   if (me?.entrantId) {
     return (
       <div className="fl-enter">
+        <div className="mb-6">
+          <div className="text-[11px] uppercase tracking-[1.8px] text-gold">Whitey’s World Cup 2026</div>
+          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">Dashboard</h1>
+        </div>
         <EntrantSummary id={me.entrantId} eyebrow="Welcome Back" />
         <div className="mt-7">
           <DashboardFixtures />

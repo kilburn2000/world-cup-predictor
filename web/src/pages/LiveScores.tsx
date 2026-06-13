@@ -19,20 +19,21 @@ export default function LiveScores({ day = 0 }: { day?: number }) {
     <div className="fl-enter">
       <LiveTabs />
       <div className="mb-6">
+        <div className="text-[11px] uppercase tracking-[1.8px] text-gold">Statistics</div>
+        <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">{dayLabel}’s Games</h1>
+        <div className="mt-1 font-mono text-[12px] text-gold">{dateLabel}</div>
         {day === 0 &&
           (live.length ? (
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-[#d9534f]">
+            <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-[#d9534f]">
               <span className="h-2 w-2 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
               {live.length} live now
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-muted">
+            <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[1.5px] text-muted">
               <span className="h-2 w-2 rounded-full bg-muted" />
               No matches in play
             </div>
           ))}
-        <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">{dayLabel}’s Games</h1>
-        <div className="mt-1 font-mono text-[12px] text-gold">{dateLabel}</div>
       </div>
 
       {isLoading && <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>}

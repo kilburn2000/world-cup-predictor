@@ -52,8 +52,8 @@ export default function FixtureTable({ items }: { items: Fixture[] }) {
         return (
           <Link
             key={f.id}
-            to={`/stats/fixtures/${f.id}`}
-            state={{ from: "/stats/fixtures", label: "Fixtures" }}
+            to={`/statistics/fixtures/${f.id}`}
+            state={{ from: "/statistics/fixtures", label: "Fixtures" }}
             className="block border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft"
           >
             <div className={COLS + " items-center gap-2 text-[13px]"}>

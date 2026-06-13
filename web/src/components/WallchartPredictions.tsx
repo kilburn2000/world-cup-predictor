@@ -40,8 +40,8 @@ function MatchRow({ m }: { m: WallchartMatch }) {
 
 // An entrant's predictions: group-stage scorelines (with actual + points once
 // played) and their predicted knockout bracket. Used by the entrant detail page
-// and the personal "My Predictions" page.
-export default function WallchartPredictions({ id }: { id: string | number }) {
+// (view "all") and the tabbed "My Predictions" page (a single section).
+export default function WallchartPredictions({ id, view = "all" }: { id: string | number; view?: "groups" | "bracket" | "all" }) {
   const { data } = useWallchart(id);
   if (!data) return null;
 
@@ -51,11 +51,16 @@ export default function WallchartPredictions({ id }: { id: string | number }) {
     byRound.get(k.label)!.push(k);
   }
 
+  const showGroups = view === "all" || view === "groups";
+  const showBracket = view === "all" || view === "bracket";
+  const headings = view === "all"; // headings only when both sections show
+
   return (
     <>
-      {/* group stage */}
-      <h3 className="mb-3 font-display text-base text-cream">Group stage</h3>
-      <div className="mb-8 grid gap-4 sm:grid-cols-2">
+      {showGroups && (
+        <>
+      {headings && <h3 className="mb-3 font-display text-base text-cream">Group stage</h3>}
+      <div className={"grid gap-4 sm:grid-cols-2" + (showBracket ? " mb-8" : "")}>
         {data.groups.map((g) => (
           <div key={g.group} className="fl-card overflow-hidden">
             <h4 className="border-b border-line px-4 py-2.5 font-display text-sm text-cream">
@@ -69,9 +74,12 @@ export default function WallchartPredictions({ id }: { id: string | number }) {
           </div>
         ))}
       </div>
+        </>
+      )}
 
-      {/* predicted bracket */}
-      <h3 className="mb-3 font-display text-base text-cream">Predicted bracket</h3>
+      {showBracket && (
+        <>
+      {headings && <h3 className="mb-3 font-display text-base text-cream">Predicted bracket</h3>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[...byRound.entries()].map(([label, matches]) => (
           <div key={label} className="fl-card overflow-hidden">
@@ -93,6 +101,8 @@ export default function WallchartPredictions({ id }: { id: string | number }) {
           </div>
         ))}
       </div>
+        </>
+      )}
     </>
   );
 }

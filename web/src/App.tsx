@@ -49,7 +49,7 @@ const mobileItem = ({ isActive }: { isActive: boolean }) =>
 function labelFor(pathname: string): string {
   if (pathname === "/") return "Dashboard";
   if (pathname.startsWith("/standings")) return "Live Standings";
-  if (pathname.startsWith("/stats")) return "Stats";
+  if (pathname.startsWith("/statistics")) return "Statistics";
   if (pathname.startsWith("/players")) return "Players";
   if (pathname.startsWith("/prizes")) return "Prizes";
   if (pathname.startsWith("/table")) return "Group Tables";
@@ -135,7 +135,7 @@ export default function App() {
               {me && <NavLink to="/" className={tab({ isActive: location.pathname === "/" })}>Dashboard</NavLink>}
               <NavLink to="/standings/overall" className={tab({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={tab}>Prizes</NavLink>
-              <NavLink to="/stats/scores" className={tab({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
+              <NavLink to="/statistics/scores" className={tab({ isActive: location.pathname.startsWith("/statistics") })}>Statistics</NavLink>
               {me?.entrantId && <NavLink to="/my-predictions" className={tab}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={adminBtn}>Admin</NavLink>}
               {me ? (
@@ -152,7 +152,7 @@ export default function App() {
               {me && <NavLink to="/" className={() => mobileItem({ isActive: location.pathname === "/" })}>Dashboard</NavLink>}
               <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
-              <NavLink to="/stats/scores" className={() => mobileItem({ isActive: location.pathname.startsWith("/stats") })}>Stats</NavLink>
+              <NavLink to="/statistics/scores" className={() => mobileItem({ isActive: location.pathname.startsWith("/statistics") })}>Statistics</NavLink>
               {me?.entrantId && <NavLink to="/my-predictions" className={mobileItem}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={mobileItem}>Admin</NavLink>}
               {me ? (
@@ -170,19 +170,21 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/standings" element={<Navigate to="/standings/overall" replace />} />
           <Route path="/standings/:tab" element={<Leaderboard />} />
-          <Route path="/stats" element={<Navigate to="/stats/scores" replace />} />
-          <Route path="/stats/scores" element={<LiveScores day={0} />} />
-          <Route path="/stats/yesterday" element={<LiveScores day={-1} />} />
-          <Route path="/stats/tomorrow" element={<LiveScores day={1} />} />
-          <Route path="/stats/fixtures" element={<Fixtures />} />
-          <Route path="/stats/fixtures/:id" element={<FixtureDetail />} />
-          <Route path="/stats/groups" element={<WCGroups />} />
-          <Route path="/stats/knockout" element={<WCKnockout />} />
-          <Route path="/live/*" element={<Navigate to="/stats/scores" replace />} />
+          <Route path="/statistics" element={<Navigate to="/statistics/scores" replace />} />
+          <Route path="/statistics/scores" element={<LiveScores day={0} />} />
+          <Route path="/statistics/yesterday" element={<LiveScores day={-1} />} />
+          <Route path="/statistics/tomorrow" element={<LiveScores day={1} />} />
+          <Route path="/statistics/fixtures" element={<Fixtures />} />
+          <Route path="/statistics/fixtures/:id" element={<FixtureDetail />} />
+          <Route path="/statistics/groups" element={<WCGroups />} />
+          <Route path="/statistics/knockout" element={<WCKnockout />} />
+          <Route path="/live/*" element={<Navigate to="/statistics/scores" replace />} />
+          <Route path="/stats/*" element={<Navigate to="/statistics/scores" replace />} />
           <Route path="/players" element={<Players />} />
           <Route path="/prizes" element={<Prizes />} />
           <Route path="/entrant/:id" element={<Entrant />} />
           <Route path="/my-predictions" element={<AuthGate><MyPredictions /></AuthGate>} />
+          <Route path="/my-predictions/:tab" element={<AuthGate><MyPredictions /></AuthGate>} />
           <Route path="/entrant/:id/edit" element={<AuthGate admin><EditPredictions /></AuthGate>} />
           <Route path="/table" element={<LiveTable />} />
           <Route path="/admin" element={<AuthGate admin><Admin /></AuthGate>} />

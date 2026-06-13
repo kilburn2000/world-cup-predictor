@@ -6,19 +6,19 @@ const sub = ({ isActive }: { isActive: boolean }) =>
   (isActive ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
 const LINKS = [
-  { to: "/stats/scores", label: "Today", end: true },
-  { to: "/stats/yesterday", label: "Yesterday", end: false },
-  { to: "/stats/tomorrow", label: "Tomorrow", end: false },
-  { to: "/stats/fixtures", label: "All Fixtures & Results", end: false },
-  { to: "/stats/groups", label: "Groups", end: false },
-  { to: "/stats/knockout", label: "Knockout", end: false },
+  { to: "/statistics/scores", label: "Today", end: true },
+  { to: "/statistics/yesterday", label: "Yesterday", end: false },
+  { to: "/statistics/tomorrow", label: "Tomorrow", end: false },
+  { to: "/statistics/fixtures", label: "All Fixtures & Results", end: false },
+  { to: "/statistics/groups", label: "Groups", end: false },
+  { to: "/statistics/knockout", label: "Knockout", end: false },
 ];
 
 export default function LiveTabs() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const active =
-    LINKS.find((l) => (l.end ? pathname === l.to : pathname.startsWith(l.to)))?.to ?? "/stats/scores";
+    LINKS.find((l) => (l.end ? pathname === l.to : pathname.startsWith(l.to)))?.to ?? "/statistics/scores";
 
   return (
     <div className="mb-6">
