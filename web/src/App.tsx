@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe, logout } from "./auth.js";
+import { useLiveMatches } from "./api.js";
 import Home from "./pages/Home.js";
 import Leaderboard from "./pages/Leaderboard.js";
 import LiveScores from "./pages/LiveScores.js";
@@ -61,6 +62,15 @@ function labelFor(pathname: string): string {
   if (pathname.startsWith("/my-predictions")) return "My Predictions";
   if (pathname.startsWith("/entrant")) return "Entrant";
   return "Whitey’s World Cup Sweepstake";
+}
+
+// The Statistics landing: the Live Games view while a game is in play, otherwise
+// Today's games.
+function StatisticsIndex() {
+  const { data, isLoading } = useLiveMatches(0);
+  if (isLoading && !data) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
+  const hasLive = (data ?? []).some((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
+  return <Navigate to={hasLive ? "/statistics/live" : "/statistics/today"} replace />;
 }
 
 export default function App() {
@@ -135,7 +145,7 @@ export default function App() {
               {me && <NavLink to="/" className={tab({ isActive: location.pathname === "/" })}>Dashboard</NavLink>}
               <NavLink to="/standings/overall" className={tab({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={tab}>Prizes</NavLink>
-              <NavLink to="/statistics/today" className={tab({ isActive: location.pathname.startsWith("/statistics") })}>Statistics</NavLink>
+              <NavLink to="/statistics" className={tab({ isActive: location.pathname.startsWith("/statistics") })}>Statistics</NavLink>
               {me?.entrantId && <NavLink to="/my-predictions" className={tab}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={adminBtn}>Admin</NavLink>}
               {me ? (
@@ -152,7 +162,7 @@ export default function App() {
               {me && <NavLink to="/" className={() => mobileItem({ isActive: location.pathname === "/" })}>Dashboard</NavLink>}
               <NavLink to="/standings/overall" className={() => mobileItem({ isActive: location.pathname.startsWith("/standings") })}>Standings</NavLink>
               <NavLink to="/prizes" className={mobileItem}>Prizes</NavLink>
-              <NavLink to="/statistics/today" className={() => mobileItem({ isActive: location.pathname.startsWith("/statistics") })}>Statistics</NavLink>
+              <NavLink to="/statistics" className={() => mobileItem({ isActive: location.pathname.startsWith("/statistics") })}>Statistics</NavLink>
               {me?.entrantId && <NavLink to="/my-predictions" className={mobileItem}>My Predictions</NavLink>}
               {me?.isAdmin && <NavLink to="/admin" className={mobileItem}>Admin</NavLink>}
               {me ? (
@@ -170,8 +180,9 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/standings" element={<Navigate to="/standings/overall" replace />} />
           <Route path="/standings/:tab" element={<Leaderboard />} />
-          <Route path="/statistics" element={<Navigate to="/statistics/today" replace />} />
+          <Route path="/statistics" element={<StatisticsIndex />} />
           <Route path="/statistics/today" element={<LiveScores day={0} />} />
+          <Route path="/statistics/live" element={<LiveScores day={0} liveOnly />} />
           <Route path="/statistics/scores" element={<Navigate to="/statistics/today" replace />} />
           <Route path="/statistics/yesterday" element={<LiveScores day={-1} />} />
           <Route path="/statistics/tomorrow" element={<LiveScores day={1} />} />
