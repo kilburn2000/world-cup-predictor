@@ -23,7 +23,7 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
   return (
     <Link
       to={live ? "/statistics/live" : "/statistics/today"}
-      className="flex items-center justify-start gap-3 overflow-x-auto text-[13px] transition-colors hover:text-cream sm:justify-center"
+      className="flex items-center gap-3 overflow-x-auto text-[13px] transition-colors hover:text-cream [justify-content:safe_center]"
     >
       <Avatar name={name} />
       <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
