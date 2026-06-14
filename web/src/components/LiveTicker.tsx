@@ -47,7 +47,7 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
         </span>
         {m.myPick && (
           <span className="ml-1 flex items-center gap-2">
-            <span className={"text-[8.5px] uppercase tracking-[1.5px] text-gold/80 " + (live ? "hidden sm:inline" : "inline")}>{live ? "Your prediction" : "You Said"}</span>
+            <span className={"text-[8.5px] uppercase tracking-[1.5px] text-gold/80 " + (live ? "hidden sm:inline" : "inline")}>Your Prediction</span>
             <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
             {live && (
               <>
