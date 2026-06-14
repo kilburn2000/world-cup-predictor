@@ -89,6 +89,7 @@ export interface SummaryEvent {
   player?: string;
   country: string; // scoring/booked player's team display name (e.g. "Portugal")
   own: boolean; // own goal (counts on the scoreboard, not for the scorer)
+  penalty: boolean; // goal scored from a penalty
 }
 
 // All key events for one match from ESPN's per-match summary (richer + timelier
@@ -110,6 +111,7 @@ export async function getMatchEvents(eventId: string): Promise<SummaryEvent[]> {
     // events in their own right - the actual goal/card has its own entry.
     if (text.includes("var")) continue;
     const own = text.includes("own");
+    const penalty = /penalt/.test(text);
     // Key events are goals + red cards only (yellows are noise).
     let type: SummaryEvent["type"] | null = null;
     if (text.includes("goal") || /penalt.*scor|scor.*penalt/.test(text)) type = "goal";
@@ -121,6 +123,7 @@ export async function getMatchEvents(eventId: string): Promise<SummaryEvent[]> {
       player: ev.athletesInvolved?.[0]?.displayName ?? ev.participants?.[0]?.athlete?.displayName,
       country: teamName.get(String(ev.team?.id)) ?? "",
       own,
+      penalty,
     });
   }
   return out;

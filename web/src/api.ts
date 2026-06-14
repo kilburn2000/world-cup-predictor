@@ -332,6 +332,8 @@ export interface LiveEvent {
   detail?: string;
   /** own goal (counts for `team`, scored by a `player` of the other team) */
   own?: boolean;
+  /** goal scored from a penalty */
+  penalty?: boolean;
 }
 export interface LiveMatch {
   id: number;

@@ -30,7 +30,7 @@ function scoreAt(m: LiveMatch, ev: LiveEvent): string {
 
 function eventToast(id: string, m: LiveMatch, e: LiveEvent): Toast {
   const score = scoreAt(m, e);
-  const who = `${e.minute}'${e.player ? " · " + e.player : ""}`;
+  const who = `${e.minute}'${e.player ? " · " + e.player + (e.penalty ? " (p)" : "") : ""}`;
   if (e.type === "goal") return { id, accent: "#c9a86a", label: `⚽ ${e.own ? "Own goal" : "Goal"} · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
   return { id, accent: "#d9534f", label: `🟥 Red card · ${who}`, home: m.home, away: m.away, score, highlight: e.team };
 }

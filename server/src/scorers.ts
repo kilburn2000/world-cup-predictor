@@ -16,6 +16,7 @@ export interface LiveEventRow {
   team: "home" | "away";
   player?: string;
   own?: boolean;
+  penalty?: boolean;
 }
 
 // "Top Scorer" side competition: each entrant has a pair of players; their
@@ -38,13 +39,13 @@ const normName = (s: string) =>
 const keyToken = (tracked: string) =>
   normName(tracked).split(" ").filter((t) => !["jr", "junior", "jnr"].includes(t)).pop() ?? "";
 
-type FeedEvent = { type: "goal" | "yellow" | "red"; minute: number; player?: string; country: string; own: boolean };
+type FeedEvent = { type: "goal" | "yellow" | "red"; minute: number; player?: string; country: string; own: boolean; penalty: boolean };
 
 // Scoreboard goal/card events -> our stored shape (fallback when no summary).
 function eventsFromScoreboard(m: { home: string; away: string; events?: { type: string; minute: number; player?: string; team: "home" | "away" }[] }): FeedEvent[] {
   return (m.events ?? [])
     .filter((e) => e.type === "goal" || e.type === "red")
-    .map((e) => ({ type: e.type as FeedEvent["type"], minute: e.minute, player: e.player, country: e.team === "home" ? m.home : m.away, own: false }));
+    .map((e) => ({ type: e.type as FeedEvent["type"], minute: e.minute, player: e.player, country: e.team === "home" ? m.home : m.away, own: false, penalty: false }));
 }
 
 async function resolveDbMatch(home: string, away: string, byNorm: Map<string, number>) {
@@ -69,8 +70,8 @@ async function captureMatch(espnId: string, dbMatch: any, events: FeedEvent[], b
       const tid = resolveEspn(e.country, byNorm);
       const side = tid === dbMatch.home_team_id ? "home" : "away";
       await sql`
-        insert into match_events (match_id, minute, type, team, player, own)
-        values (${dbMatch.id}, ${e.minute}, ${e.type}, ${side}, ${e.player ?? null}, ${e.own})
+        insert into match_events (match_id, minute, type, team, player, own, penalty)
+        values (${dbMatch.id}, ${e.minute}, ${e.type}, ${side}, ${e.player ?? null}, ${e.own}, ${e.penalty})
       `;
     }
   }
@@ -271,12 +272,12 @@ export async function eventsForMatches(ids: number[]): Promise<Map<number, LiveE
   const map = new Map<number, LiveEventRow[]>();
   if (!ids.length) return map;
   const rows = await sql`
-    select match_id, minute, type, team, player, own from match_events
+    select match_id, minute, type, team, player, own, penalty from match_events
     where match_id in ${sql(ids)} order by match_id, minute
   `;
   for (const r of rows as any[]) {
     const arr = map.get(r.match_id) ?? [];
-    arr.push({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined, own: r.own ?? false });
+    arr.push({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined, own: r.own ?? false, penalty: r.penalty ?? false });
     map.set(r.match_id, arr);
   }
   return map;
@@ -284,8 +285,8 @@ export async function eventsForMatches(ids: number[]): Promise<Map<number, LiveE
 
 // Key events for one fixture (for its detail page).
 export async function matchEvents(matchId: number): Promise<LiveEventRow[]> {
-  const rows = await sql`select minute, type, team, player, own from match_events where match_id = ${matchId} order by minute`;
-  return (rows as any[]).map((r) => ({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined, own: r.own ?? false }));
+  const rows = await sql`select minute, type, team, player, own, penalty from match_events where match_id = ${matchId} order by minute`;
+  return (rows as any[]).map((r) => ({ minute: r.minute, type: r.type, team: r.team, player: r.player ?? undefined, own: r.own ?? false, penalty: r.penalty ?? false }));
 }
 
 // Each entrant's pair + combined goals (manual override wins over the feed),

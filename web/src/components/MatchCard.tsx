@@ -128,7 +128,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           >
             <BallIcon size={18} />
             <span className="font-mono text-xs uppercase tracking-[2px] text-gold">
-              {ph.lastGoal.own ? "Own goal" : "Goal"} - {ph.lastGoal.player ?? ""} ({ph.lastGoal.team === "home" ? m.homeCode : m.awayCode})
+              {ph.lastGoal.own ? "Own goal" : "Goal"} - {ph.lastGoal.player ?? ""}{ph.lastGoal.penalty ? " (p)" : ""} ({ph.lastGoal.team === "home" ? m.homeCode : m.awayCode})
             </span>
           </div>
         )}
@@ -219,7 +219,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                 <div key={i} className="flex items-center gap-2 text-[12.5px]">
                   <span className="w-8 shrink-0 font-mono text-[11px] text-muted">{ev.minute}'</span>
                   <span>{flagFor(team)}</span>
-                  <span className="truncate text-cream">{(ev.player ?? team)}{ev.own ? " (o.g.)" : ""}</span>
+                  <span className="truncate text-cream">{(ev.player ?? team)}{ev.own ? " (o.g.)" : ev.penalty ? " (p)" : ""}</span>
                   <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase tracking-wide" style={{ color: colour }}>{tag}</span>
                 </div>
               );

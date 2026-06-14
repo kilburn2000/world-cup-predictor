@@ -1055,13 +1055,14 @@ if (existsSync(webDist)) {
 try {
   await sql`update teams set name = 'Bosnia' where name = 'Bosnia-Herzegovina'`;
   await sql`alter table match_events add column if not exists own boolean not null default false`;
+  await sql`alter table match_events add column if not exists penalty boolean not null default false`;
   // One-time: drop finished-match key events so the poller's backfill re-captures
-  // them with the own-goal flag + correct team. Guarded so it runs only once.
+  // them with the latest flags (own goal, penalty). Guarded so it runs only once.
   await sql`create table if not exists app_meta (key text primary key)`;
-  const [recaptured] = await sql`select 1 from app_meta where key = 'own_recapture_v2'`;
+  const [recaptured] = await sql`select 1 from app_meta where key = 'own_recapture_v3'`;
   if (!recaptured) {
     await sql`delete from match_events where match_id in (select id from matches where status = 'FINISHED')`;
-    await sql`insert into app_meta (key) values ('own_recapture_v2')`;
+    await sql`insert into app_meta (key) values ('own_recapture_v3')`;
   }
 } catch (e) {
   console.error("startup migration failed", e);
