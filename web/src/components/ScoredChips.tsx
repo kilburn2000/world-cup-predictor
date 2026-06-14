@@ -19,10 +19,11 @@ export default function ScoredChips({
   const awayOk = pa === as;
   if (homeOk && awayOk) return <Chip label="Exact" tone="gold" />;
   const resultOk = Math.sign(ph - pa) === Math.sign(hs - as);
-  const chips = [];
-  if (resultOk) chips.push(<Chip key="r" label="Result" tone="green" />);
-  if (homeOk) chips.push(<Chip key="h" label={`${homeCode} ${hs}`} tone="green" />);
-  if (awayOk) chips.push(<Chip key="a" label={`${awayCode} ${as}`} tone="green" />);
-  if (!chips.length) return <Chip label="No Score" tone="red" />;
-  return <div className="flex flex-wrap justify-center gap-1">{chips}</div>;
+  const parts: string[] = [];
+  if (resultOk) parts.push("Result");
+  if (homeOk) parts.push(`${homeCode} ${hs}`);
+  if (awayOk) parts.push(`${awayCode} ${as}`);
+  if (!parts.length) return <Chip label="No Score" tone="red" />;
+  // combine everything scored into a single chip (e.g. "Result + CZE 1")
+  return <Chip label={parts.join(" + ")} tone="green" />;
 }
