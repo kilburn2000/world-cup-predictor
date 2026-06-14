@@ -23,7 +23,7 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
   return (
     <Link
       to={live ? "/statistics/live" : "/statistics/today"}
-      className="flex items-center justify-center gap-3 overflow-x-auto text-[13px] transition-colors hover:text-cream"
+      className="flex items-center justify-start gap-3 overflow-x-auto text-[13px] transition-colors hover:text-cream sm:justify-center"
     >
       <Avatar name={name} />
       <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
@@ -47,8 +47,8 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
         </span>
         {m.myPick && (
           <span className="ml-1 flex items-center gap-2">
-            <span className="text-[8.5px] uppercase tracking-[1.5px] text-gold/80">Your prediction</span>
-            <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
+            <span className="hidden text-[8.5px] uppercase tracking-[1.5px] text-gold/80 sm:inline">Your prediction</span>
+            <span className="font-mono text-gold">{m.myPick.replace("-", "–")}</span>
             {live && (
               <>
                 <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
