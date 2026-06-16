@@ -1,9 +1,34 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted } from "../api.js";
+import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted, type LiveTier } from "../api.js";
 import TabSelect from "../components/TabSelect.js";
+import ScoredChips from "../components/ScoredChips.js";
+import PointsPill from "../components/PointsPill.js";
 import { flagFor } from "../flags.js";
 import { useMe } from "../auth.js";
+
+// Per-entrant provisional points from matches in play right now: the points each
+// would win if every live game ended at its current score, plus what they're
+// scoring on (for the chips). Built from each live match's precomputed board.
+type LiveGame = { pick: string; hs: number; as: number; homeCode: string; awayCode: string; tier: LiveTier | null; points: number };
+type LiveAgg = Map<number, { points: number; games: LiveGame[] }>;
+function useLivePoints(): LiveAgg {
+  const { data } = useLiveMatches(0);
+  return useMemo(() => {
+    const m: LiveAgg = new Map();
+    for (const mt of data ?? []) {
+      if (mt.status !== "IN_PLAY" && mt.status !== "PAUSED") continue;
+      for (const b of mt.board) {
+        if (b.points == null) continue;
+        const cur = m.get(b.entrantId) ?? { points: 0, games: [] };
+        cur.points += b.points;
+        cur.games.push({ pick: b.pick, hs: mt.homeScore, as: mt.awayScore, homeCode: mt.homeCode, awayCode: mt.awayCode, tier: b.tier, points: b.points });
+        m.set(b.entrantId, cur);
+      }
+    }
+    return m;
+  }, [data]);
+}
 
 // Gold "you" badge for the logged-in entrant's own row.
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
@@ -93,10 +118,18 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data: stats } = useStats();
   const { data: started } = usePhasesStarted();
   const { data: me } = useMe();
+  const live = useLivePoints();
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
-  const cols = "grid grid-cols-[30px_1fr_52px_44px] sm:grid-cols-[30px_1fr_30px_30px_30px_38px_52px_44px] items-center gap-1";
+  // A dedicated Live column (chip + points pill per in-play game) only appears
+  // while something's actually being scored, so the table is unchanged otherwise.
+  const anyLive = [...live.values()].some((v) => v.games.length > 0);
+  // The Live column is a FIXED width (content wraps inside it) so a row with three
+  // live games can't stretch the column and shove every other column out of line.
+  const cols = anyLive
+    ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_30px_30px_30px_38px_70px_44px] items-center gap-1"
+    : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_30px_30px_30px_38px_70px_44px] items-center gap-1";
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => b.total - a.total || a.name.localeCompare(b.name),
   );
@@ -112,8 +145,10 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       <div className="fl-card overflow-hidden">
         <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div>#</div><div>Entrant</div>
+          {anyLive && <div className="text-left">Live Prediction</div>}
           <div className="hidden text-center sm:block">W1</div><div className="hidden text-center sm:block">W2</div><div className="hidden text-center sm:block">W3</div>
-          <div className="hidden text-center sm:block">R32</div><div className="text-center leading-tight">Exact Scores</div><div className="text-right">Pts</div>
+          <div className="hidden text-center sm:block">R32</div><div className="hidden whitespace-nowrap text-center sm:block">Exact Scores</div>
+          <div className="text-right">Pts</div>
         </div>
         {list.map((e) => {
           const label = rankLabel(e);
@@ -124,14 +159,19 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
+              {anyLive && <div />}
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week1, started?.week1)}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week2, started?.week2)}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week3, started?.week3)}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.r32, started?.r32)}</div>
-              <div className="text-center font-mono text-[11px] text-gold/80">{e.exactCount ?? "–"}</div>
+              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.exactCount ?? "–"}</div>
               <div className="text-right font-mono text-sm font-semibold text-gold">{e.total}</div>
             </div>
           ) : (
+            (() => {
+            const lp = live.get(e.entrantId);
+            const liveGames = lp?.games ?? [];
+            return (
             <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
               <div className="font-mono text-xs">
                 {label !== "=" && Number(label) <= 3 ? (
@@ -145,13 +185,26 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
+              {anyLive && (
+                <div className="flex min-w-0 flex-col items-start gap-0.5 overflow-hidden">
+                  {liveGames.map((g, i) => (
+                    <span key={i} className="flex items-center gap-1 whitespace-nowrap">
+                      <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
+                      <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
+                      <PointsPill points={g.points} tier={g.tier} />
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week1, started?.week1)}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week2, started?.week2)}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week3, started?.week3)}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.r32, started?.r32)}</div>
-              <div className="text-center font-mono text-[11px] text-muted">{e.exactCount ?? 0}</div>
+              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
               <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
             </Link>
+            );
+            })()
           );
         })}
       </div>

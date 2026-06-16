@@ -17,17 +17,18 @@ export default function ScoredChips({
   const [ph, pa] = pick.split("-").map(Number);
   const homeOk = ph === hs;
   const awayOk = pa === as;
-  if (homeOk && awayOk) return <Chip label="Exact" tone="gold" />;
+  if (homeOk && awayOk) return <Chip label="EXACT" tone="gold" />;
   const resultOk = Math.sign(ph - pa) === Math.sign(hs - as);
   // Calling a draw (right result, wrong score) is its own thing - worth more and
   // labelled distinctly. A non-exact draw can never match a single team's goals.
   const calledDraw = resultOk && ph === pa && hs === as;
   const parts: string[] = [];
-  if (resultOk) parts.push(calledDraw ? "Result (Draw)" : "Result");
+  if (resultOk) parts.push(calledDraw ? "RES (Draw)" : "RES");
   if (homeOk) parts.push(`${homeCode} ${hs}`);
   if (awayOk) parts.push(`${awayCode} ${as}`);
-  // Scored nothing → no chip; the red "0pts" points indicator carries the miss.
-  if (!parts.length) return null;
+  // Scored nothing → an explicit red "N/A" chip (rather than a blank), so a miss
+  // reads the same way everywhere this component is used.
+  if (!parts.length) return <Chip label="N/A" tone="red" />;
   // combine everything scored into a single chip (e.g. "Result + CZE 1")
   return <Chip label={parts.join(" + ")} tone="green" />;
 }
