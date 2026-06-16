@@ -36,7 +36,7 @@ export default function WCKnockout() {
         <div key={r.stage} className="mb-7">
           <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">{r.label}</h2>
           <div className="grid items-start gap-2 lg:grid-cols-2">
-            {r.items.map((m) => <CompactMatchCard key={m.id} m={m} />)}
+            {r.items.map((m) => <CompactMatchCard key={m.id} m={m} hideStage />)}
           </div>
         </div>
       ))}

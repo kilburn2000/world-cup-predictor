@@ -658,6 +658,41 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
 
   const evMap = await eventsForMatches((rows as any[]).map((m) => m.id));
 
+  // Knockout fixtures: the matchup is projected from the group standings until the
+  // teams are confirmed, and each entrant's pick is a SLOT prediction (their own
+  // predicted teams + score for that bracket slot).
+  const hasKo = (rows as any[]).some((m) => m.stage !== "GROUP" && m.slot);
+  const projBySlot = new Map<string, { home: string; away: string }>();
+  const koBoardBySlot = new Map<string, any[]>();
+  if (hasKo) {
+    try {
+      const ko = await buildKnockout();
+      const ROUND_PREFIX: Record<string, string> = { "Round of 32": "R32", "Round of 16": "R16", "Quarter-finals": "QF", "Semi-finals": "SF", "Third-place play-off": "THIRD", "Final": "FINAL" };
+      for (const r of ko.rounds) {
+        const prefix = ROUND_PREFIX[r.round];
+        if (!prefix) continue;
+        r.matches.forEach((mm: any, i: number) => {
+          const slot = prefix === "THIRD" || prefix === "FINAL" ? prefix : `${prefix}-${i + 1}`;
+          projBySlot.set(slot, { home: mm.a.team?.name ?? mm.a.label, away: mm.b.team?.name ?? mm.b.label });
+        });
+      }
+    } catch { /* projection unavailable - fall back to TBD */ }
+    const slotPreds = await sql`
+      select p.bracket_slot slot, e.id eid, e.name, ht.tla phome, at.tla paway, p.pred_home_goals phg, p.pred_away_goals pag
+      from predictions p
+      join entrants e on e.id = p.entrant_id
+      join teams ht on ht.id = p.pred_home_team_id
+      join teams at on at.id = p.pred_away_team_id
+      where p.scope = 'SLOT'
+    `;
+    for (const p of slotPreds as any[]) {
+      const arr = koBoardBySlot.get(p.slot) ?? [];
+      arr.push({ entrantId: p.eid, name: p.name, pick: `${p.phg}-${p.pag}`, predHome: p.phome, predAway: p.paway, points: null, tier: null });
+      koBoardBySlot.set(p.slot, arr);
+    }
+    for (const arr of koBoardBySlot.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   return (rows as any[]).map((m) => {
     // ESPN live enrichment (minute + live score + events), keyed by team-id pair.
     const enrich = espnByPair.get([m.mh, m.ma].sort((x, y) => x - y).join("-"));
@@ -689,6 +724,9 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       });
       if (scored) board.sort((a, b) => (b.points ?? 0) - (a.points ?? 0) || a.name.localeCompare(b.name));
       else board.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (m.slot) {
+      // knockout: everyone's bracket pick for this slot (predicted teams + score)
+      board = koBoardBySlot.get(m.slot) ?? [];
     }
 
     // attach ESPN minute/events, aligning event side to our home/away
@@ -714,8 +752,8 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       myPick: mine?.pick ?? null,
       myPoints: mine?.points ?? null,
       myTier: mine?.tier ?? null,
-      home: m.home ?? "TBD",
-      away: m.away ?? "TBD",
+      home: m.home ?? projBySlot.get(m.slot)?.home ?? "TBD",
+      away: m.away ?? projBySlot.get(m.slot)?.away ?? "TBD",
       homeCode: m.home_code ?? "",
       awayCode: m.away_code ?? "",
       stage: m.stage,

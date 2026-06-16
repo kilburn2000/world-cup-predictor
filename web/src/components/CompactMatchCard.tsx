@@ -32,7 +32,7 @@ function statusOf(m: LiveMatch): { label: string; color: string; pulse: boolean 
 }
 
 /** One-line summary card for the dashboard. Full detail (predictions, events) lives on the fixture page. */
-export default function CompactMatchCard({ m }: { m: LiveMatch }) {
+export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatch; hideStage?: boolean }) {
   const { data: me } = useMe();
   const myId = me?.entrantId;
   const [showEvents, setShowEvents] = useState(false);
@@ -55,6 +55,9 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
   const time = m.kickoff
     ? new Date(m.kickoff).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "TBC";
+  const date = m.kickoff ? new Date(m.kickoff).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) : "";
+  // left side of the header: stage (unless the page already groups by it) + venue
+  const left = [hideStage ? "" : shortStage(m), m.venue].filter(Boolean).join(" · ");
 
   return (
     <Link
@@ -62,25 +65,23 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
       className="fl-card block transition-colors hover:border-gold/40"
     >
       <div className="px-4 py-3">
-        {/* header: stage (+ venue) + status */}
+        {/* header: stage/venue (left) · date + status/time (right) */}
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="truncate font-mono text-[10px] uppercase tracking-wide text-muted">
-            {shortStage(m)}{m.venue ? ` · ${m.venue}` : ""}
+          <span className="truncate font-mono text-[10px] uppercase tracking-wide text-muted">{left}</span>
+          <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-wide">
+            {date && <span className="text-muted">{date}</span>}
+            {st ? (
+              <span className="flex items-center gap-1" style={{ color: st.color }}>
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: st.color, animation: st.pulse ? "loadDots 1.2s infinite" : undefined }}
+                />
+                {st.label}
+              </span>
+            ) : (
+              <span className="text-muted">{time}</span>
+            )}
           </span>
-          {st ? (
-            <span
-              className="flex shrink-0 items-center gap-1 font-mono text-[10.5px] uppercase tracking-wide"
-              style={{ color: st.color }}
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ background: st.color, animation: st.pulse ? "loadDots 1.2s infinite" : undefined }}
-              />
-              {st.label}
-            </span>
-          ) : (
-            <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-wide text-muted">{time}</span>
-          )}
         </div>
 
         {/* teams + score */}
@@ -175,15 +176,17 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
         </div>
       )}
 
-      {/* most-predicted line doubles as the toggle for the full predictions board */}
-      {m.mostCommonScore && (
+      {/* most-predicted line (or just a label for knockout) doubles as the toggle for
+          the full predictions board */}
+      {board.length > 0 && (
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShow((v) => !v); }}
-          disabled={board.length === 0}
           aria-label={show ? "Hide all predictions" : "Show all predictions"}
           className="flex w-full flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-t border-line px-4 py-2 text-[11.5px] text-muted"
         >
-          {finished ? (
+          {!m.mostCommonScore ? (
+            <span className="text-[9px] uppercase tracking-wide">Everyone’s predictions</span>
+          ) : finished ? (
             <>
               <span className="text-[9px] uppercase tracking-wide">Got it right</span>
               <span><span className="mr-1.5 font-mono text-cream">{exactN}</span>Exact ({pctOf(exactN)}%)</span>
@@ -208,12 +211,10 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
               </span>
             </>
           )}
-          {board.length > 0 && (
-            <span className="ml-1 inline-flex items-center gap-1 self-center text-[9px] uppercase tracking-wide text-gold/80">
-              {show ? "Hide all" : "Show all"}
-              <span className={"inline-block text-[12px] leading-none transition-transform" + (show ? " rotate-180" : "")}>▾</span>
-            </span>
-          )}
+          <span className="ml-1 inline-flex items-center gap-1 self-center text-[9px] uppercase tracking-wide text-gold/80">
+            {show ? "Hide all" : "Show all"}
+            <span className={"inline-block text-[12px] leading-none transition-transform" + (show ? " rotate-180" : "")}>▾</span>
+          </span>
         </button>
       )}
 
@@ -243,12 +244,19 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
                     <span className="truncate text-[12.5px] text-cream">{b.name}</span>
                     {b.entrantId === myId && <span className="shrink-0 rounded bg-gold/20 px-1 py-px text-[7px] font-semibold uppercase tracking-wide text-gold">You</span>}
                   </div>
-                  <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-                    <span className={"font-mono text-[12px] text-cream" + (b.points != null ? " mr-1.5" : "")}>{b.pick.replace("-", "–")}</span>
-                    {b.points != null && (
+                  <div className="flex items-center justify-end gap-1 whitespace-nowrap font-mono text-[12px] text-cream">
+                    {b.predHome ? (
+                      // knockout: the entrant predicted the teams too
+                      <span>{b.predHome} {b.pick.replace("-", "–")} {b.predAway}</span>
+                    ) : (
                       <>
-                        <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
-                        <PointsPill points={b.points} tier={b.tier} />
+                        <span className={b.points != null ? "mr-1.5" : ""}>{b.pick.replace("-", "–")}</span>
+                        {b.points != null && (
+                          <>
+                            <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+                            <PointsPill points={b.points} tier={b.tier} />
+                          </>
+                        )}
                       </>
                     )}
                   </div>

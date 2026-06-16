@@ -351,6 +351,9 @@ export interface LiveBoardRow {
   pick: string; // "2-1"
   points: number | null; // null before kick-off
   tier: LiveTier | null;
+  /** knockout only: the entrant's own predicted teams (TLA) for the slot. */
+  predHome?: string | null;
+  predAway?: string | null;
 }
 export interface LiveEvent {
   minute: number;

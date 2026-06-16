@@ -219,14 +219,15 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
 
       {/* finished → who got it right; otherwise → the crowd's most-predicted. This line
           doubles as the toggle for the full predictions board (caret + click). */}
-      {m.mostCommonScore && (
+      {board.length > 0 && (
         <button
           onClick={() => setShow((v) => !v)}
-          disabled={board.length === 0}
           aria-label={show ? "Hide all predictions" : "Show all predictions"}
           className="flex w-full flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[12.5px] text-muted sm:px-6"
         >
-          {finished ? (
+          {!m.mostCommonScore ? (
+            <span className="text-[9px] uppercase tracking-wide">Everyone’s predictions</span>
+          ) : finished ? (
             <>
               <span className="text-[9px] uppercase tracking-wide">Got it right</span>
               <span><span className="mr-2 font-mono text-cream">{exactN}</span>Exact ({pctOf(exactN)}%)</span>
@@ -253,12 +254,10 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
               </span>
             </>
           )}
-          {board.length > 0 && (
-            <span className="ml-1 inline-flex items-center gap-1 self-center text-[9px] uppercase tracking-wide text-gold/80">
-              {show ? "Hide all" : "Show all"}
-              <span className={"inline-block text-[12px] leading-none transition-transform" + (show ? " rotate-180" : "")}>▾</span>
-            </span>
-          )}
+          <span className="ml-1 inline-flex items-center gap-1 self-center text-[9px] uppercase tracking-wide text-gold/80">
+            {show ? "Hide all" : "Show all"}
+            <span className={"inline-block text-[12px] leading-none transition-transform" + (show ? " rotate-180" : "")}>▾</span>
+          </span>
         </button>
       )}
 
@@ -295,12 +294,18 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                   </div>
                   {/* same shape AND spacing as the standings Live Prediction column:
                       gap-1 between items, with a wider score->chip gap (mr-1.5). */}
-                  <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-                    <span className={"font-mono text-[13px] text-cream" + (b.points != null ? " mr-1.5" : "")}>{b.pick.replace("-", "–")}</span>
+                  <div className="flex items-center justify-end gap-1 whitespace-nowrap font-mono text-[13px] text-cream">
+                    {b.predHome ? (
+                      <span>{b.predHome} {b.pick.replace("-", "–")} {b.predAway}</span>
+                    ) : (
+                      <>
+                    <span className={b.points != null ? "mr-1.5" : ""}>{b.pick.replace("-", "–")}</span>
                     {b.points != null && (
                       <>
                         <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
                         <PointsPill points={b.points} tier={b.tier} />
+                      </>
+                    )}
                       </>
                     )}
                   </div>
