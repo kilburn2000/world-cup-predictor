@@ -421,8 +421,10 @@ export interface Fixture {
   myPick?: string | null;
   myPoints?: number | null;
 }
+// /api/fixtures now returns the same rich LiveMatch shape as /api/live (full
+// board + events per fixture), so the fixtures page can use the match cards.
 export const useFixtures = () =>
-  useQuery({ queryKey: ["fixtures"], queryFn: () => get<Fixture[]>("/api/fixtures"), refetchInterval: 30_000 });
+  useQuery({ queryKey: ["fixtures"], queryFn: () => get<LiveMatch[]>("/api/fixtures"), refetchInterval: 30_000 });
 
 export interface FixtureDetail {
   match: {

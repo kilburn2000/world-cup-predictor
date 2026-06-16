@@ -608,29 +608,11 @@ app.get("/api/entrants/:id/edit", async (req: any, reply) => {
   return { entrant, groups, knockout };
 });
 
-// Live page feed: every in-play match, today's upcoming fixtures, and all
-// results so far - each with a points board (what each entrant scores/scored at
-// that scoreline) and, for in-play games, ESPN's live minute + goal/card events.
-app.get("/api/live", async (req: any) => {
+// Build the rich LiveMatch[] (per-entrant points board + ESPN minute/events +
+// most-common score) for a set of already-queried match rows. Shared by
+// /api/live (the day's games) and /api/fixtures (every fixture).
+async function buildLiveMatches(rows: any[], myId: number | null) {
   const cfg = await loadConfig();
-  const myId = req.user?.entrantId ?? null;
-  const day = Math.max(-1, Math.min(1, Math.trunc(Number(req.query?.day) || 0))); // -1 yesterday, 0 today, +1 tomorrow
-  const rows = await sql`
-    select m.id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
-           m.home_team_id mh, m.away_team_id ma,
-           ht.name home, ht.tla home_code, at.name away, at.tla away_code
-    from matches m
-    join teams ht on ht.id = m.home_team_id
-    join teams at on at.id = m.away_team_id
-    -- games on the selected host-country day (US/Canada/Mexico), using the
-    -- westernmost host tz so no game lands on the wrong day. day = -1/0/+1.
-    where (m.kickoff_utc at time zone 'America/Los_Angeles')::date
-        = (now() at time zone 'America/Los_Angeles')::date + ${day}::int
-    order by
-      (case m.status when 'IN_PLAY' then 0 when 'SCHEDULED' then 1 else 2 end),
-      case when m.status = 'FINISHED' then m.kickoff_utc end desc nulls last,
-      case when m.status <> 'FINISHED' then m.kickoff_utc end asc nulls last
-  `;
 
   // all group predictions in one pass, grouped by match
   const allPreds = await sql`
@@ -732,8 +714,8 @@ app.get("/api/live", async (req: any) => {
       myPick: mine?.pick ?? null,
       myPoints: mine?.points ?? null,
       myTier: mine?.tier ?? null,
-      home: m.home,
-      away: m.away,
+      home: m.home ?? "TBD",
+      away: m.away ?? "TBD",
       homeCode: m.home_code ?? "",
       awayCode: m.away_code ?? "",
       stage: m.stage,
@@ -755,102 +737,46 @@ app.get("/api/live", async (req: any) => {
       board,
     };
   });
+}
+
+// Live page feed: every in-play match, today's upcoming fixtures, and all results
+// so far - each with a points board and, for in-play games, ESPN minute + events.
+app.get("/api/live", async (req: any) => {
+  const myId = req.user?.entrantId ?? null;
+  const day = Math.max(-1, Math.min(1, Math.trunc(Number(req.query?.day) || 0))); // -1 yesterday, 0 today, +1 tomorrow
+  const rows = await sql`
+    select m.id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
+           m.home_team_id mh, m.away_team_id ma,
+           ht.name home, ht.tla home_code, at.name away, at.tla away_code
+    from matches m
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    -- games on the selected host-country day (US/Canada/Mexico), using the
+    -- westernmost host tz so no game lands on the wrong day. day = -1/0/+1.
+    where (m.kickoff_utc at time zone 'America/Los_Angeles')::date
+        = (now() at time zone 'America/Los_Angeles')::date + ${day}::int
+    order by
+      (case m.status when 'IN_PLAY' then 0 when 'SCHEDULED' then 1 else 2 end),
+      case when m.status = 'FINISHED' then m.kickoff_utc end desc nulls last,
+      case when m.status <> 'FINISHED' then m.kickoff_utc end asc nulls last
+  `;
+  return buildLiveMatches(rows, myId);
 });
 
-// All fixtures + results, chronological (knockout teams are null until resolved).
+// All fixtures + results, chronological (knockout teams are null until resolved),
+// each with the same full board + events as the live feed.
 app.get("/api/fixtures", async (req: any) => {
-  const cfg = await loadConfig();
   const myId = req.user?.entrantId ?? null;
   const rows = await sql`
-    select m.id, m.stage, m.group_name grp, m.matchday, m.kickoff_utc, m.status,
-           m.home_goals hg, m.away_goals ag,
+    select m.id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
+           m.home_team_id mh, m.away_team_id ma,
            ht.name home, ht.tla home_code, at.name away, at.tla away_code
     from matches m
     left join teams ht on ht.id = m.home_team_id
     left join teams at on at.id = m.away_team_id
     order by m.kickoff_utc asc nulls last, m.id
   `;
-
-  // aggregate group-match predictions for the most-common score + result per fixture
-  const preds = await sql`
-    select p.match_id mid, p.pred_home_team_id ph, p.pred_home_goals phg, p.pred_away_goals pag,
-           m.home_team_id mh, m.home_goals ahg, m.away_goals aag, m.status mstatus
-    from predictions p join matches m on m.id = p.match_id
-    where p.scope = 'MATCH'
-  `;
-  const agg = new Map<number, { score: Map<string, number>; result: { HOME: number; DRAW: number; AWAY: number }; total: number; exactCorrect: number; resultCorrect: number }>();
-  for (const p of preds as any[]) {
-    const h = p.ph === p.mh ? p.phg : p.pag; // align to the fixture's home/away
-    const a = p.ph === p.mh ? p.pag : p.phg;
-    let g = agg.get(p.mid);
-    if (!g) agg.set(p.mid, (g = { score: new Map(), result: { HOME: 0, DRAW: 0, AWAY: 0 }, total: 0, exactCorrect: 0, resultCorrect: 0 }));
-    g.score.set(`${h}-${a}`, (g.score.get(`${h}-${a}`) ?? 0) + 1);
-    g.result[h > a ? "HOME" : h < a ? "AWAY" : "DRAW"]++;
-    g.total++;
-    if (p.mstatus === "FINISHED" && p.ahg != null) {
-      if (h === p.ahg && a === p.aag) g.exactCorrect++;
-      const predRes = h > a ? "HOME" : h < a ? "AWAY" : "DRAW";
-      const actRes = p.ahg > p.aag ? "HOME" : p.ahg < p.aag ? "AWAY" : "DRAW";
-      if (predRes === actRes) g.resultCorrect++;
-    }
-  }
-  const modeScore = (s: Map<string, number>) => {
-    let key: string | null = null, count = 0;
-    for (const [k, c] of s) if (c > count) { key = k; count = c; }
-    return { key, count };
-  };
-  const modeResult = (r: { HOME: number; DRAW: number; AWAY: number }) => {
-    const key = (["HOME", "DRAW", "AWAY"] as const).reduce((a, b) => (r[b] > r[a] ? b : a));
-    return { key, count: r[key] };
-  };
-
-  // the logged-in entrant's own pick per fixture (aligned to home/away)
-  const myPreds = new Map<number, { h: number; a: number }>();
-  if (myId) {
-    const mine = await sql`
-      select p.match_id mid, p.pred_home_team_id ph, p.pred_home_goals phg, p.pred_away_goals pag, m.home_team_id mh
-      from predictions p join matches m on m.id = p.match_id
-      where p.scope = 'MATCH' and p.entrant_id = ${myId}
-    `;
-    for (const p of mine as any[]) {
-      const h = p.ph === p.mh ? p.phg : p.pag;
-      const a = p.ph === p.mh ? p.pag : p.phg;
-      myPreds.set(p.mid, { h, a });
-    }
-  }
-
-  return (rows as any[]).map((m) => {
-    const g = agg.get(m.id);
-    const ms = g ? modeScore(g.score) : { key: null, count: 0 };
-    const mr = g ? modeResult(g.result) : { key: null as "HOME" | "DRAW" | "AWAY" | null, count: 0 };
-    return {
-      id: m.id,
-      stage: m.stage,
-      group: m.grp,
-      matchday: m.matchday,
-      kickoff: m.kickoff_utc,
-      status: m.status,
-      home: m.home,
-      homeCode: m.home_code,
-      away: m.away,
-      awayCode: m.away_code,
-      homeScore: m.hg,
-      awayScore: m.ag,
-      mostCommonScore: ms.key,
-      mostCommonScoreCount: ms.count,
-      mostCommonResult: mr.key,
-      mostCommonResultCount: mr.count,
-      mostCommonTotal: g?.total ?? 0,
-      exactCorrect: g?.exactCorrect ?? 0,
-      resultCorrect: g?.resultCorrect ?? 0,
-      myPick: (() => { const p = myPreds.get(m.id); return p ? `${p.h}-${p.a}` : null; })(),
-      myPoints: (() => {
-        const p = myPreds.get(m.id);
-        const scored = (m.status === "FINISHED" || m.status === "IN_PLAY") && m.hg != null;
-        return p && scored ? scoreGroupMatch(p.h, p.a, m.hg, m.ag, cfg).points : null;
-      })(),
-    };
-  });
+  return buildLiveMatches(rows, myId);
 });
 
 // One fixture + every entrant's prediction and the points it scores for this game.

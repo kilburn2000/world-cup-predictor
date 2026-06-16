@@ -18,7 +18,7 @@ const SHORT_STAGE: Record<string, string> = {
   FINAL: "Final",
 };
 function shortStage(m: LiveMatch) {
-  if (m.stage === "GROUP") return m.group ? `Grp ${m.group}` : "Grp";
+  if (m.stage === "GROUP") return m.group ? `Group ${m.group}` : "Group";
   return SHORT_STAGE[m.stage] ?? m.stage;
 }
 

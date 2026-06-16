@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useFixtures, type Fixture } from "../api.js";
+import { useFixtures, type LiveMatch } from "../api.js";
 import LiveTabs from "../components/LiveTabs.js";
-import FixtureTable from "../components/FixtureTable.js";
+import CompactMatchCard from "../components/CompactMatchCard.js";
 import { longDate } from "../dates.js";
 
 const londonDate = (iso: string) => longDate(new Date(iso), "Europe/London");
@@ -13,7 +13,7 @@ export default function Fixtures() {
   const fixtures = (data ?? []).filter((f) => showFinished || f.status !== "FINISHED");
 
   // group by London date
-  const byDate: { date: string; items: Fixture[] }[] = [];
+  const byDate: { date: string; items: LiveMatch[] }[] = [];
   for (const f of fixtures) {
     const d = f.kickoff ? londonDate(f.kickoff) : "Date TBC";
     let g = byDate.find((x) => x.date === d);
@@ -40,28 +40,14 @@ export default function Fixtures() {
       {isLoading && <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>}
       {error && <p className="text-down">Couldn’t load fixtures.</p>}
 
-      {byDate.map((g) => {
-        const pending = g.items.filter((f) => f.status !== "FINISHED");
-        const results = g.items.filter((f) => f.status === "FINISHED");
-        const split = pending.length > 0 && results.length > 0;
-        return (
-          <div key={g.date} className="mb-6">
-            <h2 className="mb-2 text-[11px] uppercase tracking-[1.8px] text-gold">{g.date}</h2>
-            {results.length > 0 && (
-              <>
-                {split && <div className="mb-1.5 text-[10px] uppercase tracking-[1.5px] text-muted">Results</div>}
-                <FixtureTable items={results} />
-              </>
-            )}
-            {pending.length > 0 && (
-              <div className={results.length > 0 ? "mt-4" : ""}>
-                {split && <div className="mb-1.5 text-[10px] uppercase tracking-[1.5px] text-muted">Still to play</div>}
-                <FixtureTable items={pending} />
-              </div>
-            )}
+      {byDate.map((g) => (
+        <div key={g.date} className="mb-6">
+          <h2 className="mb-2 text-[11px] uppercase tracking-[1.8px] text-gold">{g.date}</h2>
+          <div className="grid items-start gap-2 lg:grid-cols-2">
+            {g.items.map((m) => <CompactMatchCard key={m.id} m={m} />)}
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }
