@@ -37,8 +37,14 @@ export function scoreGroupMatch(
   const awayGoals = predA === actA;
   const exact = homeGoals && awayGoals;
 
+  // Calling a draw that lands as a draw (but not the exact score) is rewarded
+  // more than a win/loss result. A non-exact draw can never match a single
+  // team's goals (matching both would be exact), so this is its whole score.
+  const calledDraw = outcome && predH === predA && actH === actA && !exact;
+  const outcomePoints = calledDraw ? cfg.drawOutcome : outcome ? cfg.outcome : 0;
+
   const points =
-    (outcome ? cfg.outcome : 0) +
+    outcomePoints +
     (homeGoals ? cfg.teamGoals : 0) +
     (awayGoals ? cfg.teamGoals : 0) +
     (exact ? cfg.exactBonus : 0);

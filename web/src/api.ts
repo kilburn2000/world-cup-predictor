@@ -149,6 +149,7 @@ export const useTable = () =>
 
 export interface ScoringConfig {
   outcome: number;
+  drawOutcome: number;
   teamGoals: number;
   exactBonus: number;
   knockoutTeam: number;

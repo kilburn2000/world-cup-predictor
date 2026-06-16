@@ -24,6 +24,7 @@ import { startPoller } from "./poller.js";
 
 const ScoringConfigSchema = z.object({
   outcome: z.number().int().min(0).max(1000),
+  drawOutcome: z.number().int().min(0).max(1000),
   teamGoals: z.number().int().min(0).max(1000),
   exactBonus: z.number().int().min(0).max(1000),
   knockoutTeam: z.number().int().min(0).max(1000),
@@ -231,10 +232,11 @@ app.get("/api/consensus", async () => {
     const cRes = (["HOME", "DRAW", "AWAY"] as const).reduce((x, y) => (g.res[y] > g.res[x] ? y : x));
     const actRes = m.hg > m.ag ? "HOME" : m.hg < m.ag ? "AWAY" : "DRAW";
     let pts = 0;
-    if (cRes === actRes) pts += cfg.outcome;
+    const exact = ch === m.hg && ca === m.ag;
+    if (cRes === actRes) pts += actRes === "DRAW" && !exact ? cfg.drawOutcome : cfg.outcome;
     if (ch === m.hg) pts += cfg.teamGoals;
     if (ca === m.ag) pts += cfg.teamGoals;
-    if (ch === m.hg && ca === m.ag) pts += cfg.exactBonus;
+    if (exact) pts += cfg.exactBonus;
     wk[m.matchday] += pts;
   }
   out.week1 = wk[1]; out.week2 = wk[2]; out.week3 = wk[3];
@@ -1063,6 +1065,44 @@ try {
   if (!recaptured) {
     await sql`delete from match_events where match_id in (select id from matches where status = 'FINISHED')`;
     await sql`insert into app_meta (key) values ('own_recapture_v3')`;
+  }
+
+  // One-time: corrections found re-reading the entry photos against the DB
+  // (2026-06-16). Each update only touches the one intended prediction; the final
+  // recompute also re-scores everyone under the new "called-draw" rule.
+  const [audited] = await sql`select 1 from app_meta where key = 'pred_audit_fix_v1'`;
+  if (!audited) {
+    const fixes: [string, string, string, number, number][] = [
+      ["[redacted]", "Spain", "Cape Verde", 5, 0],
+      ["[redacted]", "Belgium", "Egypt", 2, 0],
+      ["[redacted]", "Saudi Arabia", "Uruguay", 0, 2],
+      ["[redacted]", "Iran", "New Zealand", 2, 1],
+      ["[redacted]", "Portugal", "Uzbekistan", 3, 0],
+      ["[redacted]", "Argentina", "Algeria", 2, 0],
+      ["[redacted]", "Uzbekistan", "Colombia", 0, 1],
+      ["[redacted]", "Colombia", "Congo DR", 2, 0],
+      ["[redacted]", "Iran", "New Zealand", 3, 1],
+      ["[redacted]", "Senegal", "Iraq", 1, 0],
+    ];
+    for (const [ent, h, a, gh, ga] of fixes) {
+      await sql`
+        update predictions p set pred_home_goals = ${gh}, pred_away_goals = ${ga}
+        from entrants e, teams ht, teams at
+        where p.entrant_id = e.id and p.pred_home_team_id = ht.id and p.pred_away_team_id = at.id
+          and p.match_id is not null
+          and e.name = ${ent} and ht.name = ${h} and at.name = ${a}`;
+    }
+    // [redacted]'s R32: opponent was transcribed as Sweden but the sheet reads
+    // Senegal (score 3-0 unchanged); Sweden was wrongly placed in two R32 ties.
+    await sql`
+      update predictions p set pred_away_team_id = (select id from teams where name = 'Senegal')
+      from entrants e, teams ht, teams at
+      where p.entrant_id = e.id and p.pred_home_team_id = ht.id and p.pred_away_team_id = at.id
+        and p.match_id is null
+        and e.name = '[redacted]' and ht.name = 'Germany' and at.name = 'Sweden'
+        and p.pred_home_goals = 3 and p.pred_away_goals = 0`;
+    await sql`insert into app_meta (key) values ('pred_audit_fix_v1')`;
+    await recomputeAll();
   }
 } catch (e) {
   console.error("startup migration failed", e);

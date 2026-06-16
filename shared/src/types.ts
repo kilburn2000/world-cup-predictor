@@ -35,6 +35,7 @@ export interface Scoreline {
 // All point values are tunable from the Scoring page.
 export interface ScoringConfig {
   outcome: number; // correct result: Team A win / Team B win / draw
+  drawOutcome: number; // correct result when you called a draw but not the exact score
   teamGoals: number; // per team whose exact goal count you predicted (home & away each)
   exactBonus: number; // bonus when the entire score is exact
   knockoutTeam: number; // knockout: correct team in the right position
@@ -42,6 +43,7 @@ export interface ScoringConfig {
 
 export const DEFAULT_SCORING: ScoringConfig = {
   outcome: 1,
+  drawOutcome: 2, // calling a draw (right result, wrong score) is worth more than a win/loss result
   teamGoals: 1,
   exactBonus: 2,
   knockoutTeam: 1, // per correctly-positioned team (2 teams a tie → up to +2, total up to 7)

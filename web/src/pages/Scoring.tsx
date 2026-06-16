@@ -87,6 +87,7 @@ export default function Scoring() {
           Per match (stacks)
         </h3>
         <NumberRow label="Correct outcome" hint="Team A win / Team B win / draw" value={cfg.outcome} onChange={(v) => set("outcome", v)} />
+        <NumberRow label="Called-draw result" hint="you predicted a draw and it drew, but not the exact score" value={cfg.drawOutcome} onChange={(v) => set("drawOutcome", v)} />
         <NumberRow label="Each team's goals correct" hint="awarded separately for Team A and Team B" value={cfg.teamGoals} onChange={(v) => set("teamGoals", v)} />
         <NumberRow label="Exact score bonus" hint="when the whole score is right" value={cfg.exactBonus} onChange={(v) => set("exactBonus", v)} />
       </div>

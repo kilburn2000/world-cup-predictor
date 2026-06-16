@@ -19,8 +19,11 @@ export default function ScoredChips({
   const awayOk = pa === as;
   if (homeOk && awayOk) return <Chip label="Exact" tone="gold" />;
   const resultOk = Math.sign(ph - pa) === Math.sign(hs - as);
+  // Calling a draw (right result, wrong score) is its own thing - worth more and
+  // labelled distinctly. A non-exact draw can never match a single team's goals.
+  const calledDraw = resultOk && ph === pa && hs === as;
   const parts: string[] = [];
-  if (resultOk) parts.push("Result");
+  if (resultOk) parts.push(calledDraw ? "Result - Draw" : "Result");
   if (homeOk) parts.push(`${homeCode} ${hs}`);
   if (awayOk) parts.push(`${awayCode} ${as}`);
   if (!parts.length) return <Chip label="No Score" tone="red" />;
