@@ -2,8 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { type LiveMatch } from "../api.js";
 import { flagFor } from "../flags.js";
+import { useMe } from "../auth.js";
 import PointsPill from "./PointsPill.js";
 import ScoredChips from "./ScoredChips.js";
+
+const frac = (n?: number, total?: number) =>
+  `${n ?? 0}/${total ?? 0} (${total ? Math.round(((n ?? 0) / total) * 100) : 0}%)`;
 
 const SHORT_STAGE: Record<string, string> = {
   LAST_32: "R32",
@@ -29,10 +33,25 @@ function statusOf(m: LiveMatch): { label: string; color: string; pulse: boolean 
 
 /** One-line summary card for the dashboard. Full detail (predictions, events) lives on the fixture page. */
 export default function CompactMatchCard({ m }: { m: LiveMatch }) {
+  const { data: me } = useMe();
+  const myId = me?.entrantId;
   const [showEvents, setShowEvents] = useState(false);
+  const [show, setShow] = useState(false);
   const st = statusOf(m);
   const scheduled = m.status === "SCHEDULED";
   const events = m.events ?? [];
+  const finished = m.status === "FINISHED";
+  const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
+  const board = [...(m.board ?? [])].sort((a, b) => (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name));
+  const total = board.length;
+  const exactN = board.filter((b) => b.tier === "exact").length;
+  const resultN = board.filter((b) => b.tier === "exact" || b.tier === "result").length;
+  const pctOf = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+  const rankFor = (i: number): string | number => {
+    const pts = board[i].points ?? -1;
+    if (i > 0 && (board[i - 1].points ?? -1) === pts) return "=";
+    return 1 + board.filter((x) => (x.points ?? -1) > pts).length;
+  };
   const time = m.kickoff
     ? new Date(m.kickoff).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "TBC";
@@ -143,7 +162,7 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
       {/* your prediction + scoring */}
       {m.myPick && (
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-line px-4 py-2 text-[12.5px]">
-          <span className="text-[9px] uppercase tracking-wide text-gold/80">Your prediction</span>
+          <span className="text-[9px] uppercase tracking-wide text-muted">Your prediction</span>
           <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
           {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
             <>
@@ -151,6 +170,90 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
               {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
             </>
           )}
+        </div>
+      )}
+
+      {/* most-predicted line doubles as the toggle for the full predictions board */}
+      {m.mostCommonScore && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShow((v) => !v); }}
+          disabled={board.length === 0}
+          aria-label={show ? "Hide all predictions" : "Show all predictions"}
+          className="flex w-full flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-t border-line px-4 py-2 text-[11.5px] text-muted"
+        >
+          {finished ? (
+            <>
+              <span className="text-[9px] uppercase tracking-wide">Got it right</span>
+              <span><span className="mr-1.5 font-mono text-cream">{exactN}</span>Exact ({pctOf(exactN)}%)</span>
+              <span>·</span>
+              <span><span className="mr-1.5 font-mono text-cream">{resultN}</span>Result ({pctOf(resultN)}%)</span>
+            </>
+          ) : (
+            <>
+              <span className="text-[9px] uppercase tracking-wide">Most predicted</span>
+              <span><span className="font-mono text-cream">{m.mostCommonScore.replace("-", "–")}</span> {frac(m.mostCommonScoreCount, m.mostCommonTotal)}</span>
+              <span>·</span>
+              <span>
+                {m.mostCommonResult === "DRAW" ? (
+                  <span className="font-mono text-cream">Draw</span>
+                ) : (
+                  <>
+                    <span className="mr-1">{flagFor(m.mostCommonResult === "HOME" ? m.home : m.away)}</span>
+                    <span className="font-mono text-cream">{m.mostCommonResult === "HOME" ? m.homeCode : m.awayCode}</span> Win
+                  </>
+                )}{" "}
+                {frac(m.mostCommonResultCount, m.mostCommonTotal)}
+              </span>
+            </>
+          )}
+          {board.length > 0 && (
+            <span className="ml-1 inline-flex items-center gap-1 self-center text-[9px] uppercase tracking-wide text-gold/80">
+              {show ? "Hide all" : "Show all"}
+              <span className={"inline-block text-[12px] leading-none transition-transform" + (show ? " rotate-180" : "")}>▾</span>
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* full predictions board - same grow-then-fade reveal as the key events */}
+      {board.length > 0 && (
+        <div
+          className="grid transition-[grid-template-rows] duration-[250ms] ease-out"
+          style={{ gridTemplateRows: show ? "1fr" : "0fr", transitionDelay: show ? "0ms" : "250ms" }}
+        >
+          <div className="overflow-hidden">
+            <div
+              className="border-t border-line px-3 pb-3 transition-opacity duration-[250ms]"
+              style={{ opacity: show ? 1 : 0, transitionDelay: show ? "250ms" : "0ms" }}
+            >
+              <div className="grid grid-cols-[24px_1fr_auto] items-center px-2 py-1.5 text-[9px] uppercase tracking-[1.5px] text-muted">
+                <div>#</div>
+                <div>Entrant</div>
+                <div className="whitespace-nowrap text-right">{isLive ? "Live Prediction" : "Prediction"}</div>
+              </div>
+              {board.map((b, i) => (
+                <div
+                  key={b.entrantId}
+                  className={"grid grid-cols-[24px_1fr_auto] items-center gap-2 rounded-lg border-t border-line px-2 py-2" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+                >
+                  <div className="font-mono text-[11px] text-muted">{rankFor(i)}</div>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-[12.5px] text-cream">{b.name}</span>
+                    {b.entrantId === myId && <span className="shrink-0 rounded bg-gold/20 px-1 py-px text-[7px] font-semibold uppercase tracking-wide text-gold">You</span>}
+                  </div>
+                  <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                    <span className={"font-mono text-[12px] text-cream" + (b.points != null ? " mr-1.5" : "")}>{b.pick.replace("-", "–")}</span>
+                    {b.points != null && (
+                      <>
+                        <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+                        <PointsPill points={b.points} tier={b.tier} />
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </Link>

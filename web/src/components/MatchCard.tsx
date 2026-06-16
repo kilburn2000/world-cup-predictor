@@ -183,16 +183,15 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
               className="border-b border-line px-5 py-3 transition-opacity duration-[250ms] sm:px-6"
               style={{ opacity: showEvents ? 1 : 0, transitionDelay: showEvents ? "250ms" : "0ms" }}
             >
-              <div className="mb-1.5 text-[9px] uppercase tracking-wide text-muted">Key events</div>
               <div className="space-y-1">
                 {[...m.events].sort((a, b) => a.minute - b.minute).map((ev, i) => {
                   const colour = ev.type === "goal" ? "#c9a86a" : "#d9534f";
                   const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
                   const team = ev.team === "home" ? m.home : m.away;
                   return (
-                    <div key={i} className="flex items-center gap-2 text-[12.5px]">
-                      <span className="w-8 shrink-0 font-mono text-[11px] text-muted">{ev.minute}'</span>
-                      <span>{flagFor(team)}</span>
+                    <div key={i} className="flex items-center gap-2 text-[12px]">
+                      <span className="w-7 shrink-0 font-mono text-[10.5px] text-muted">{ev.minute}'</span>
+                      <span className="shrink-0">{flagFor(team)}</span>
                       <span className="truncate text-cream">{(ev.player ?? team)}{ev.own ? " (o.g.)" : ev.penalty ? " (p)" : ""}</span>
                       <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase tracking-wide" style={{ color: colour }}>{tag}</span>
                     </div>
@@ -207,7 +206,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
       {/* logged-in entrant's own prediction; chips + points once the game's under way */}
       {m.myPick && (
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-b border-line px-5 py-2 text-[12.5px] sm:px-6">
-          <span className="text-[9px] uppercase tracking-wide text-gold/80">Your prediction</span>
+          <span className="text-[9px] uppercase tracking-wide text-muted">Your prediction</span>
           <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
           {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
             <>
@@ -218,9 +217,15 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
         </div>
       )}
 
-      {/* finished → who got it right; otherwise → the crowd's most-predicted */}
+      {/* finished → who got it right; otherwise → the crowd's most-predicted. This line
+          doubles as the toggle for the full predictions board (caret + click). */}
       {m.mostCommonScore && (
-        <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[12.5px] text-muted sm:px-6">
+        <button
+          onClick={() => setShow((v) => !v)}
+          disabled={board.length === 0}
+          aria-label={show ? "Hide all predictions" : "Show all predictions"}
+          className="flex w-full flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 border-b border-line px-5 py-2.5 text-[12.5px] text-muted sm:px-6"
+        >
           {finished ? (
             <>
               <span className="text-[9px] uppercase tracking-wide">Got it right</span>
@@ -248,24 +253,21 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
               </span>
             </>
           )}
-        </div>
+          {board.length > 0 && (
+            <span className="ml-1 inline-flex items-center gap-1 self-center text-[9px] uppercase tracking-wide text-gold/80">
+              {show ? "Hide all" : "Show all"}
+              <span className={"inline-block text-[12px] leading-none transition-transform" + (show ? " rotate-180" : "")}>▾</span>
+            </span>
+          )}
+        </button>
       )}
 
-
+      {/* full predictions board - same grow-then-fade reveal as the compact cards */}
       {board.length > 0 && (
-        <>
-          <button
-            onClick={() => setShow((v) => !v)}
-            className="block w-full px-5 py-2.5 text-center text-[11.5px] uppercase tracking-wide text-muted transition-colors hover:text-cream sm:px-6"
-          >
-            {show ? "Hide all predictions ▴" : "Show all predictions ▾"}
-          </button>
-          {/* same reveal as the compact cards: open grows the space (0.25s) then fades
-              the content in (0.25s); close reverses it. */}
-          <div
-            className="grid transition-[grid-template-rows] duration-[250ms] ease-out"
-            style={{ gridTemplateRows: show ? "1fr" : "0fr", transitionDelay: show ? "0ms" : "250ms" }}
-          >
+        <div
+          className="grid transition-[grid-template-rows] duration-[250ms] ease-out"
+          style={{ gridTemplateRows: show ? "1fr" : "0fr", transitionDelay: show ? "0ms" : "250ms" }}
+        >
             <div className="overflow-hidden">
               <div
                 className="px-5 pb-5 transition-opacity duration-[250ms] sm:px-6"
@@ -307,7 +309,6 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
               </div>
             </div>
           </div>
-        </>
       )}
     </div>
   );
