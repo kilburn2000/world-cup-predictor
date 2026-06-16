@@ -57,7 +57,7 @@ const DAVE_KO: K[] = [
 ];
 
 const LUCY_GROUP: G[] = [
-  ["Mexico",3,0,"South Africa"],["Rep. of Korea",2,1,"Czechia"],["Canada",2,1,"Bosnia - Hertz"],
+  ["Mexico",3,0,"South Africa"],["Rep. of Korea",1,1,"Czechia"],["Canada",2,1,"Bosnia - Hertz"],
   ["USA",2,1,"Paraguay"],["Qatar",0,3,"Switzerland"],["Brazil",2,1,"Morocco"],["Haiti",0,3,"Scotland"],
   ["Australia",1,2,"Turkiye"],["Germany",3,0,"Curaçao"],["Netherlands",1,1,"Japan"],["Ivory Coast",1,2,"Ecuador"],
   ["Sweden",2,1,"Tunisia"],["Spain",3,0,"Cape Verde"],["Belgium",3,0,"Egypt"],["Saudi Arabia",0,3,"Uruguay"],
