@@ -91,6 +91,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   const { data: me } = useMe();
   const myId = me?.entrantId;
   const [show, setShow] = useState(false);
+  const [showEvents, setShowEvents] = useState(false);
   const finished = m.status === "FINISHED";
   const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
   const total = board.length;
@@ -153,11 +154,55 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           <div className="text-left">
             <div className="flex items-center gap-2 font-display text-base leading-tight text-cream sm:text-2xl">
               <span className="align-middle">{flagFor(m.away)}</span>{m.away}
+              {/* caret next to the away team toggles the key events under the score
+                  (only when the game has any). The score stays centred (1fr columns). */}
+              {m.events && m.events.length > 0 && (
+                <button
+                  onClick={() => setShowEvents((v) => !v)}
+                  aria-label={showEvents ? "Hide key events" : "Show key events"}
+                  className="shrink-0 px-0.5 text-[18px] leading-none text-muted transition-colors hover:text-cream"
+                >
+                  <span className={"inline-block transition-transform" + (showEvents ? " rotate-180" : "")}>▾</span>
+                </button>
+              )}
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.awayCode}</div>
           </div>
         </div>
       </div>
+
+      {/* key events directly under the score, toggled by the caret. Same reveal as the
+          compact card: open grows the space (0.25s) then fades the content in (0.25s). */}
+      {m.events && m.events.length > 0 && (
+        <div
+          className="grid transition-[grid-template-rows] duration-[250ms] ease-out"
+          style={{ gridTemplateRows: showEvents ? "1fr" : "0fr", transitionDelay: showEvents ? "0ms" : "250ms" }}
+        >
+          <div className="overflow-hidden">
+            <div
+              className="border-b border-line px-5 py-3 transition-opacity duration-[250ms] sm:px-6"
+              style={{ opacity: showEvents ? 1 : 0, transitionDelay: showEvents ? "250ms" : "0ms" }}
+            >
+              <div className="mb-1.5 text-[9px] uppercase tracking-wide text-muted">Key events</div>
+              <div className="space-y-1">
+                {[...m.events].sort((a, b) => a.minute - b.minute).map((ev, i) => {
+                  const colour = ev.type === "goal" ? "#c9a86a" : "#d9534f";
+                  const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
+                  const team = ev.team === "home" ? m.home : m.away;
+                  return (
+                    <div key={i} className="flex items-center gap-2 text-[12.5px]">
+                      <span className="w-8 shrink-0 font-mono text-[11px] text-muted">{ev.minute}'</span>
+                      <span>{flagFor(team)}</span>
+                      <span className="truncate text-cream">{(ev.player ?? team)}{ev.own ? " (o.g.)" : ev.penalty ? " (p)" : ""}</span>
+                      <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase tracking-wide" style={{ color: colour }}>{tag}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* logged-in entrant's own prediction; chips + points once the game's under way */}
       {m.myPick && (
@@ -206,26 +251,6 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
         </div>
       )}
 
-      {m.events && m.events.length > 0 && (
-        <div className="border-b border-line px-5 py-3 sm:px-6">
-          <div className="mb-1.5 text-[9px] uppercase tracking-wide text-muted">Key events</div>
-          <div className="space-y-1">
-            {[...m.events].sort((a, b) => a.minute - b.minute).map((ev, i) => {
-              const colour = ev.type === "goal" ? "#c9a86a" : "#d9534f";
-              const tag = ev.type === "goal" ? "⚽ Goal" : "🟥 Red card";
-              const team = ev.team === "home" ? m.home : m.away;
-              return (
-                <div key={i} className="flex items-center gap-2 text-[12.5px]">
-                  <span className="w-8 shrink-0 font-mono text-[11px] text-muted">{ev.minute}'</span>
-                  <span>{flagFor(team)}</span>
-                  <span className="truncate text-cream">{(ev.player ?? team)}{ev.own ? " (o.g.)" : ev.penalty ? " (p)" : ""}</span>
-                  <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase tracking-wide" style={{ color: colour }}>{tag}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {board.length > 0 && (
         <>
@@ -266,9 +291,10 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                       {b.entrantId === myId && <YouBadge />}
                     </div>
                   </div>
-                  {/* same shape as the standings Live Prediction column: score + chip + pill */}
-                  <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                    <span className="font-mono text-[13px] text-cream">{b.pick.replace("-", "–")}</span>
+                  {/* same shape AND spacing as the standings Live Prediction column:
+                      gap-1 between items, with a wider score->chip gap (mr-1.5). */}
+                  <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                    <span className={"font-mono text-[13px] text-cream" + (b.points != null ? " mr-1.5" : "")}>{b.pick.replace("-", "–")}</span>
                     {b.points != null && (
                       <>
                         <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
