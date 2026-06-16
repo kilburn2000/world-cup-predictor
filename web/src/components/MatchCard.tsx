@@ -92,6 +92,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   const myId = me?.entrantId;
   const [show, setShow] = useState(false);
   const finished = m.status === "FINISHED";
+  const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
   const total = board.length;
   const exactN = board.filter((b) => b.tier === "exact").length;
   const resultN = board.filter((b) => b.tier === "exact" || b.tier === "result").length;
@@ -248,7 +249,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
               <div className="grid grid-cols-[30px_1fr_auto] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_auto]">
                 <div>#</div>
                 <div>Entrant</div>
-                <div className="text-right">Prediction</div>
+                <div className="whitespace-nowrap text-right">{isLive ? "Live Prediction" : "Prediction"}</div>
               </div>
               {board.map((b, i) => (
                 <div
