@@ -82,39 +82,40 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="shrink-0">{flagFor(m.away)}</span>
             <span className="truncate text-[15px] text-cream">{m.away}</span>
+            {/* caret next to the away team; toggles key events. The score stays dead-centre
+                because this column and the home column are both flex-1 (equal width). */}
+            {events.length > 0 && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowEvents((v) => !v);
+                }}
+                aria-label={showEvents ? "Hide key events" : "Show key events"}
+                className="ml-1 shrink-0 px-0.5 text-[18px] leading-none text-muted transition-colors hover:text-cream"
+              >
+                {/* one glyph rotated, so up and down are identical shapes */}
+                <span className={"inline-block transition-transform" + (showEvents ? " rotate-180" : "")}>▾</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* your prediction + scoring */}
-      {m.myPick && (
-        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-line px-4 py-2 text-[12.5px]">
-          <span className="text-[9px] uppercase tracking-wide text-gold/80">Your prediction</span>
-          <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
-          {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
-            <>
-              <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
-              {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* key events, behind a toggle (button stops the card's link navigating) */}
+      {/* key events, directly beneath the score (above the prediction), toggled by the
+          caret. Opening: the space grows first (0.25s) then the content fades in (0.25s).
+          Closing reverses it - content fades out, then the space collapses. The grid
+          0fr->1fr trick animates the height; transition delays sequence the two phases. */}
       {events.length > 0 && (
-        <>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowEvents((v) => !v);
-            }}
-            className="block w-full border-t border-line px-4 py-1.5 text-center text-[10px] uppercase tracking-wide text-muted transition-colors hover:text-cream"
-          >
-            {showEvents ? "Hide events ▴" : `${events.length} event${events.length === 1 ? "" : "s"} ▾`}
-          </button>
-          {showEvents && (
-            <div className="space-y-1 border-t border-line px-4 py-2">
+        <div
+          className="grid transition-[grid-template-rows] duration-[250ms] ease-out"
+          style={{ gridTemplateRows: showEvents ? "1fr" : "0fr", transitionDelay: showEvents ? "0ms" : "250ms" }}
+        >
+          <div className="overflow-hidden">
+            <div
+              className="space-y-1 border-t border-line px-4 py-2 transition-opacity duration-[250ms]"
+              style={{ opacity: showEvents ? 1 : 0, transitionDelay: showEvents ? "250ms" : "0ms" }}
+            >
               {[...events]
                 .sort((a, b) => a.minute - b.minute)
                 .map((ev, i) => {
@@ -135,8 +136,22 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
                   );
                 })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* your prediction + scoring */}
+      {m.myPick && (
+        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-line px-4 py-2 text-[12.5px]">
+          <span className="text-[9px] uppercase tracking-wide text-gold/80">Your prediction</span>
+          <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
+          {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
+            <>
+              <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+              {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
+            </>
           )}
-        </>
+        </div>
       )}
     </Link>
   );

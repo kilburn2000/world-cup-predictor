@@ -128,6 +128,18 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
     }
   }
 
+  // A stat card only appears once its week/round/competition has actually started.
+  // Knockout + Top Scorer both run off the group games, so they begin with Week 1.
+  const statCards = [
+    { label: "Knockout", card: knockout, to: "/standings/knockout", show: !!phases?.week1 },
+    { label: "Top scorer", card: tsCard, to: "/standings/top-scorer", show: !!phases?.week1 },
+    { label: "Week 1", card: phaseValue("week1"), to: "/standings/week-1", show: !!phases?.week1 },
+    { label: "Week 2", card: phaseValue("week2"), to: "/standings/week-2", show: !!phases?.week2 },
+    { label: "Week 3", card: phaseValue("week3"), to: "/standings/week-3", show: !!phases?.week3 },
+    { label: "Round of 32", card: phaseValue("r32"), to: "/standings/round-of-32", show: !!phases?.r32 },
+    { label: "Round of 16", card: phaseValue("r16"), to: "/standings/round-of-16", show: !!phases?.r16 },
+  ].filter((c) => c.show);
+
   const inits = data.entrant.name
     .split(" ")
     .map((s) => s[0])
@@ -179,16 +191,15 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
         </div>
       </div>
 
-      {/* stat cards */}
-      <div className="mt-4 flex flex-wrap justify-center gap-2 [&>*]:basis-[calc(50%-0.25rem)] sm:[&>*]:basis-[calc(25%-0.375rem)] lg:[&>*]:basis-[calc((100%-3rem)/7)]">
-        <Stat label="Knockout" {...knockout} to={linkCards ? "/standings/knockout" : undefined} />
-        <Stat label="Top scorer" {...tsCard} to={linkCards ? "/standings/top-scorer" : undefined} />
-        <Stat label="Week 1" {...phaseValue("week1")} to={linkCards ? "/standings/week-1" : undefined} />
-        <Stat label="Week 2" {...phaseValue("week2")} to={linkCards ? "/standings/week-2" : undefined} />
-        <Stat label="Week 3" {...phaseValue("week3")} to={linkCards ? "/standings/week-3" : undefined} />
-        <Stat label="Round of 32" {...phaseValue("r32")} to={linkCards ? "/standings/round-of-32" : undefined} />
-        <Stat label="Round of 16" {...phaseValue("r16")} to={linkCards ? "/standings/round-of-16" : undefined} />
-      </div>
+      {/* stat cards - only those whose week/competition has started; the grid
+          auto-fits so however many show, they fill the row evenly */}
+      {statCards.length > 0 && (
+        <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2">
+          {statCards.map((c) => (
+            <Stat key={c.label} label={c.label} {...c.card} to={linkCards ? c.to : undefined} />
+          ))}
+        </div>
+      )}
     </>
   );
 }

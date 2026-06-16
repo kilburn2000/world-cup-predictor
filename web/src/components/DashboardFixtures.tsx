@@ -37,7 +37,7 @@ export default function DashboardFixtures() {
           {d.items.length === 0 ? (
             <div className="fl-card px-4 py-5 text-center text-[13px] text-muted">No games {d.label.toLowerCase()}.</div>
           ) : (
-            <div className="grid gap-2 lg:grid-cols-2">{d.items.map((m) => <CompactMatchCard key={m.id} m={m} />)}</div>
+            <div className="grid items-start gap-2 lg:grid-cols-2">{d.items.map((m) => <CompactMatchCard key={m.id} m={m} />)}</div>
           )}
         </div>
       ))}
