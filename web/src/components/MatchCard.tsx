@@ -92,8 +92,6 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   const myId = me?.entrantId;
   const [show, setShow] = useState(false);
   const finished = m.status === "FINISHED";
-  // a points figure takes its chip's colour (gold exact / green points / red none)
-  const PTS_TONE: Record<string, string> = { exact: "#c9a86a", result: "#6bbf86", diff: "#6bbf86", miss: "#e08a84" };
   const total = board.length;
   const exactN = board.filter((b) => b.tier === "exact").length;
   const resultN = board.filter((b) => b.tier === "exact" || b.tier === "result").length;
@@ -247,43 +245,38 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                 className="px-5 pb-5 transition-opacity duration-[250ms] sm:px-6"
                 style={{ opacity: show ? 1 : 0, transitionDelay: show ? "250ms" : "0ms" }}
               >
-              <div className="grid grid-cols-[30px_1fr_54px_56px] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_56px_104px_52px]">
+              <div className="grid grid-cols-[30px_1fr_auto] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_auto]">
                 <div>#</div>
                 <div>Entrant</div>
-                <div className="text-center">Prediction</div>
-                <div className="hidden text-center sm:block">Scored</div>
-                <div className="text-right">Pts</div>
+                <div className="text-right">Prediction</div>
               </div>
-              {board.map((b, i) => {
-                return (
-                  <div key={b.entrantId} className="border-t border-line">
-                    <div className={"grid grid-cols-[30px_1fr_54px_56px] items-center rounded-lg px-3 py-2.5 sm:grid-cols-[34px_1fr_56px_104px_52px]" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
-                      <div className="font-mono text-xs text-muted">{rankFor(i)}</div>
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
-                          {initials(b.name)}
-                        </div>
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate text-[13.5px] text-cream">{b.name}</span>
-                          {b.entrantId === myId && <YouBadge />}
-                        </div>
-                      </div>
-                      <div className="text-center font-mono text-[13px]">{b.pick}</div>
-                      <div className="hidden justify-center sm:flex">
-                        {b.points != null && <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />}
-                      </div>
-                      <div className="text-right font-mono text-base font-semibold" style={{ color: b.tier ? PTS_TONE[b.tier] : "#8d9388" }}>
-                        {b.points != null ? `${b.points}${b.points === 1 ? "pt" : "pts"}` : "–"}
-                      </div>
+              {board.map((b, i) => (
+                <div
+                  key={b.entrantId}
+                  className={"grid grid-cols-[30px_1fr_auto] items-center gap-2 rounded-lg border-t border-line px-3 py-2.5 sm:grid-cols-[34px_1fr_auto]" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+                >
+                  <div className="font-mono text-xs text-muted">{rankFor(i)}</div>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
+                      {initials(b.name)}
                     </div>
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-[13.5px] text-cream">{b.name}</span>
+                      {b.entrantId === myId && <YouBadge />}
+                    </div>
+                  </div>
+                  {/* same shape as the standings Live Prediction column: score + chip + pill */}
+                  <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                    <span className="font-mono text-[13px] text-cream">{b.pick.replace("-", "–")}</span>
                     {b.points != null && (
-                      <div className="flex justify-end px-3 pb-2.5 sm:hidden">
+                      <>
                         <ScoredChips pick={b.pick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
-                      </div>
+                        <PointsPill points={b.points} tier={b.tier} />
+                      </>
                     )}
                   </div>
-                );
-              })}
+                </div>
+              ))}
               </div>
             </div>
           </div>
