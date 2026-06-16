@@ -1134,8 +1134,10 @@ try {
   // 2026-06-16: [redacted] & [redacted] handed in fresh sheets - the OCR import
   // was unreliable, so both were re-transcribed by hand and fully replaced. Runs
   // once (prod picks it up on deploy); savePredictions wipes + re-inserts each.
-  // v2: corrected Lucy's Rep. of Korea v Czechia (1-1, was mis-transcribed 2-1).
-  const [reuploaded] = await sql`select 1 from app_meta where key = 'dave_lucy_reupload_v2'`;
+  // v3: more transcription fixes after re-reading the photos against the DB -
+  // Lucy: Rep. of Korea v Czechia 1-1 (was 2-1). Dave: England v Croatia 2-1
+  // (was 0-0) and Switzerland v Bosnia 2-1 (was 1-0).
+  const [reuploaded] = await sql`select 1 from app_meta where key = 'dave_lucy_reupload_v3'`;
   if (!reuploaded) {
     for (const { entrant, predictions } of REUPLOAD_2026_06_16) {
       const r = await savePredictions(entrant, predictions);
@@ -1144,9 +1146,9 @@ try {
         throw new Error(`reupload ${entrant} wrote ${r.groupPredictions} group + ${r.knockoutPredictions} knockout (expected 72 + 32) - aborting, key not set`);
       }
     }
-    await sql`insert into app_meta (key) values ('dave_lucy_reupload_v2')`;
+    await sql`insert into app_meta (key) values ('dave_lucy_reupload_v3')`;
     await recomputeAll();
-    console.log("reupload dave_lucy_reupload_v2 applied");
+    console.log("reupload dave_lucy_reupload_v3 applied");
   }
 } catch (e) {
   console.error("startup migration failed", e);
