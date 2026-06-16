@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { uploadEntrant, extractPhoto, savePredictions, type ParsedPrediction } from "../api.js";
+import { uploadEntrant, extractPhoto, savePredictions, diffPredictions, type ParsedPrediction, type PredictionDiff } from "../api.js";
 import { getToken } from "../auth.js";
 
 const SLOT_LABEL = (p: ParsedPrediction) => {
@@ -21,6 +21,7 @@ export default function Upload() {
   const [name, setName] = useState("");
   const [preds, setPreds] = useState<ParsedPrediction[] | null>(null);
   const [unresolved, setUnresolved] = useState<string[]>([]);
+  const [diff, setDiff] = useState<PredictionDiff | null>(null);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["entrants"] });
@@ -44,7 +45,26 @@ export default function Upload() {
     }
   }
 
-  async function onSave() {
+  // Step 1: preview how this sheet differs from what's stored (no write).
+  async function onPreview() {
+    if (!preds || !name.trim()) return;
+    setBusy(true);
+    say("Comparing with the saved entry…");
+    try {
+      const d = await diffPredictions(name.trim(), preds, getToken());
+      setDiff(d);
+      say(d.exists
+        ? `${d.totalChanged} of ${d.totalNew} predictions differ from the saved entry - review below, then confirm.`
+        : `New entrant "${d.entrant}" - nothing to overwrite. Review below, then confirm.`, true);
+    } catch (e: any) {
+      say(`Compare failed: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Step 2: commit the replace (destructive).
+  async function onConfirmSave() {
     if (!preds || !name.trim()) return;
     setBusy(true);
     say("Saving…");
@@ -53,6 +73,7 @@ export default function Upload() {
       say(`Saved ${r.entrant}: ${r.groupPredictions} group + ${r.knockoutPredictions} knockout.`, true);
       setPreds(null);
       setName("");
+      setDiff(null);
       refresh();
     } catch (e: any) {
       say(`Save failed: ${e.message}`);
@@ -75,7 +96,8 @@ export default function Upload() {
     }
   }
 
-  const editRow = (i: number, patch: Partial<ParsedPrediction>) => setPreds((p) => p!.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  // Any manual edit invalidates a previously-computed diff.
+  const editRow = (i: number, patch: Partial<ParsedPrediction>) => { setDiff(null); setPreds((p) => p!.map((x, j) => (j === i ? { ...x, ...patch } : x))); };
 
   const sections: { label: string; rows: { p: ParsedPrediction; i: number }[] }[] = [];
   preds?.forEach((p, i) => {
@@ -152,9 +174,30 @@ export default function Upload() {
               </div>
             ))}
 
+            {diff && (
+              <div className="-mx-6 border-t border-line bg-pitch-900/60 px-6 py-3 text-[12px]">
+                <div className="mb-1 text-[11px] uppercase tracking-[1.5px] text-gold">
+                  {diff.exists ? `Changes vs saved entry — ${diff.totalChanged} of ${diff.totalNew} differ` : `New entrant — nothing to overwrite`}
+                </div>
+                <div className="mb-2 text-muted">
+                  Group: {diff.group.changed.length} changed, {diff.group.added.length} added, {diff.group.unchanged} unchanged
+                  {diff.group.missing.length > 0 && <span className="text-down"> · {diff.group.missing.length} missing from new</span>}
+                  {" · "}Knockout: {diff.knockout.changed.length} changed, {diff.knockout.added.length} added, {diff.knockout.unchanged} unchanged
+                  {diff.knockout.missing.length > 0 && <span className="text-down"> · {diff.knockout.missing.length} missing</span>}
+                </div>
+                <div className="max-h-48 overflow-auto font-mono text-[11px] leading-relaxed text-muted">
+                  {diff.group.changed.map((c, j) => <div key={"gc" + j}>{c.fixture}: {c.from} → <span className="text-up">{c.to}</span></div>)}
+                  {diff.knockout.changed.map((c, j) => <div key={"kc" + j}>{c.slot}: {c.from} → <span className="text-up">{c.to}</span></div>)}
+                  {diff.group.missing.map((m, j) => <div key={"gm" + j} className="text-down">missing fixture: {m}</div>)}
+                  {diff.knockout.missing.map((m, j) => <div key={"km" + j} className="text-down">missing slot: {m}</div>)}
+                </div>
+              </div>
+            )}
             <div className="sticky bottom-0 -mx-6 flex gap-2 border-t border-line bg-pitch-900/90 px-6 py-3 backdrop-blur">
-              <button onClick={onSave} disabled={busy || !name.trim()} className="btn-gold px-4 py-2.5 text-sm">{busy ? "Saving…" : "Save entrant"}</button>
-              <button onClick={() => { setPreds(null); setName(""); setStatus(null); }} className="btn-ghost px-4 py-2.5 text-sm">Cancel</button>
+              {!diff
+                ? <button onClick={onPreview} disabled={busy || !name.trim()} className="btn-gold px-4 py-2.5 text-sm">{busy ? "Comparing…" : "Preview changes"}</button>
+                : <button onClick={onConfirmSave} disabled={busy || !name.trim()} className="btn-gold px-4 py-2.5 text-sm">{busy ? "Saving…" : diff.exists ? `Confirm replace (${diff.totalChanged} changes)` : "Confirm save"}</button>}
+              <button onClick={() => { setPreds(null); setName(""); setStatus(null); setDiff(null); }} className="btn-ghost px-4 py-2.5 text-sm">Cancel</button>
             </div>
           </div>
         )}

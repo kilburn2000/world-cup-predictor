@@ -18,7 +18,8 @@ import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, SESSION_COOKIE, type SessionUser } from "./auth.js";
-import { runImport, savePredictions, checkUnresolved } from "./importSheet.js";
+import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
+import { REUPLOAD_2026_06_16 } from "./reupload_2026_06_16.js";
 import { extractFromPhoto, toPredictions } from "./photoImport.js";
 import { startPoller } from "./poller.js";
 
@@ -962,6 +963,18 @@ app.post("/api/admin/extract-photo", async (req: any, reply) => {
   }
 });
 
+// Preview how a parsed prediction set differs from what's stored, WITHOUT saving.
+// Lets the admin see the changes before committing a destructive replace.
+app.post("/api/admin/diff-predictions", async (req: any, reply) => {
+  if (!requireAdmin(req, reply)) return;
+  const { name, predictions } = req.body ?? {};
+  if (!name || !Array.isArray(predictions)) {
+    reply.code(400).send({ error: "name and predictions[] required" });
+    return;
+  }
+  return diffAgainstCurrent(String(name).trim(), predictions);
+});
+
 // Save reviewed predictions (from photo or any source) for a named entrant.
 app.post("/api/admin/save-predictions", async (req: any, reply) => {
   if (!requireAdmin(req, reply)) return;
@@ -1103,6 +1116,23 @@ try {
         and p.pred_home_goals = 3 and p.pred_away_goals = 0`;
     await sql`insert into app_meta (key) values ('pred_audit_fix_v1')`;
     await recomputeAll();
+  }
+
+  // 2026-06-16: [redacted] & [redacted] handed in fresh sheets - the OCR import
+  // was unreliable, so both were re-transcribed by hand and fully replaced. Runs
+  // once (prod picks it up on deploy); savePredictions wipes + re-inserts each.
+  const [reuploaded] = await sql`select 1 from app_meta where key = 'dave_lucy_reupload_v1'`;
+  if (!reuploaded) {
+    for (const { entrant, predictions } of REUPLOAD_2026_06_16) {
+      const r = await savePredictions(entrant, predictions);
+      if (r.unresolved.length) console.warn(`reupload ${entrant}: unresolved ${r.unresolved.join(", ")}`);
+      if (r.groupPredictions !== 72 || r.knockoutPredictions !== 32) {
+        throw new Error(`reupload ${entrant} wrote ${r.groupPredictions} group + ${r.knockoutPredictions} knockout (expected 72 + 32) - aborting, key not set`);
+      }
+    }
+    await sql`insert into app_meta (key) values ('dave_lucy_reupload_v1')`;
+    await recomputeAll();
+    console.log("reupload dave_lucy_reupload_v1 applied");
   }
 } catch (e) {
   console.error("startup migration failed", e);

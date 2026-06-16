@@ -7,7 +7,8 @@ import { sql } from "./db/index.js";
 const norm = (s: string) => String(s).toLowerCase().replace(/[^a-z]/g, "");
 const ALIAS: Record<string, string> = {
   [norm("Bosnia - Hertz")]: norm("Bosnia"),
-  [norm("Cape Verde")]: norm("Cape Verde Islands"),
+  [norm("Cape Verde Islands")]: norm("Cape Verde"),
+  [norm("Columbia")]: norm("Colombia"),
   [norm("IR Iran")]: norm("Iran"),
   [norm("Rep. of Korea")]: norm("South Korea"),
   [norm("Turkiye")]: norm("Türkiye"),
@@ -75,7 +76,9 @@ export async function savePredictions(
   const unresolved = new Set<string>();
   const resolve = (name: string): number | null => {
     const n = norm(name);
-    const id = byNorm.get(ALIAS[n] ?? n);
+    // Try the literal name first, then the alias - a real team name must never
+    // be rerouted by an alias (e.g. "Cape Verde" exists; don't send it to an alias).
+    const id = byNorm.get(n) ?? byNorm.get(ALIAS[n] ?? "");
     if (!id && name.trim()) unresolved.add(name.trim());
     return id ?? null;
   };
@@ -132,6 +135,77 @@ export async function runImport(file: Buffer, entrantName: string): Promise<Impo
   return savePredictions(entrantName, parseEntrySheet(file));
 }
 
+export interface PredictionDiff {
+  entrant: string;
+  exists: boolean;
+  group: { changed: { fixture: string; from: string; to: string }[]; added: { fixture: string; to: string }[]; missing: string[]; unchanged: number };
+  knockout: { changed: { slot: string; from: string; to: string }[]; added: { slot: string; to: string }[]; missing: string[]; unchanged: number };
+  totalNew: number;
+  totalChanged: number;
+}
+
+// Compare a parsed prediction set against what's currently stored for an entrant,
+// WITHOUT writing anything. Powers the admin "preview changes before replace" step.
+export async function diffAgainstCurrent(entrantName: string, predictions: ParsedPrediction[]): Promise<PredictionDiff> {
+  const dbTeams = await sql`select id, name from teams`;
+  const idToName = new Map<number, string>(dbTeams.map((t: any) => [t.id, t.name]));
+  const byNorm = new Map<string, number>(dbTeams.map((t: any) => [norm(t.name), t.id]));
+  const resolve = (name: string) => byNorm.get(norm(name)) ?? byNorm.get(ALIAS[norm(name)] ?? "") ?? null;
+  const groupMatches = await sql`select id, home_team_id, away_team_id from matches where stage = 'GROUP'`;
+  const pairToMatch = new Map<string, number>();
+  for (const m of groupMatches as any[]) pairToMatch.set([m.home_team_id, m.away_team_id].sort((a, b) => a - b).join("-"), m.id);
+
+  const league = await sql`select id from leagues where join_code = 'MAIN'`;
+  const ent = league.length ? await sql`select id from entrants where league_id = ${league[0].id} and name = ${entrantName}` : [];
+  const exists = ent.length > 0;
+  const rows = exists
+    ? await sql`select scope, match_id, bracket_slot, pred_home_team_id as h, pred_away_team_id as a, pred_home_goals as hg, pred_away_goals as ag from predictions where entrant_id = ${ent[0].id}`
+    : [];
+  const curGroup = new Map<number, string>(); // matchId -> "hg-ag" (in match orientation)
+  const curKo = new Map<string, string>();     // slot -> "Home hg-ag Away"
+  for (const r of rows as any[]) {
+    if (r.scope === "MATCH") curGroup.set(r.match_id, `${r.hg}-${r.ag}`);
+    else curKo.set(r.bracket_slot, `${idToName.get(r.h)} ${r.hg}-${r.ag} ${idToName.get(r.a)}`);
+  }
+
+  const diff: PredictionDiff = {
+    entrant: entrantName, exists,
+    group: { changed: [], added: [], missing: [], unchanged: 0 },
+    knockout: { changed: [], added: [], missing: [], unchanged: 0 },
+    totalNew: predictions.length, totalChanged: 0,
+  };
+  const seenMatches = new Set<number>();
+  const seenSlots = new Set<string>();
+  for (const p of predictions) {
+    if (p.kind === "group") {
+      const h = resolve(p.home), a = resolve(p.away);
+      if (!h || !a) continue;
+      const mid = pairToMatch.get([h, a].sort((x, y) => x - y).join("-"));
+      if (!mid) continue;
+      seenMatches.add(mid);
+      // express the new score in the DB's match orientation (home_team_id first)
+      const matchHomeIsP = idToName.get(h) === idToName.get((groupMatches as any[]).find((m) => m.id === mid).home_team_id);
+      const newScore = matchHomeIsP ? `${p.homeGoals}-${p.awayGoals}` : `${p.awayGoals}-${p.homeGoals}`;
+      const fixture = `${idToName.get(h)} v ${idToName.get(a)}`;
+      const old = curGroup.get(mid);
+      if (old === undefined) diff.group.added.push({ fixture, to: `${p.homeGoals}-${p.awayGoals}` });
+      else if (old !== newScore) diff.group.changed.push({ fixture, from: old, to: newScore });
+      else diff.group.unchanged++;
+    } else {
+      seenSlots.add(p.slot);
+      const to = `${p.home} ${p.homeGoals}-${p.awayGoals} ${p.away}`;
+      const old = curKo.get(p.slot);
+      if (old === undefined) diff.knockout.added.push({ slot: p.slot, to });
+      else if (old !== to) diff.knockout.changed.push({ slot: p.slot, from: old, to });
+      else diff.knockout.unchanged++;
+    }
+  }
+  for (const [mid] of curGroup) if (!seenMatches.has(mid)) diff.group.missing.push((groupMatches as any[]).filter((m) => m.id === mid).map((m) => `${idToName.get(m.home_team_id)} v ${idToName.get(m.away_team_id)}`)[0]);
+  for (const [slot] of curKo) if (!seenSlots.has(slot)) diff.knockout.missing.push(slot);
+  diff.totalChanged = diff.group.changed.length + diff.group.added.length + diff.knockout.changed.length + diff.knockout.added.length;
+  return diff;
+}
+
 // Which predicted team names don't map to a known team (for the review step).
 export async function checkUnresolved(predictions: ParsedPrediction[]): Promise<string[]> {
   const dbTeams = await sql`select name from teams`;
@@ -140,7 +214,7 @@ export async function checkUnresolved(predictions: ParsedPrediction[]): Promise<
   for (const p of predictions) {
     for (const name of [p.home, p.away]) {
       const n = norm(name);
-      if (name && !known.has(ALIAS[n] ?? n)) bad.add(name);
+      if (name && !known.has(n) && !known.has(ALIAS[n] ?? "")) bad.add(name);
     }
   }
   return [...bad];

@@ -302,6 +302,29 @@ export async function extractPhoto(file: File, adminToken: string) {
   return res.json() as Promise<{ name: string; predictions: ParsedPrediction[]; unresolved: string[] }>;
 }
 
+export interface PredictionDiff {
+  entrant: string;
+  exists: boolean;
+  group: { changed: { fixture: string; from: string; to: string }[]; added: { fixture: string; to: string }[]; missing: string[]; unchanged: number };
+  knockout: { changed: { slot: string; from: string; to: string }[]; added: { slot: string; to: string }[]; missing: string[]; unchanged: number };
+  totalNew: number;
+  totalChanged: number;
+}
+
+// Preview the changes a parsed sheet would make, before committing the replace.
+export async function diffPredictions(name: string, predictions: ParsedPrediction[], adminToken: string) {
+  const res = await fetch("/api/admin/diff-predictions", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-admin-token": adminToken },
+    body: JSON.stringify({ name, predictions }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<PredictionDiff>;
+}
+
 export async function savePredictions(name: string, predictions: ParsedPrediction[], adminToken: string) {
   const res = await fetch("/api/admin/save-predictions", {
     method: "POST",
