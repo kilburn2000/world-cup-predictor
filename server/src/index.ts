@@ -133,13 +133,25 @@ app.get("/api/leaderboard", async () => {
   const live = await inPlayProvisional();
   if (live.size) {
     for (const r of rows) {
-      for (const g of live.get(r.entrantId) ?? []) {
-        r.total += g.points;
-        if (g.exact) r.exactCount += 1;
-        if (g.matchday === 1) r.week1 += g.points;
-        else if (g.matchday === 2) r.week2 += g.points;
-        else if (g.matchday === 3) r.week3 += g.points;
+      const games = live.get(r.entrantId) ?? [];
+      if (!games.length) continue;
+      // Also expose the live delta on its own so the client can recompute the
+      // tally from the (faster, ESPN-fresh) /api/live feed and keep the points
+      // column in lockstep with the live chips.
+      const lv = { total: 0, week1: 0, week2: 0, week3: 0, exact: 0 };
+      for (const g of games) {
+        lv.total += g.points;
+        if (g.exact) lv.exact += 1;
+        if (g.matchday === 1) lv.week1 += g.points;
+        else if (g.matchday === 2) lv.week2 += g.points;
+        else if (g.matchday === 3) lv.week3 += g.points;
       }
+      r.total += lv.total;
+      r.exactCount += lv.exact;
+      r.week1 += lv.week1;
+      r.week2 += lv.week2;
+      r.week3 += lv.week3;
+      r.live = lv;
     }
   }
   rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
@@ -604,7 +616,7 @@ app.get("/api/live", async (req: any) => {
   const myId = req.user?.entrantId ?? null;
   const day = Math.max(-1, Math.min(1, Math.trunc(Number(req.query?.day) || 0))); // -1 yesterday, 0 today, +1 tomorrow
   const rows = await sql`
-    select m.id, m.stage, m.group_name grp, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
+    select m.id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
            m.home_team_id mh, m.away_team_id ma,
            ht.name home, ht.tla home_code, at.name away, at.tla away_code
     from matches m
@@ -726,6 +738,7 @@ app.get("/api/live", async (req: any) => {
       awayCode: m.away_code ?? "",
       stage: m.stage,
       group: m.grp,
+      matchday: m.matchday,
       status: m.status,
       kickoff: m.kickoff_utc,
       minute,

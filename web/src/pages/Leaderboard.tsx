@@ -10,8 +10,8 @@ import { useMe } from "../auth.js";
 // Per-entrant provisional points from matches in play right now: the points each
 // would win if every live game ended at its current score, plus what they're
 // scoring on (for the chips). Built from each live match's precomputed board.
-type LiveGame = { pick: string; hs: number; as: number; homeCode: string; awayCode: string; tier: LiveTier | null; points: number };
-type LiveAgg = Map<number, { points: number; games: LiveGame[] }>;
+type LiveGame = { pick: string; hs: number; as: number; homeCode: string; awayCode: string; tier: LiveTier | null; points: number; group: string | null; stage: string; matchday: number | null };
+type LiveAgg = Map<number, LiveGame[]>;
 function useLivePoints(): LiveAgg {
   const { data } = useLiveMatches(0);
   return useMemo(() => {
@@ -20,15 +20,40 @@ function useLivePoints(): LiveAgg {
       if (mt.status !== "IN_PLAY" && mt.status !== "PAUSED") continue;
       for (const b of mt.board) {
         if (b.points == null) continue;
-        const cur = m.get(b.entrantId) ?? { points: 0, games: [] };
-        cur.points += b.points;
-        cur.games.push({ pick: b.pick, hs: mt.homeScore, as: mt.awayScore, homeCode: mt.homeCode, awayCode: mt.awayCode, tier: b.tier, points: b.points });
-        m.set(b.entrantId, cur);
+        const arr = m.get(b.entrantId) ?? [];
+        arr.push({ pick: b.pick, hs: mt.homeScore, as: mt.awayScore, homeCode: mt.homeCode, awayCode: mt.awayCode, tier: b.tier, points: b.points, group: mt.group ?? null, stage: mt.stage, matchday: mt.matchday ?? null });
+        m.set(b.entrantId, arr);
       }
     }
     return m;
   }, [data]);
 }
+
+// One entrant's live predictions for a given context (already filtered), rendered
+// as: predicted score + scoring chip + points pill, one line each. Shared by the
+// Overall, Knockout and per-phase standings tables.
+function LiveCell({ games }: { games: LiveGame[] }) {
+  return (
+    <div className="flex min-w-0 flex-col items-start gap-0.5 overflow-hidden">
+      {games.map((g, i) => (
+        <span key={i} className="flex items-center gap-1 whitespace-nowrap">
+          <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
+          <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
+          <PointsPill points={g.points} tier={g.tier} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Which live games count toward a given standings view.
+const phaseGames = (games: LiveGame[], phase: "week1" | "week2" | "week3" | "r32" | "r16") =>
+  games.filter((g) =>
+    phase === "r32" ? g.stage === "LAST_32"
+    : phase === "r16" ? g.stage === "LAST_16"
+    : g.stage === "GROUP" && g.matchday === ({ week1: 1, week2: 2, week3: 3 } as const)[phase],
+  );
+const groupGames = (games: LiveGame[], group: string) => games.filter((g) => g.stage === "GROUP" && g.group === group);
 
 // Gold "you" badge for the logged-in entrant's own row.
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
@@ -75,11 +100,7 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
   );
 }
 
-function LiveDot() {
-  return <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />;
-}
-
-function GroupRow({ e, started, myId, label }: { e: GroupEntrant; started?: PhasesStarted; myId?: number | null; label: string }) {
+function GroupRow({ e, started, myId, label, liveGames = [] }: { e: GroupEntrant; started?: PhasesStarted; myId?: number | null; label: string; liveGames?: LiveGame[] }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
@@ -92,11 +113,13 @@ function GroupRow({ e, started, myId, label }: { e: GroupEntrant; started?: Phas
           <span className="pl-1.5 text-muted">{label}</span>
         )}
       </div>
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
-        {e.entrantId === myId && <YouBadge />}
-        {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
-        {e.live && <LiveDot />}
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
+          {e.entrantId === myId && <YouBadge />}
+          {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
+        </div>
+        {liveGames.length > 0 && <LiveCell games={liveGames} />}
       </div>
       <div className="text-center font-mono text-[11px] text-muted">{cell(e.week1, started?.week1)}</div>
       <div className="text-center font-mono text-[11px] text-muted">{cell(e.week2, started?.week2)}</div>
@@ -110,7 +133,7 @@ const subTab = (active: boolean) =>
   "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
   (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
-type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; nameIncomplete?: boolean; consensus?: boolean };
+type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number } };
 const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, r16: c.r16, total: c.total, consensus: true });
 
 function Overall({ everyone }: { everyone: Consensus | null }) {
@@ -124,16 +147,22 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   // A dedicated Live column (chip + points pill per in-play game) only appears
   // while something's actually being scored, so the table is unchanged otherwise.
-  const anyLive = [...live.values()].some((v) => v.games.length > 0);
+  const anyLive = [...live.values()].some((g) => g.length > 0);
+  // Re-derive the total from the confirmed base + the live feed (same source as
+  // the chips) so the points column moves the instant a goal lands, not a poll
+  // behind. e.total already folds in the server's (slower) live delta, so strip
+  // it back out (e.live.total) before adding the fresh client figure.
+  const liveOf = (id: number) => (live.get(id) ?? []).reduce((s, g) => s + g.points, 0);
+  const dispTotal = (e: Row) => e.total - (e.live?.total ?? 0) + liveOf(e.entrantId);
   // The Live column is a FIXED width (content wraps inside it) so a row with three
   // live games can't stretch the column and shove every other column out of line.
   const cols = anyLive
     ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_30px_30px_30px_38px_70px_44px] items-center gap-1"
     : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_30px_30px_30px_38px_70px_44px] items-center gap-1";
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
-    (a, b) => b.total - a.total || a.name.localeCompare(b.name),
+    (a, b) => dispTotal(b) - dispTotal(a) || a.name.localeCompare(b.name),
   );
-  const rankLabel = rankLabeller(list, (e) => e.total, (e) => !!e.consensus);
+  const rankLabel = rankLabeller(list, dispTotal, (e) => !!e.consensus);
   return (
     <>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -148,7 +177,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           {anyLive && <div className="text-left">Live Prediction</div>}
           <div className="hidden text-center sm:block">W1</div><div className="hidden text-center sm:block">W2</div><div className="hidden text-center sm:block">W3</div>
           <div className="hidden text-center sm:block">R32</div><div className="hidden whitespace-nowrap text-center sm:block">Exact Scores</div>
-          <div className="text-right">Pts</div>
+          <div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
         </div>
         {list.map((e) => {
           const label = rankLabel(e);
@@ -169,8 +198,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
             </div>
           ) : (
             (() => {
-            const lp = live.get(e.entrantId);
-            const liveGames = lp?.games ?? [];
+            const liveGames = live.get(e.entrantId) ?? [];
             return (
             <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
               <div className="font-mono text-xs">
@@ -185,23 +213,13 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
-              {anyLive && (
-                <div className="flex min-w-0 flex-col items-start gap-0.5 overflow-hidden">
-                  {liveGames.map((g, i) => (
-                    <span key={i} className="flex items-center gap-1 whitespace-nowrap">
-                      <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
-                      <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
-                      <PointsPill points={g.points} tier={g.tier} />
-                    </span>
-                  ))}
-                </div>
-              )}
+              {anyLive && <LiveCell games={liveGames} />}
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week1, started?.week1)}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week2, started?.week2)}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week3, started?.week3)}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.r32, started?.r32)}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
-              <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
+              <div className="text-right font-mono text-sm font-semibold text-cream">{dispTotal(e)}</div>
             </Link>
             );
             })()
@@ -216,6 +234,7 @@ function Knockout() {
   const { data, isLoading, error } = useGroups();
   const { data: started } = usePhasesStarted();
   const { data: me } = useMe();
+  const live = useLivePoints();
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the groups.</p>;
   if (!data?.length) return <p className="text-muted">No groups set yet.</p>;
@@ -238,7 +257,7 @@ function Knockout() {
               </div>
               {g.entrants.map((e, i) => (
                 <div key={e.entrantId}>
-                  <GroupRow e={e} started={started} myId={me?.entrantId} label={rankLabel(e)} />
+                  <GroupRow e={e} started={started} myId={me?.entrantId} label={rankLabel(e)} liveGames={groupGames(live.get(e.entrantId) ?? [], g.group)} />
                   {i === 1 && <div className="border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
                 </div>
               ))}
@@ -255,18 +274,24 @@ type Phase = "week1" | "week2" | "week3" | "r32" | "r16";
 function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: me } = useMe();
+  const live = useLivePoints();
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
-  const cols = "grid grid-cols-[36px_1fr_52px] items-center gap-1";
+  const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
+  const cols = anyLive ? "grid grid-cols-[36px_1fr_150px_52px] items-center gap-1" : "grid grid-cols-[36px_1fr_52px] items-center gap-1";
+  // Live-derive the phase total from the live feed (see Overall). Only the group
+  // weeks have a server live delta to strip; r32/r16 have none yet.
+  const liveKey = phase === "week1" || phase === "week2" || phase === "week3" ? phase : null;
+  const dispPhase = (e: Row) => e[phase] - (liveKey ? e.live?.[liveKey] ?? 0 : 0) + phaseGames(live.get(e.entrantId) ?? [], phase).reduce((s, g) => s + g.points, 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
-    (a, b) => b[phase] - a[phase] || a.name.localeCompare(b.name),
+    (a, b) => dispPhase(b) - dispPhase(a) || a.name.localeCompare(b.name),
   );
-  const rankLabel = rankLabeller(list, (e) => e[phase], (e) => !!e.consensus);
+  const rankLabel = rankLabeller(list, dispPhase, (e) => !!e.consensus);
   return (
     <div className="fl-card overflow-hidden">
       <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div>#</div><div>Entrant</div><div className="text-right">Pts</div>
+        <div>#</div><div>Entrant</div>{anyLive && <div className="text-left">Live Prediction</div>}<div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
@@ -277,19 +302,21 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
               <span className="truncate font-medium text-gold">👥 {e.name}</span>
               <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
             </div>
+            {anyLive && <div />}
             <div className="text-right font-mono text-sm font-semibold text-gold">{e[phase]}</div>
           </div>
         ) : (
           <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
             <div className="font-mono text-xs">
-              {label !== "=" && Number(label) <= 3 && e[phase] > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="pl-1.5 text-muted">{label}</span>}
+              {label !== "=" && Number(label) <= 3 && dispPhase(e) > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="pl-1.5 text-muted">{label}</span>}
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="truncate text-cream">{e.name}</span>
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
             </div>
-            <div className="text-right font-mono text-sm font-semibold text-cream">{e[phase]}</div>
+            {anyLive && <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} />}
+            <div className="text-right font-mono text-sm font-semibold text-cream">{dispPhase(e)}</div>
           </Link>
         );
       })}

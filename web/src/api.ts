@@ -25,6 +25,10 @@ export interface LeaderboardRow {
   move?: number;
   /** recent ranks (oldest → newest) for the trend sparkline. */
   spark?: number[];
+  /** the in-play provisional portion of total/week/exact (already folded into
+   * those fields). Lets the client re-derive the tally from the live feed so it
+   * tracks the chips in real time. Absent when the entrant has no live game. */
+  live?: { total: number; week1: number; week2: number; week3: number; exact: number };
 }
 export interface GroupTable {
   group: string;
@@ -33,7 +37,7 @@ export interface GroupTable {
 
 export const useLeaderboard = () => {
   const demo = useDemoLeaderboard();
-  const q = useQuery({ queryKey: ["leaderboard"], queryFn: () => get<LeaderboardRow[]>("/api/leaderboard"), refetchInterval: 15_000, enabled: demo == null });
+  const q = useQuery({ queryKey: ["leaderboard"], queryFn: () => get<LeaderboardRow[]>("/api/leaderboard"), refetchInterval: 10_000, enabled: demo == null });
   return demo ? ({ ...q, data: demo, isLoading: false, isError: false, error: null } as typeof q) : q;
 };
 
@@ -367,6 +371,7 @@ export interface LiveMatch {
   awayCode: string;
   stage: string;
   group?: string | null;
+  matchday?: number | null;
   venue?: string;
   status: "SCHEDULED" | "IN_PLAY" | "PAUSED" | "FINISHED";
   /** kickoff time (ISO) - present for upcoming fixtures. */
