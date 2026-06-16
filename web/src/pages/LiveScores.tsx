@@ -6,9 +6,12 @@ import { longDate } from "../dates.js";
 export default function LiveScores({ day = 0, liveOnly = false }: { day?: number; liveOnly?: boolean }) {
   const { data, isLoading, error } = useLiveMatches(day);
   const matches = data ?? [];
-  const live = matches.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
-  const upcoming = matches.filter((m) => m.status === "SCHEDULED");
-  const finished = matches.filter((m) => m.status === "FINISHED");
+  const byKickoff = (a: typeof matches[number], b: typeof matches[number]) =>
+    (a.kickoff ?? "").localeCompare(b.kickoff ?? "");
+  // chronological (earliest kickoff first); the API returns finished games newest-first.
+  const live = [...matches.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED")].sort(byKickoff);
+  const upcoming = [...matches.filter((m) => m.status === "SCHEDULED")].sort(byKickoff);
+  const finished = [...matches.filter((m) => m.status === "FINISHED")].sort(byKickoff);
 
   const dayLabel = day === -1 ? "Yesterday" : day === 1 ? "Tomorrow" : "Today";
   // host-country (Pacific) date for the selected day
