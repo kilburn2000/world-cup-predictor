@@ -23,10 +23,11 @@ export default function ScoredChips({
   // labelled distinctly. A non-exact draw can never match a single team's goals.
   const calledDraw = resultOk && ph === pa && hs === as;
   const parts: string[] = [];
-  if (resultOk) parts.push(calledDraw ? "Result - Draw" : "Result");
+  if (resultOk) parts.push(calledDraw ? "Result (Draw)" : "Result");
   if (homeOk) parts.push(`${homeCode} ${hs}`);
   if (awayOk) parts.push(`${awayCode} ${as}`);
-  if (!parts.length) return <Chip label="No Score" tone="red" />;
+  // Scored nothing → no chip; the red "0pts" points indicator carries the miss.
+  if (!parts.length) return null;
   // combine everything scored into a single chip (e.g. "Result + CZE 1")
   return <Chip label={parts.join(" + ")} tone="green" />;
 }
