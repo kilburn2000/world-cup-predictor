@@ -61,6 +61,20 @@ type Src =
   | { type: "third"; groups: string[] }
   | { type: "mw" | "ml"; m: number };
 
+// Stadium for a knockout fixture by its bracket slot (R32-1..16, R16-1..8,
+// QF-1..4, SF-1..2, THIRD, FINAL). Maps to the fixed FIFA match number 73-104.
+// Group games have no scheduled venue here, so they return null.
+export const venueForSlot = (slot: string | null | undefined): string | null => {
+  if (!slot) return null;
+  let n = slot === "THIRD" ? 103 : slot === "FINAL" ? 104 : 0;
+  if (!n) {
+    const [r, i] = slot.split("-");
+    const k = Number(i);
+    if (k) n = r === "R32" ? 72 + k : r === "R16" ? 88 + k : r === "QF" ? 96 + k : r === "SF" ? 100 + k : 0;
+  }
+  return (n && SCHEDULE[n]?.venue) || null;
+};
+
 // Fixed knockout schedule (UTC kickoff + venue), by match number. Formatted to
 // British Summer Time on the client.
 const SCHEDULE: Record<number, { kickoff: string; venue: string }> = {

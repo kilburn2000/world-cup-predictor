@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -721,6 +721,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       stage: m.stage,
       group: m.grp,
       matchday: m.matchday,
+      venue: venueForSlot(m.slot),
       status: m.status,
       kickoff: m.kickoff_utc,
       minute,
@@ -745,7 +746,7 @@ app.get("/api/live", async (req: any) => {
   const myId = req.user?.entrantId ?? null;
   const day = Math.max(-1, Math.min(1, Math.trunc(Number(req.query?.day) || 0))); // -1 yesterday, 0 today, +1 tomorrow
   const rows = await sql`
-    select m.id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
+    select m.id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc, m.bracket_slot slot,
            m.home_team_id mh, m.away_team_id ma,
            ht.name home, ht.tla home_code, at.name away, at.tla away_code
     from matches m
@@ -768,7 +769,7 @@ app.get("/api/live", async (req: any) => {
 app.get("/api/fixtures", async (req: any) => {
   const myId = req.user?.entrantId ?? null;
   const rows = await sql`
-    select m.id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
+    select m.id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc, m.bracket_slot slot,
            m.home_team_id mh, m.away_team_id ma,
            ht.name home, ht.tla home_code, at.name away, at.tla away_code
     from matches m

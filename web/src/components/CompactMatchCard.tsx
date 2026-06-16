@@ -62,12 +62,14 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
       className="fl-card block transition-colors hover:border-gold/40"
     >
       <div className="px-4 py-3">
-        {/* header: stage + status */}
-        <div className="mb-2 flex items-center justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-wide text-muted">{shortStage(m)}</span>
+        {/* header: stage (+ venue) + status */}
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="truncate font-mono text-[10px] uppercase tracking-wide text-muted">
+            {shortStage(m)}{m.venue ? ` · ${m.venue}` : ""}
+          </span>
           {st ? (
             <span
-              className="flex items-center gap-1 font-mono text-[10.5px] uppercase tracking-wide"
+              className="flex shrink-0 items-center gap-1 font-mono text-[10.5px] uppercase tracking-wide"
               style={{ color: st.color }}
             >
               <span
@@ -77,7 +79,7 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
               {st.label}
             </span>
           ) : (
-            <span className="font-mono text-[10.5px] uppercase tracking-wide text-muted">{time}</span>
+            <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-wide text-muted">{time}</span>
           )}
         </div>
 
