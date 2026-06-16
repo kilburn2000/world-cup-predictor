@@ -8,17 +8,17 @@ export default function LiveScores({ day = 0, liveOnly = false }: { day?: number
   const matches = data ?? [];
   const byKickoff = (a: typeof matches[number], b: typeof matches[number]) =>
     (a.kickoff ?? "").localeCompare(b.kickoff ?? "");
-  // chronological (earliest kickoff first); the API returns finished games newest-first.
-  const live = [...matches.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED")].sort(byKickoff);
-  const upcoming = [...matches.filter((m) => m.status === "SCHEDULED")].sort(byKickoff);
-  const finished = [...matches.filter((m) => m.status === "FINISHED")].sort(byKickoff);
+  const live = matches.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
 
   const dayLabel = day === -1 ? "Yesterday" : day === 1 ? "Tomorrow" : "Today";
   // host-country (Pacific) date for the selected day
   const [hy, hmo, hd] = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).split("-").map(Number);
   const dateLabel = longDate(new Date(hy, hmo - 1, hd + day));
 
-  const shown = liveOnly ? live : [...live, ...finished, ...upcoming];
+  // Live Games tab: just the in-play games. Day view: every game in true
+  // chronological order (earliest kickoff first), regardless of status - so a
+  // finished early game stays above a live later one.
+  const shown = liveOnly ? live : [...matches].sort(byKickoff);
   const empty = !isLoading && !error && shown.length === 0;
 
   return (
