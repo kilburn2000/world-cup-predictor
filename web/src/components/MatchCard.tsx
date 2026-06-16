@@ -236,8 +236,17 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           >
             {show ? "Hide all predictions ▴" : "Show all predictions ▾"}
           </button>
-          {show && (
-            <div className="px-5 pb-5 sm:px-6">
+          {/* same reveal as the compact cards: open grows the space (0.25s) then fades
+              the content in (0.25s); close reverses it. */}
+          <div
+            className="grid transition-[grid-template-rows] duration-[250ms] ease-out"
+            style={{ gridTemplateRows: show ? "1fr" : "0fr", transitionDelay: show ? "0ms" : "250ms" }}
+          >
+            <div className="overflow-hidden">
+              <div
+                className="px-5 pb-5 transition-opacity duration-[250ms] sm:px-6"
+                style={{ opacity: show ? 1 : 0, transitionDelay: show ? "250ms" : "0ms" }}
+              >
               <div className="grid grid-cols-[30px_1fr_54px_56px] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_56px_104px_52px]">
                 <div>#</div>
                 <div>Entrant</div>
@@ -275,8 +284,9 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                   </div>
                 );
               })}
+              </div>
             </div>
-          )}
+          </div>
         </>
       )}
     </div>
