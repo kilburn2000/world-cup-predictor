@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, useFixtures, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame, type LiveMatch } from "../api.js";
-import { standingKey } from "@wc/shared";
+import { standingKey, knockoutGroupKey } from "@wc/shared";
 import TabSelect from "../components/TabSelect.js";
 import ScoredChips from "../components/ScoredChips.js";
 import PointsPill from "../components/PointsPill.js";
@@ -274,10 +274,9 @@ function Knockout() {
       </p>
       <div className="space-y-4">
         {data.map((g) => {
-          // Group-scoped tiebreak: points, then exacts, then results - all on the
-          // entrant's own WC group games only (the backend already sorts + decides
-          // who qualifies the same way).
-          const keyOf = (e: GroupEntrant) => standingKey(e.total, e.exactCount ?? 0, e.resultCount ?? 0);
+          // Group competition: group points, then overall points (the backend
+          // already sorts + decides who qualifies the same way).
+          const keyOf = (e: GroupEntrant) => knockoutGroupKey(e.total, e.overallTotal ?? 0);
           const rankLabel = rankLabeller(g.entrants, keyOf);
           const liveOf = (eid: number) => groupGames(live.get(eid) ?? [], g.group);
           const anyLive = g.entrants.some((e) => liveOf(e.entrantId).length > 0);

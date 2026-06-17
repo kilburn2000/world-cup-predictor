@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useWallchart, useLeaderboard, useGroups, useWcGroups, useTopScorer, usePhasesStarted } from "../api.js";
-import { standingKey } from "@wc/shared";
+import { standingKey, knockoutGroupKey } from "@wc/shared";
 import FormCell from "./FormCell.js";
 import { flagFor } from "../flags.js";
 
@@ -93,7 +93,7 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
     const ge = g.entrants.find((e) => e.entrantId === eid);
     if (!ge) continue;
     const wc = wcGroups?.find((w) => w.group === g.group);
-    const gKey = (x: typeof ge) => standingKey(x.total, x.exactCount ?? 0, x.resultCount ?? 0);
+    const gKey = (x: typeof ge) => knockoutGroupKey(x.total, x.overallTotal ?? 0);
     knockout = wc?.decided && !ge.qualifying
       ? { value: "Eliminated" }
       : { value: `Group ${g.group}`, pos: posLabel(gKey(ge), g.entrants.map(gKey)) };

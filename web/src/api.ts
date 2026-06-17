@@ -74,6 +74,9 @@ export interface GroupEntrant {
   week2: number;
   week3: number;
   total: number;
+  /** the entrant's overall points (whole tournament) - the group competition's
+   * secondary tiebreak after group points. */
+  overallTotal: number;
   rank: number;
   qualifying: boolean;
   live?: boolean;

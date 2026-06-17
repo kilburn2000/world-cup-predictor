@@ -12,7 +12,7 @@ import { DEFAULT_SCORING } from "@wc/shared";
 import { sql } from "./db/index.js";
 import { fd, mapGroup } from "./footballData.js";
 import { recomputeAll, loadConfig } from "./score.js";
-import { scoreGroupMatch, standingKey } from "@wc/shared";
+import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES } from "./wc.js";
@@ -394,7 +394,8 @@ app.get("/api/groups", async () => {
            coalesce(sum(case when m.matchday = 1 then s.points end), 0)::int as week1,
            coalesce(sum(case when m.matchday = 2 then s.points end), 0)::int as week2,
            coalesce(sum(case when m.matchday = 3 then s.points end), 0)::int as week3,
-           coalesce(sum(case when m.id is not null then s.points end), 0)::int as total
+           coalesce(sum(case when m.id is not null then s.points end), 0)::int as total,
+           (select coalesce(sum(sc.points), 0)::int from scores sc where sc.entrant_id = e.id) as "overallTotal"
     from entrants e
     left join scores s on s.entrant_id = e.id and s.kind = 'MATCH'
     left join matches m on m.id = split_part(s.ref, ':', 2)::int
@@ -488,7 +489,7 @@ app.get("/api/groups", async () => {
     .map((group) => {
       const entrants = byGroup
         .get(group)!
-        .sort((a, b) => standingKey(b.total, b.exactCount, b.resultCount) - standingKey(a.total, a.exactCount, a.resultCount) || a.name.localeCompare(b.name))
+        .sort((a, b) => knockoutGroupKey(b.total, b.overallTotal) - knockoutGroupKey(a.total, a.overallTotal) || a.name.localeCompare(b.name))
         .map((e, i) => ({ ...e, rank: i + 1, qualifying: i < 2 }));
       return { group, entrants };
     });
