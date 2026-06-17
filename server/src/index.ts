@@ -12,7 +12,7 @@ import { DEFAULT_SCORING } from "@wc/shared";
 import { sql } from "./db/index.js";
 import { fd, mapGroup } from "./footballData.js";
 import { recomputeAll, loadConfig } from "./score.js";
-import { scoreGroupMatch } from "@wc/shared";
+import { scoreGroupMatch, standingKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout, venueForSlot } from "./wc.js";
@@ -195,16 +195,24 @@ app.get("/api/leaderboard", async () => {
   for (const r of rows as any[]) {
     const list = (recentByEntrant.get(r.entrantId) ?? []).sort((a, b) => (a.ko < b.ko ? -1 : a.ko > b.ko ? 1 : 0));
     r.last5 = list.slice(-5).map(mkGame);
-    // Per-phase form: each entrant's last up-to-5 finished games within each
-    // week/round, so the week-by-week tables get their own correctly-scoped form.
+    // Per-phase form + tiebreak stats: each entrant's last up-to-5 finished games
+    // within each week/round (for the form column) and that phase's exact/result
+    // counts (so the week-by-week tables can break ties the same way Overall does).
     const byPhase: Record<string, any[]> = {};
+    const statsByPhase: Record<string, { exact: number; result: number }> = {};
     for (const x of list) {
       const ph = phaseOf(x);
-      if (ph) (byPhase[ph] = byPhase[ph] ?? []).push(x);
+      if (!ph) continue;
+      (byPhase[ph] = byPhase[ph] ?? []).push(x);
+      const st = (statsByPhase[ph] = statsByPhase[ph] ?? { exact: 0, result: 0 });
+      const bd = x.bd ?? {};
+      if (bd.exact) st.exact++;
+      if (bd.outcome) st.result++;
     }
     r.formByPhase = Object.fromEntries(Object.entries(byPhase).map(([k, v]) => [k, v.slice(-5).map(mkGame)]));
+    r.statsByPhase = statsByPhase;
   }
-  rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  rows.sort((a, b) => standingKey(b.total, b.exactCount, b.resultCount) - standingKey(a.total, a.exactCount, a.resultCount) || a.name.localeCompare(b.name));
   return rows;
 });
 
@@ -454,6 +462,10 @@ app.get("/api/groups", async () => {
   }
   for (const r of rows) {
     const list = (recentBy.get(r.entrantId) ?? []).sort((a, b) => (a.ko < b.ko ? -1 : a.ko > b.ko ? 1 : 0));
+    // Group-scoped tiebreak stats: exacts/results only on the entrant's own WC
+    // group games (the only fixtures that count toward this competition).
+    r.exactCount = list.filter((x) => x.bd?.exact).length;
+    r.resultCount = list.filter((x) => x.bd?.outcome).length;
     r.last5 = list.slice(-5).map((x) => {
       const bd = x.bd ?? {};
       const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
@@ -476,7 +488,7 @@ app.get("/api/groups", async () => {
     .map((group) => {
       const entrants = byGroup
         .get(group)!
-        .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+        .sort((a, b) => standingKey(b.total, b.exactCount, b.resultCount) - standingKey(a.total, a.exactCount, a.resultCount) || a.name.localeCompare(b.name))
         .map((e, i) => ({ ...e, rank: i + 1, qualifying: i < 2 }));
       return { group, entrants };
     });

@@ -51,6 +51,9 @@ export interface LeaderboardRow {
   /** the same, but split per standings phase (week1/2/3, r32, r16) so each
    * week-by-week table shows form scoped to that phase's games. */
   formByPhase?: Partial<Record<"week1" | "week2" | "week3" | "r32" | "r16", FormGame[]>>;
+  /** exact/result counts per phase, so each week-by-week table can break ties
+   * the same way Overall does (scoped to that phase's games). */
+  statsByPhase?: Partial<Record<"week1" | "week2" | "week3" | "r32" | "r16", { exact: number; result: number }>>;
 }
 export interface GroupTable {
   group: string;
@@ -76,6 +79,9 @@ export interface GroupEntrant {
   live?: boolean;
   /** last up-to-5 finished games in the entrant's own WC group, for the form column. */
   last5?: FormGame[];
+  /** exact/result counts on the entrant's own WC group games, for the tiebreak. */
+  exactCount?: number;
+  resultCount?: number;
 }
 export interface EntrantGroup {
   group: string;

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame } from "../api.js";
+import { standingKey } from "@wc/shared";
 import TabSelect from "../components/TabSelect.js";
 import ScoredChips from "../components/ScoredChips.js";
 import PointsPill from "../components/PointsPill.js";
@@ -72,14 +73,6 @@ function rankLabeller<T>(list: T[], value: (t: T) => number, isConsensus: (t: T)
   };
 }
 
-// Tiebreak (overall standings): entrants level on points are separated by who has
-// the most exact scores. Encoded as a fractional add-on to the points so the same
-// `value` drives both the sort and the rank labels (more exacts => strictly higher,
-// never enough to overtake a whole point). FLIP THIS TO false TO ROLL BACK to a
-// pure points ranking (ties share a rank, alphabetical within).
-const TIEBREAK_BY_EXACT = true;
-const standingKey = (points: number, exact: number) =>
-  points + (TIEBREAK_BY_EXACT ? Math.min(exact, 999) / 1000 : 0);
 
 // Pick country code -> country name flagFor() understands.
 const SCORER_COUNTRY: Record<string, string> = {
@@ -125,7 +118,9 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, cols }: { e: GroupE
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
       </div>
       {anyLive && <LiveCell games={liveGames} />}
-      <FormCell games={e.last5 ?? []} className="flex items-center justify-end gap-0.5" />
+      <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
+      <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
+      <FormCell games={e.last5 ?? []} className="hidden items-center justify-end gap-0.5 sm:flex" />
       <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
     </Link>
   );
@@ -135,7 +130,7 @@ const subTab = (active: boolean) =>
   "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
   (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
-type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; resultCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number }; last5?: FormGame[]; formByPhase?: Partial<Record<Phase, FormGame[]>> };
+type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; resultCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number }; last5?: FormGame[]; formByPhase?: Partial<Record<Phase, FormGame[]>>; statsByPhase?: Partial<Record<Phase, { exact: number; result: number }>> };
 const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, r16: c.r16, total: c.total, consensus: true });
 
 // A row of colour-coded points chips for an entrant's recent games. Hovering a
@@ -194,8 +189,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const cols = anyLive
     ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_48px_56px_96px_44px] items-center gap-1"
     : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_96px_44px] items-center gap-1";
-  // points first, then the exact-score tiebreak (see standingKey), then name.
-  const keyOf = (e: Row) => standingKey(dispTotal(e), e.exactCount ?? 0);
+  // points first, then exacts, then results (see standingKey), then name.
+  const keyOf = (e: Row) => standingKey(dispTotal(e), e.exactCount ?? 0, e.resultCount ?? 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => keyOf(b) - keyOf(a) || a.name.localeCompare(b.name),
   );
@@ -277,23 +272,29 @@ function Knockout() {
         Each entrant is scored <span className="text-cream">only on their own World Cup group’s games</span> (Group A on WC Group A, etc.).
         The <span className="text-gold">top two</span> in each group qualify for the knockout bracket.
       </p>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
         {data.map((g) => {
-          const rankLabel = rankLabeller(g.entrants, (e) => e.total);
+          // Group-scoped tiebreak: points, then exacts, then results - all on the
+          // entrant's own WC group games only (the backend already sorts + decides
+          // who qualifies the same way).
+          const keyOf = (e: GroupEntrant) => standingKey(e.total, e.exactCount ?? 0, e.resultCount ?? 0);
+          const rankLabel = rankLabeller(g.entrants, keyOf);
           const liveOf = (eid: number) => groupGames(live.get(eid) ?? [], g.group);
           const anyLive = g.entrants.some((e) => liveOf(e.entrantId).length > 0);
           // Form is a FIXED width so the header and every row share identical
           // tracks (see the overall table); the Live column only appears when a
-          // game in THIS WC group is in play.
+          // game in THIS WC group is in play. Exact/Results/Form hide on mobile.
           const cols = anyLive
-            ? "grid grid-cols-[28px_1fr_130px_96px_44px] items-center gap-1"
-            : "grid grid-cols-[28px_1fr_96px_44px] items-center gap-1";
+            ? "grid grid-cols-[28px_1fr_130px_44px] sm:grid-cols-[28px_1fr_130px_48px_56px_96px_44px] items-center gap-1"
+            : "grid grid-cols-[28px_1fr_44px] sm:grid-cols-[28px_1fr_48px_56px_96px_44px] items-center gap-1";
           return (
             <div key={g.group} className="fl-card overflow-hidden">
               <div className={cols + " border-b border-line px-3 py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
                 {anyLive && <div className="text-left">Live</div>}
-                <div className="text-right">Form</div>
+                <div className="hidden text-center sm:block">Exact</div>
+                <div className="hidden text-center sm:block">Results</div>
+                <div className="hidden text-right sm:block">Form</div>
                 <div className="text-right">{anyLive ? "Live Pts" : "Pts"}</div>
               </div>
               {g.entrants.map((e, i) => (
@@ -327,10 +328,14 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   // weeks have a server live delta to strip; r32/r16 have none yet.
   const liveKey = phase === "week1" || phase === "week2" || phase === "week3" ? phase : null;
   const dispPhase = (e: Row) => e[phase] - (liveKey ? e.live?.[liveKey] ?? 0 : 0) + phaseGames(live.get(e.entrantId) ?? [], phase).reduce((s, g) => s + g.points, 0);
+  // Tiebreak scoped to THIS phase's games: phase points, then phase exacts, then
+  // phase results (see standingKey).
+  const st = (e: Row) => e.statsByPhase?.[phase];
+  const keyOf = (e: Row) => standingKey(dispPhase(e), st(e)?.exact ?? 0, st(e)?.result ?? 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
-    (a, b) => dispPhase(b) - dispPhase(a) || a.name.localeCompare(b.name),
+    (a, b) => keyOf(b) - keyOf(a) || a.name.localeCompare(b.name),
   );
-  const rankLabel = rankLabeller(list, dispPhase, (e) => !!e.consensus);
+  const rankLabel = rankLabeller(list, keyOf, (e) => !!e.consensus);
   return (
     <div className="fl-card overflow-hidden">
       <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useWallchart, useLeaderboard, useGroups, useWcGroups, useTopScorer, usePhasesStarted } from "../api.js";
+import { standingKey } from "@wc/shared";
 import { flagFor } from "../flags.js";
 
 const EyeIcon = ({ size = 14 }: { size?: number }) => (
@@ -69,7 +70,11 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
   const me = lb.find((e) => e.entrantId === eid);
 
   type Phase = "week1" | "week2" | "week3" | "r32" | "r16";
-  const overallPos = me ? posLabel(me.total, lb.map((e) => e.total)) : "-";
+  // Composite ranking keys (points + exact/result tiebreaks) so every position
+  // label here matches the standings tables exactly. See standingKey.
+  const keyOf = (e: typeof lb[number]) => standingKey(e.total, e.exactCount ?? 0, e.resultCount ?? 0);
+  const phaseKeyOf = (e: typeof lb[number], f: Phase) => standingKey(e[f], e.statsByPhase?.[f]?.exact ?? 0, e.statsByPhase?.[f]?.result ?? 0);
+  const overallPos = me ? posLabel(keyOf(me), lb.map(keyOf)) : "-";
   const phaseStarted: Record<Phase, boolean | undefined> = {
     week1: phases?.week1, week2: phases?.week2, week3: phases?.week3, r32: phases?.r32, r16: phases?.r16,
   };
@@ -78,8 +83,7 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
   // "X pts" + "Joint Nth" once the period has started; "-" / "TBC" before it kicks off.
   const phaseValue = (f: Phase): Card => {
     if (!me || !phaseStarted[f]) return { value: "-", pos: "TBC" };
-    const all = lb.map((e) => e[f]);
-    return { value: `${me[f]}pt${me[f] === 1 ? "" : "s"}`, pos: posLabel(me[f], all) };
+    return { value: `${me[f]}pt${me[f] === 1 ? "" : "s"}`, pos: posLabel(phaseKeyOf(me, f), lb.map((e) => phaseKeyOf(e, f))) };
   };
 
   // Knockout: "Group E" + position - or "Eliminated".
@@ -88,9 +92,10 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
     const ge = g.entrants.find((e) => e.entrantId === eid);
     if (!ge) continue;
     const wc = wcGroups?.find((w) => w.group === g.group);
+    const gKey = (x: typeof ge) => standingKey(x.total, x.exactCount ?? 0, x.resultCount ?? 0);
     knockout = wc?.decided && !ge.qualifying
       ? { value: "Eliminated" }
-      : { value: `Group ${g.group}`, pos: posLabel(ge.total, g.entrants.map((x) => x.total)) };
+      : { value: `Group ${g.group}`, pos: posLabel(gKey(ge), g.entrants.map(gKey)) };
     break;
   }
 
@@ -109,18 +114,15 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
   // top-scorer prizes only when the whole tournament is finished.
   let prize = 0;
   if (me && lb.length) {
-    const highestIn = (f: Phase) => {
-      const max = Math.max(0, ...lb.map((e) => e[f]));
-      return max > 0 && me[f] === max;
-    };
+    const highestIn = (f: Phase) => me[f] > 0 && phaseKeyOf(me, f) === Math.max(...lb.map((e) => phaseKeyOf(e, f)));
     const done: Record<Phase, boolean | undefined> = {
       week1: phases?.week1Done, week2: phases?.week2Done, week3: phases?.week3Done, r32: phases?.r32Done, r16: phases?.r16Done,
     };
     for (const f of ["week1", "week2", "week3", "r32", "r16"] as Phase[]) if (done[f] && highestIn(f)) prize += 125;
     if (phases?.done) {
-      const rank = 1 + lb.filter((e) => e.total > me.total).length;
+      const rank = 1 + lb.filter((e) => keyOf(e) > keyOf(me)).length;
       if (rank <= 10) prize += OVERALL_PRIZE[rank] ?? 0;
-      if (me.total === Math.min(...lb.map((e) => e.total))) prize += 75; // wooden spoon
+      if (keyOf(me) === Math.min(...lb.map(keyOf))) prize += 75; // wooden spoon
       if (topScorer?.length) {
         const top = topScorer[0].total;
         if (top > 0 && topScorer.find((t) => t.entrantId === eid)?.total === top) prize += 125;

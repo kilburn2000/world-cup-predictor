@@ -1,4 +1,5 @@
-import { useLeaderboard, useTopScorer } from "../api.js";
+import { useLeaderboard, useTopScorer, type LeaderboardRow } from "../api.js";
+import { standingKey } from "@wc/shared";
 
 type Field = "week1" | "week2" | "week3" | "r32" | "r16" | "knockout";
 
@@ -44,6 +45,10 @@ interface PrizeGroup {
 export default function Prizes() {
   const { data } = useLeaderboard();
   const rows = data ?? [];
+  // Same composite ranking as the standings: points, then exacts, then results.
+  const keyOf = (e: LeaderboardRow) => standingKey(e.total, e.exactCount ?? 0, e.resultCount ?? 0);
+  const phaseKeyOf = (e: LeaderboardRow, f: "week1" | "week2" | "week3" | "r32" | "r16") =>
+    standingKey(e[f], e.statsByPhase?.[f]?.exact ?? 0, e.statsByPhase?.[f]?.result ?? 0);
   const { data: scorers } = useTopScorer();
   const scorerRows = scorers ?? [];
   const topGoals = scorerRows[0]?.total ?? 0;
@@ -53,11 +58,11 @@ export default function Prizes() {
       ? "No goals scored as yet"
       : holderText(scorerRows.filter((e) => e.total === topGoals).map((e) => e.name));
 
+  // Highest phase score, tie-broken by exacts then results within that phase.
   const weeklyLeaders = (field: "week1" | "week2" | "week3" | "r32" | "r16"): string[] => {
-    if (!rows.length) return [];
-    const max = Math.max(...rows.map((e) => e[field]));
-    if (max <= 0) return [];
-    return rows.filter((e) => e[field] === max).map((e) => e.name);
+    if (!rows.length || Math.max(0, ...rows.map((e) => e[field])) <= 0) return [];
+    const max = Math.max(...rows.map((e) => phaseKeyOf(e, field)));
+    return rows.filter((e) => phaseKeyOf(e, field) === max).map((e) => e.name);
   };
 
   const scorerLeaders = topGoals > 0 ? scorerRows.filter((e) => e.total === topGoals).map((e) => e.name) : [];
@@ -70,9 +75,9 @@ export default function Prizes() {
   let i = 0;
   let place = 1;
   while (i < rows.length && place <= 10) {
-    const t = rows[i].total;
+    const t = keyOf(rows[i]);
     let j = i;
-    while (j < rows.length && rows[j].total === t) j++;
+    while (j < rows.length && keyOf(rows[j]) === t) j++;
     const size = j - i;
     const start = place;
     const end = place + size - 1;
@@ -83,8 +88,9 @@ export default function Prizes() {
     i = j;
   }
 
-  const minTotal = rows.length ? Math.min(...rows.map((e) => e.total)) : null;
-  const lastNames = minTotal === null ? [] : rows.filter((e) => e.total === minTotal).map((e) => e.name);
+  // Wooden spoon: the strictly lowest composite key (points, then exacts, then results).
+  const minKey = rows.length ? Math.min(...rows.map(keyOf)) : null;
+  const lastNames = minKey === null ? [] : rows.filter((e) => keyOf(e) === minKey).map((e) => e.name);
   const lastShare = lastNames.length ? LAST_AMOUNT / lastNames.length : LAST_AMOUNT;
 
   return (
