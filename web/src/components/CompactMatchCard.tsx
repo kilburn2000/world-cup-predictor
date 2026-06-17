@@ -39,6 +39,9 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
   const scheduled = m.status === "SCHEDULED";
   const events = m.events ?? [];
   const finished = m.status === "FINISHED";
+  // No rank before kick-off (every prediction is level), so drop the column.
+  const showRank = m.status !== "SCHEDULED";
+  const boardCols = showRank ? "grid grid-cols-[24px_1fr_auto]" : "grid grid-cols-[1fr_auto]";
   const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
   const board = [...(m.board ?? [])].sort((a, b) => (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name));
   const total = board.length;
@@ -249,17 +252,17 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
               className="border-t border-line px-3 pb-3 transition-opacity duration-[250ms]"
               style={{ opacity: show ? 1 : 0, transitionDelay: show ? "250ms" : "0ms" }}
             >
-              <div className="grid grid-cols-[24px_1fr_auto] items-center px-2 py-1.5 text-[9px] uppercase tracking-[1.5px] text-muted">
-                <div>#</div>
+              <div className={boardCols + " items-center px-2 py-1.5 text-[9px] uppercase tracking-[1.5px] text-muted"}>
+                {showRank && <div>#</div>}
                 <div>Entrant</div>
                 <div className="whitespace-nowrap text-right">{isLive ? "Live Prediction" : "Prediction"}</div>
               </div>
               {board.map((b, i) => (
                 <div
                   key={b.entrantId}
-                  className={"grid grid-cols-[24px_1fr_auto] items-center gap-2 rounded-lg border-t border-line px-2 py-2" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+                  className={boardCols + " items-center gap-2 rounded-lg border-t border-line px-2 py-2" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
                 >
-                  <div className="font-mono text-[11px] text-muted">{rankFor(i)}</div>
+                  {showRank && <div className="font-mono text-[11px] text-muted">{rankFor(i)}</div>}
                   <div className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-[12.5px] text-cream">{b.name}</span>
                     {b.entrantId === myId && <span className="shrink-0 rounded bg-gold/20 px-1 py-px text-[7px] font-semibold uppercase tracking-wide text-gold">You</span>}

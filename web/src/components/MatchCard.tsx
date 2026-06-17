@@ -90,6 +90,10 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
   const [showEvents, setShowEvents] = useState(false);
   const finished = m.status === "FINISHED";
   const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
+  // Before kick-off every prediction is level (points null), so the rank column is
+  // pointless - drop it until the game's under way.
+  const showRank = m.status !== "SCHEDULED";
+  const boardCols = showRank ? "grid grid-cols-[30px_1fr_auto] sm:grid-cols-[34px_1fr_auto]" : "grid grid-cols-[1fr_auto]";
   const total = board.length;
   const exactN = board.filter((b) => b.tier === "exact").length;
   const resultN = board.filter((b) => b.tier === "exact" || b.tier === "result").length;
@@ -291,17 +295,17 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                 className="px-5 pb-5 transition-opacity duration-[250ms] sm:px-6"
                 style={{ opacity: show ? 1 : 0, transitionDelay: show ? "250ms" : "0ms" }}
               >
-              <div className="grid grid-cols-[30px_1fr_auto] items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:grid-cols-[34px_1fr_auto]">
-                <div>#</div>
+              <div className={boardCols + " items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted"}>
+                {showRank && <div>#</div>}
                 <div>Entrant</div>
                 <div className="whitespace-nowrap text-right">{isLive ? "Live Prediction" : "Prediction"}</div>
               </div>
               {board.map((b, i) => (
                 <div
                   key={b.entrantId}
-                  className={"grid grid-cols-[30px_1fr_auto] items-center gap-2 rounded-lg border-t border-line px-3 py-2.5 sm:grid-cols-[34px_1fr_auto]" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+                  className={boardCols + " items-center gap-2 rounded-lg border-t border-line px-3 py-2.5" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
                 >
-                  <div className="font-mono text-xs text-muted">{rankFor(i)}</div>
+                  {showRank && <div className="font-mono text-xs text-muted">{rankFor(i)}</div>}
                   <div className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-[13.5px] text-cream">{b.name}</span>
                     {b.entrantId === myId && <YouBadge />}
