@@ -7,10 +7,6 @@ import PointsPill from "./PointsPill.js";
 
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
-function initials(name: string) {
-  return name.split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
-}
-
 const STAGE_LABELS: Record<string, string> = {
   LAST_32: "Round of 32",
   LAST_16: "Round of 16",
@@ -306,14 +302,9 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                   className={"grid grid-cols-[30px_1fr_auto] items-center gap-2 rounded-lg border-t border-line px-3 py-2.5 sm:grid-cols-[34px_1fr_auto]" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
                 >
                   <div className="font-mono text-xs text-muted">{rankFor(i)}</div>
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[10px] text-muted">
-                      {initials(b.name)}
-                    </div>
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate text-[13.5px] text-cream">{b.name}</span>
-                      {b.entrantId === myId && <YouBadge />}
-                    </div>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-[13.5px] text-cream">{b.name}</span>
+                    {b.entrantId === myId && <YouBadge />}
                   </div>
                   {/* same shape AND spacing as the standings Live Prediction column:
                       gap-1 between items, with a wider score->chip gap (mr-1.5). */}
