@@ -678,16 +678,43 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       }
     } catch { /* projection unavailable - fall back to TBD */ }
     const slotPreds = await sql`
-      select p.bracket_slot slot, e.id eid, e.name, ht.tla phome, at.tla paway, p.pred_home_goals phg, p.pred_away_goals pag
+      select p.bracket_slot slot, e.id eid, e.name, p.pred_home_team_id phid, p.pred_away_team_id paid,
+             ht.tla phome, ht.name phomename, at.tla paway, at.name pawayname, p.pred_home_goals phg, p.pred_away_goals pag
       from predictions p
       join entrants e on e.id = p.entrant_id
       join teams ht on ht.id = p.pred_home_team_id
       join teams at on at.id = p.pred_away_team_id
       where p.scope = 'SLOT'
     `;
+    // Each entrant's bracket, so a drawn tie can show who they advanced (on pens):
+    // the team that reappears in the slot this one feeds into.
+    const bySlotByEntrant = new Map<number, Map<string, any>>();
     for (const p of slotPreds as any[]) {
+      if (!bySlotByEntrant.has(p.eid)) bySlotByEntrant.set(p.eid, new Map());
+      bySlotByEntrant.get(p.eid)!.set(p.slot, p);
+    }
+    const nextSlot = (slot: string): { slot: string; pos: "phid" | "paid" } | null => {
+      const [r, nStr] = slot.split("-");
+      const n = Number(nStr);
+      const pos = n % 2 === 1 ? "phid" : "paid";
+      if (r === "R32") return { slot: `R16-${Math.ceil(n / 2)}`, pos };
+      if (r === "R16") return { slot: `QF-${Math.ceil(n / 2)}`, pos };
+      if (r === "QF") return { slot: `SF-${Math.ceil(n / 2)}`, pos };
+      if (r === "SF") return { slot: "FINAL", pos: n === 1 ? "phid" : "paid" };
+      return null;
+    };
+    for (const p of slotPreds as any[]) {
+      let penSide: "home" | "away" | null = null;
+      if (p.phg === p.pag) {
+        const ns = nextSlot(p.slot);
+        const np = ns && bySlotByEntrant.get(p.eid)?.get(ns.slot);
+        if (np) {
+          const advId = np[ns.pos];
+          penSide = advId === p.phid ? "home" : advId === p.paid ? "away" : null;
+        }
+      }
       const arr = koBoardBySlot.get(p.slot) ?? [];
-      arr.push({ entrantId: p.eid, name: p.name, pick: `${p.phg}-${p.pag}`, predHome: p.phome, predAway: p.paway, points: null, tier: null });
+      arr.push({ entrantId: p.eid, name: p.name, pick: `${p.phg}-${p.pag}`, predHome: p.phome, predAway: p.paway, predHomeName: p.phomename, predAwayName: p.pawayname, penSide, points: null, tier: null });
       koBoardBySlot.set(p.slot, arr);
     }
     for (const arr of koBoardBySlot.values()) arr.sort((a, b) => a.name.localeCompare(b.name));

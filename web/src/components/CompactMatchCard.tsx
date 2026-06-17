@@ -58,6 +58,17 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
   const date = m.kickoff ? new Date(m.kickoff).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) : "";
   // left side of the header: stage (unless the page already groups by it) + venue
   const left = [hideStage ? "" : shortStage(m), m.venue].filter(Boolean).join(" · ");
+  const mine = board.find((b) => b.entrantId === myId);
+
+  // A knockout pick: flag + code each side of the predicted score; "(p)" marks the
+  // team the entrant has advancing on penalties when they predicted a draw.
+  const koPick = (g: { predHome?: string | null; predAway?: string | null; predHomeName?: string | null; predAwayName?: string | null; pick: string; penSide?: "home" | "away" | null }) => (
+    <span className="inline-flex items-center gap-1 font-mono text-cream">
+      <span>{flagFor(g.predHomeName)}</span>{g.predHome}{g.penSide === "home" ? "(p)" : ""}
+      <span className="mx-0.5">{g.pick.replace("-", "–")}</span>
+      {g.predAway}{g.penSide === "away" ? "(p)" : ""}<span>{flagFor(g.predAwayName)}</span>
+    </span>
+  );
 
   return (
     <Link
@@ -166,11 +177,17 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
       {m.myPick && (
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-line px-4 py-2 text-[12.5px]">
           <span className="text-[9px] uppercase tracking-wide text-muted">Your prediction</span>
-          <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
-          {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
+          {mine?.predHome ? (
+            koPick(mine)
+          ) : (
             <>
-              <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
-              {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
+              <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
+              {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
+                <>
+                  <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+                  {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
+                </>
+              )}
             </>
           )}
         </div>
@@ -246,8 +263,7 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
                   </div>
                   <div className="flex items-center justify-end gap-1 whitespace-nowrap font-mono text-[12px] text-cream">
                     {b.predHome ? (
-                      // knockout: the entrant predicted the teams too
-                      <span>{b.predHome} {b.pick.replace("-", "–")} {b.predAway}</span>
+                      koPick(b)
                     ) : (
                       <>
                         <span className={b.points != null ? "mr-1.5" : ""}>{b.pick.replace("-", "–")}</span>

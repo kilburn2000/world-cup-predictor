@@ -351,9 +351,13 @@ export interface LiveBoardRow {
   pick: string; // "2-1"
   points: number | null; // null before kick-off
   tier: LiveTier | null;
-  /** knockout only: the entrant's own predicted teams (TLA) for the slot. */
+  /** knockout only: the entrant's own predicted teams for the slot (code + name). */
   predHome?: string | null;
   predAway?: string | null;
+  predHomeName?: string | null;
+  predAwayName?: string | null;
+  /** knockout draw: which side the entrant has advancing on penalties. */
+  penSide?: "home" | "away" | null;
 }
 export interface LiveEvent {
   minute: number;
