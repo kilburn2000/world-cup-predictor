@@ -22,13 +22,12 @@ function shortStage(m: LiveMatch) {
   return SHORT_STAGE[m.stage] ?? m.stage;
 }
 
-/** Compact status pill content; null for scheduled games (the kickoff time shows instead). */
-function statusOf(m: LiveMatch): { label: string; color: string; pulse: boolean } | null {
-  if (m.status === "FINISHED") return { label: "FT", color: "#b9bdb4", pulse: false };
-  if (m.status === "PAUSED") return { label: "HT", color: "#e3c558", pulse: false };
-  if (m.status === "IN_PLAY")
-    return { label: m.minute != null ? `${m.minute}'` : "Live", color: "#d9534f", pulse: true };
-  return null;
+/** Status/kickoff pill - same colour scheme as the larger match card (phaseOf). */
+function pillOf(m: LiveMatch, time: string): { label: string; color: string; bg: string; border: string; pulse: boolean } {
+  if (m.status === "FINISHED") return { label: "FT", color: "#b9bdb4", bg: "rgba(185,189,180,0.12)", border: "rgba(185,189,180,0.32)", pulse: false };
+  if (m.status === "PAUSED") return { label: "HT", color: "#e3c558", bg: "rgba(227,197,88,0.12)", border: "rgba(227,197,88,0.4)", pulse: false };
+  if (m.status === "IN_PLAY") return { label: m.minute != null ? `${m.minute}'` : "Live", color: "#d9534f", bg: "rgba(217,83,79,0.1)", border: "rgba(217,83,79,0.35)", pulse: true };
+  return { label: time, color: "#8d9388", bg: "rgba(141,147,136,0.12)", border: "rgba(141,147,136,0.3)", pulse: false };
 }
 
 /** One-line summary card for the dashboard. Full detail (predictions, events) lives on the fixture page. */
@@ -37,7 +36,6 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
   const myId = me?.entrantId;
   const [showEvents, setShowEvents] = useState(false);
   const [show, setShow] = useState(false);
-  const st = statusOf(m);
   const scheduled = m.status === "SCHEDULED";
   const events = m.events ?? [];
   const finished = m.status === "FINISHED";
@@ -55,7 +53,7 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
   const time = m.kickoff
     ? new Date(m.kickoff).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "TBC";
-  const date = m.kickoff ? new Date(m.kickoff).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) : "";
+  const pill = pillOf(m, time);
   // left side of the header: stage (unless the page already groups by it) + venue
   const left = [hideStage ? "" : shortStage(m), m.venue].filter(Boolean).join(" · ");
   const mine = board.find((b) => b.entrantId === myId);
@@ -76,61 +74,60 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
       className="fl-card block transition-colors hover:border-gold/40"
     >
       <div className="px-4 py-3">
-        {/* header: stage/venue (left) · date + status/time (right) */}
-        <div className="mb-2 flex items-center justify-between gap-2">
+        {/* header: stage/venue (left) · status pill (right), same format as the larger card */}
+        <div className="mb-2.5 flex items-center justify-between gap-2">
           <span className="truncate font-mono text-[10px] uppercase tracking-wide text-muted">{left}</span>
-          <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-wide">
-            {date && <span className="text-muted">{date}</span>}
-            {st ? (
-              <span className="flex items-center gap-1" style={{ color: st.color }}>
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: st.color, animation: st.pulse ? "loadDots 1.2s infinite" : undefined }}
-                />
-                {st.label}
-              </span>
-            ) : (
-              <span className="text-muted">{time}</span>
-            )}
+          <span
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.5px]"
+            style={{ color: pill.color, background: pill.bg, borderColor: pill.border }}
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: pill.color, animation: pill.pulse ? "loadDots 1.2s infinite" : undefined }}
+            />
+            {pill.label}
           </span>
         </div>
 
-        {/* teams + score */}
-        <div className="flex items-center gap-3">
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-            <span className="truncate text-[15px] text-cream">{m.home}</span>
-            <span className="shrink-0">{flagFor(m.home)}</span>
+        {/* teams + score - the larger card's centred [1fr_auto_1fr] layout: team name in the
+            display face with its FIFA code beneath, score dead-centre, caret beside the away team */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <div className="min-w-0 text-right">
+            <div className="flex items-center justify-end gap-2 font-display text-[15px] leading-tight text-cream">
+              <span className="truncate">{m.home}</span><span className="shrink-0">{flagFor(m.home)}</span>
+            </div>
+            {m.homeCode && <div className="mt-0.5 font-mono text-[10px] text-muted">{m.homeCode}</div>}
           </div>
-          <div className="min-w-[52px] shrink-0 text-center font-mono text-[18px] tabular-nums text-cream">
+          <div className="shrink-0 text-center font-mono text-[19px] tabular-nums text-cream">
             {scheduled ? (
-              <span className="text-muted">v</span>
+              <span className="text-base text-muted">v</span>
             ) : (
               <>
                 {m.homeScore}
-                <span className="mx-1 text-muted">–</span>
+                <span className="mx-1 text-base text-muted">–</span>
                 {m.awayScore}
               </>
             )}
           </div>
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="shrink-0">{flagFor(m.away)}</span>
-            <span className="truncate text-[15px] text-cream">{m.away}</span>
-            {/* caret next to the away team; toggles key events. The score stays dead-centre
-                because this column and the home column are both flex-1 (equal width). */}
-            {events.length > 0 && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowEvents((v) => !v);
-                }}
-                aria-label={showEvents ? "Hide key events" : "Show key events"}
-                className="ml-1 shrink-0 px-0.5 text-[18px] leading-none text-muted transition-colors hover:text-cream"
-              >
-                {/* one glyph rotated, so up and down are identical shapes */}
-                <span className={"inline-block transition-transform" + (showEvents ? " rotate-180" : "")}>▾</span>
-              </button>
-            )}
+          <div className="min-w-0 text-left">
+            <div className="flex items-center gap-2 font-display text-[15px] leading-tight text-cream">
+              <span className="shrink-0">{flagFor(m.away)}</span><span className="truncate">{m.away}</span>
+              {events.length > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowEvents((v) => !v);
+                  }}
+                  aria-label={showEvents ? "Hide key events" : "Show key events"}
+                  className="ml-1 shrink-0 px-0.5 text-[16px] leading-none text-muted transition-colors hover:text-cream"
+                >
+                  {/* one glyph rotated, so up and down are identical shapes */}
+                  <span className={"inline-block transition-transform" + (showEvents ? " rotate-180" : "")}>▾</span>
+                </button>
+              )}
+            </div>
+            {m.awayCode && <div className="mt-0.5 font-mono text-[10px] text-muted">{m.awayCode}</div>}
           </div>
         </div>
       </div>
