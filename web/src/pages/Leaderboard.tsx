@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted, type LiveTier } from "../api.js";
 import TabSelect from "../components/TabSelect.js";
@@ -133,7 +134,8 @@ const subTab = (active: boolean) =>
   "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
   (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
-type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number } };
+type FormGame = { points: number; tier: LiveTier | null; home: string; away: string; homeName: string; awayName: string; hs: number; as: number; predHome: number; predAway: number };
+type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; resultCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number }; last5?: FormGame[] };
 const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, r16: c.r16, total: c.total, consensus: true });
 
 function Overall({ everyone }: { everyone: Consensus | null }) {
@@ -143,6 +145,9 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data: me } = useMe();
   const live = useLivePoints();
   const myId = me?.entrantId;
+  // hovered form chip -> a portal'd tooltip (the table card is overflow-hidden, so
+  // the tooltip has to live on document.body to escape the clip).
+  const [tip, setTip] = useState<{ g: FormGame; x: number; y: number } | null>(null);
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   // A dedicated Live column (chip + points pill per in-play game) only appears
@@ -157,8 +162,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   // The Live column is a FIXED width (content wraps inside it) so a row with three
   // live games can't stretch the column and shove every other column out of line.
   const cols = anyLive
-    ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_30px_30px_30px_38px_70px_44px] items-center gap-1"
-    : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_30px_30px_30px_38px_70px_44px] items-center gap-1";
+    ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_48px_56px_auto_44px] items-center gap-1"
+    : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_auto_44px] items-center gap-1";
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => dispTotal(b) - dispTotal(a) || a.name.localeCompare(b.name),
   );
@@ -175,8 +180,9 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
         <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div>#</div><div>Entrant</div>
           {anyLive && <div className="text-left">Live Prediction</div>}
-          <div className="hidden text-center sm:block">W1</div><div className="hidden text-center sm:block">W2</div><div className="hidden text-center sm:block">W3</div>
-          <div className="hidden text-center sm:block">R32</div><div className="hidden whitespace-nowrap text-center sm:block">Exact Scores</div>
+          <div className="hidden text-center sm:block">Exact</div>
+          <div className="hidden text-center sm:block">Results</div>
+          <div className="hidden text-right sm:block">Form</div>
           <div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
         </div>
         {list.map((e) => {
@@ -189,11 +195,9 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
               {anyLive && <div />}
-              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week1, started?.week1)}</div>
-              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week2, started?.week2)}</div>
-              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.week3, started?.week3)}</div>
-              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{cell(e.r32, started?.r32)}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.exactCount ?? "–"}</div>
+              <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.resultCount ?? "–"}</div>
+              <div className="hidden sm:block" />
               <div className="text-right font-mono text-sm font-semibold text-gold">{e.total}</div>
             </div>
           ) : (
@@ -214,11 +218,20 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
               {anyLive && <LiveCell games={liveGames} />}
-              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week1, started?.week1)}</div>
-              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week2, started?.week2)}</div>
-              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.week3, started?.week3)}</div>
-              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{cell(e.r32, started?.r32)}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
+              <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
+              <div className="hidden items-center justify-end gap-0.5 sm:flex">
+                {(e.last5 ?? []).length ? (e.last5 ?? []).map((g, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex"
+                    onMouseEnter={(ev) => { const r = (ev.currentTarget as HTMLElement).getBoundingClientRect(); setTip({ g, x: r.left + r.width / 2, y: r.top }); }}
+                    onMouseLeave={() => setTip(null)}
+                  >
+                    <PointsPill points={g.points} tier={g.tier} compact />
+                  </span>
+                )) : <span className="font-mono text-[11px] text-muted">–</span>}
+              </div>
               <div className="text-right font-mono text-sm font-semibold text-cream">{dispTotal(e)}</div>
             </Link>
             );
@@ -226,6 +239,16 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           );
         })}
       </div>
+      {tip && createPortal(
+        <div className="pointer-events-none fixed z-[60]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-line bg-[#0f120e] px-2.5 py-2 shadow-xl">
+            <span className="font-mono text-[11px] text-cream">{flagFor(tip.g.homeName)} {tip.g.home} v {tip.g.away} {flagFor(tip.g.awayName)}</span>
+            <span className="font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway} · Final {tip.g.hs}-{tip.g.as}</span>
+            <ScoredChips pick={`${tip.g.predHome}-${tip.g.predAway}`} hs={tip.g.hs} as={tip.g.as} homeCode={tip.g.home} awayCode={tip.g.away} />
+          </div>
+        </div>,
+        document.body,
+      )}
     </>
   );
 }

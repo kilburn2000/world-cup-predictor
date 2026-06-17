@@ -19,6 +19,8 @@ export interface LeaderboardRow {
   r16: number;
   /** number of exact group scorelines correctly predicted */
   exactCount: number;
+  /** number of correct results (right outcome) predicted */
+  resultCount: number;
   /** Optional (sent once the snapshot backend is enabled). */
   rank?: number;
   /** prev rank − current rank. Positive = climbed. */
@@ -29,6 +31,9 @@ export interface LeaderboardRow {
    * those fields). Lets the client re-derive the tally from the live feed so it
    * tracks the chips in real time. Absent when the entrant has no live game. */
   live?: { total: number; week1: number; week2: number; week3: number; exact: number };
+  /** each of the entrant's last (up to) 5 finished games, oldest first, with
+   * enough to render a per-game form tooltip. */
+  last5?: { points: number; tier: LiveTier | null; home: string; away: string; homeName: string; awayName: string; hs: number; as: number; predHome: number; predAway: number }[];
 }
 export interface GroupTable {
   group: string;

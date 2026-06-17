@@ -123,6 +123,7 @@ app.get("/api/leaderboard", async () => {
            coalesce(sum(case when m.stage = 'LAST_32' then s.points end), 0)::int as r32,
            coalesce(sum(case when m.stage = 'LAST_16' then s.points end), 0)::int as r16,
            coalesce(sum(case when m.stage = 'GROUP' and coalesce((s.breakdown->>'exact')::boolean, false) then 1 else 0 end), 0)::int as "exactCount",
+           coalesce(sum(case when coalesce((s.breakdown->>'outcome')::boolean, false) then 1 else 0 end), 0)::int as "resultCount",
            coalesce(sum(s.points), 0)::int as total
     from entrants e
     left join scores s on s.entrant_id = e.id
@@ -138,21 +139,55 @@ app.get("/api/leaderboard", async () => {
       // Also expose the live delta on its own so the client can recompute the
       // tally from the (faster, ESPN-fresh) /api/live feed and keep the points
       // column in lockstep with the live chips.
-      const lv = { total: 0, week1: 0, week2: 0, week3: 0, exact: 0 };
+      const lv = { total: 0, week1: 0, week2: 0, week3: 0, exact: 0, result: 0 };
       for (const g of games) {
         lv.total += g.points;
         if (g.exact) lv.exact += 1;
+        if (g.outcome) lv.result += 1;
         if (g.matchday === 1) lv.week1 += g.points;
         else if (g.matchday === 2) lv.week2 += g.points;
         else if (g.matchday === 3) lv.week3 += g.points;
       }
       r.total += lv.total;
       r.exactCount += lv.exact;
+      r.resultCount += lv.result;
       r.week1 += lv.week1;
       r.week2 += lv.week2;
       r.week3 += lv.week3;
       r.live = lv;
     }
+  }
+  // Each entrant's last up-to-5 finished games (chronological), for a form column.
+  // Carries enough to render a per-game tooltip: the fixture, their pick, the
+  // actual score and what it scored on.
+  const recent = (await sql`
+    select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko,
+           ht.tla hcode, at.tla acode, ht.name hname, at.name aname, m.home_goals hg, m.away_goals ag,
+           p.pred_home_goals phg, p.pred_away_goals pag
+    from scores s
+    join matches m on m.status = 'FINISHED' and s.ref = 'match:' || m.id
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    left join predictions p on p.entrant_id = s.entrant_id and p.match_id = m.id and p.scope = 'MATCH'
+  `) as any[];
+  const recentByEntrant = new Map<number, any[]>();
+  for (const x of recent) {
+    if (!recentByEntrant.has(x.eid)) recentByEntrant.set(x.eid, []);
+    recentByEntrant.get(x.eid)!.push(x);
+  }
+  for (const r of rows as any[]) {
+    const list = (recentByEntrant.get(r.entrantId) ?? []).sort((a, b) => (a.ko < b.ko ? -1 : a.ko > b.ko ? 1 : 0));
+    r.last5 = list.slice(-5).map((x) => {
+      const bd = x.bd ?? {};
+      const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
+      return {
+        points: x.pts, tier,
+        home: x.hcode, away: x.acode,
+        homeName: x.hname, awayName: x.aname,
+        hs: x.hg, as: x.ag,
+        predHome: x.phg, predAway: x.pag,
+      };
+    });
   }
   rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   return rows;
@@ -694,24 +729,27 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       if (!bySlotByEntrant.has(p.eid)) bySlotByEntrant.set(p.eid, new Map());
       bySlotByEntrant.get(p.eid)!.set(p.slot, p);
     }
-    const nextSlot = (slot: string): { slot: string; pos: "phid" | "paid" } | null => {
+    // The slot a winner feeds into. We don't assume WHICH side (home/away) it
+    // lands on - the real bracket's pairings don't follow a tidy odd/even rule -
+    // so we just look at the next match and see which of the drawn pair reappears.
+    const nextSlot = (slot: string): string | null => {
       const [r, nStr] = slot.split("-");
       const n = Number(nStr);
-      const pos = n % 2 === 1 ? "phid" : "paid";
-      if (r === "R32") return { slot: `R16-${Math.ceil(n / 2)}`, pos };
-      if (r === "R16") return { slot: `QF-${Math.ceil(n / 2)}`, pos };
-      if (r === "QF") return { slot: `SF-${Math.ceil(n / 2)}`, pos };
-      if (r === "SF") return { slot: "FINAL", pos: n === 1 ? "phid" : "paid" };
+      if (r === "R32") return `R16-${Math.ceil(n / 2)}`;
+      if (r === "R16") return `QF-${Math.ceil(n / 2)}`;
+      if (r === "QF") return `SF-${Math.ceil(n / 2)}`;
+      if (r === "SF") return "FINAL";
       return null;
     };
     for (const p of slotPreds as any[]) {
       let penSide: "home" | "away" | null = null;
       if (p.phg === p.pag) {
         const ns = nextSlot(p.slot);
-        const np = ns && bySlotByEntrant.get(p.eid)?.get(ns.slot);
+        const np = ns && bySlotByEntrant.get(p.eid)?.get(ns);
         if (np) {
-          const advId = np[ns.pos];
-          penSide = advId === p.phid ? "home" : advId === p.paid ? "away" : null;
+          // whichever drawn team the entrant carried into the next match won the shoot-out
+          const inNext = (id: number) => np.phid === id || np.paid === id;
+          penSide = inNext(p.phid) ? "home" : inNext(p.paid) ? "away" : null;
         }
       }
       p.penSide = penSide;
