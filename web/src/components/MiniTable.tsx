@@ -5,7 +5,10 @@ export interface MiniRow {
   entrantId: number;
   name: string;
   nameIncomplete?: boolean;
+  /** the number shown on the right. */
   value: number;
+  /** ranking key (points + exact/result tiebreaks); falls back to `value`. */
+  key?: number;
   /** True for rows above the qualification cut-off (knockout groups). */
   qualifying?: boolean;
 }
@@ -25,7 +28,8 @@ export default function MiniTable({ rows, entrantId, title, fullTo }: {
 }) {
   if (!rows.length) return null;
 
-  const sorted = [...rows].sort((a, b) => b.value - a.value);
+  const keyOf = (r: MiniRow) => r.key ?? r.value;
+  const sorted = [...rows].sort((a, b) => keyOf(b) - keyOf(a));
   const idx = sorted.findIndex((r) => r.entrantId === entrantId);
   if (idx < 0) return null;
 
@@ -33,10 +37,10 @@ export default function MiniTable({ rows, entrantId, title, fullTo }: {
   const start = Math.min(Math.max(0, idx - 2), Math.max(0, sorted.length - N));
   const window = sorted.slice(start, start + N);
 
-  // Position number with an "=" suffix when tied on value.
+  // Position number with an "=" suffix when tied on the ranking key.
   const label = (row: MiniRow) => {
-    const rank = 1 + sorted.filter((x) => x.value > row.value).length;
-    const tied = sorted.filter((x) => x.value === row.value).length > 1;
+    const rank = 1 + sorted.filter((x) => keyOf(x) > keyOf(row)).length;
+    const tied = sorted.filter((x) => keyOf(x) === keyOf(row)).length > 1;
     return rank + (tied ? "=" : "");
   };
 

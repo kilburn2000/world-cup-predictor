@@ -1,6 +1,5 @@
 import { useLiveMatches, type LiveMatch } from "../api.js";
 import CompactMatchCard from "./CompactMatchCard.js";
-import { longDate } from "../dates.js";
 
 // Yesterday / Today / Tomorrow games, in the same card format as /statistics/today,
 // driven by the live feed so they update in real time during live games (and the
@@ -8,11 +7,6 @@ import { longDate } from "../dates.js";
 export default function DashboardFixtures() {
   const today = useLiveMatches(0).data ?? [];
   const yesterday = useLiveMatches(-1).data ?? [];
-
-  const [hy, hmo, hd] = new Date()
-    .toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" })
-    .split("-")
-    .map(Number);
 
   // Live first, then finished results, then still-to-play - so played games never
   // sit below upcoming ones on the same day.
@@ -30,10 +24,7 @@ export default function DashboardFixtures() {
     <div className="space-y-7">
       {days.map((d) => (
         <div key={d.offset}>
-          <div className="mb-3 flex items-baseline gap-2">
-            <h3 className="font-display text-lg text-cream">{d.label}’s Games</h3>
-            <span className="font-mono text-[11px] text-gold">{longDate(new Date(hy, hmo - 1, hd + d.offset))}</span>
-          </div>
+          <h3 className="mb-3 font-display text-lg text-cream">{d.label}’s Games</h3>
           {d.items.length === 0 ? (
             <div className="fl-card px-4 py-5 text-center text-[13px] text-muted">No games {d.label.toLowerCase()}.</div>
           ) : (

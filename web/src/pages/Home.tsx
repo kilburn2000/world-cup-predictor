@@ -41,11 +41,15 @@ export default function Home() {
         <div className="mt-7">
           <DashboardFixtures />
         </div>
-        <div className="mt-7 grid items-stretch gap-4 sm:grid-cols-2">
-          <MiniStandings entrantId={me.entrantId} />
-          <MiniTopScorer entrantId={me.entrantId} />
-          <MiniWeek entrantId={me.entrantId} />
-          <MiniKnockout entrantId={me.entrantId} />
+        <div className="mt-8">
+          <h2 className="font-display text-xl text-cream">Competitions</h2>
+          <p className="mb-4 mt-1 text-[13px] text-muted">Where you stand in each table - tap any for the full standings.</p>
+          <div className="grid items-stretch gap-4 sm:grid-cols-2">
+            <MiniStandings entrantId={me.entrantId} />
+            <MiniTopScorer entrantId={me.entrantId} />
+            <MiniWeek entrantId={me.entrantId} />
+            <MiniKnockout entrantId={me.entrantId} />
+          </div>
         </div>
       </div>
     );

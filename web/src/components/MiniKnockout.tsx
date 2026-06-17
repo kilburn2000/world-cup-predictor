@@ -1,4 +1,5 @@
 import { useGroups } from "../api.js";
+import { standingKey } from "@wc/shared";
 import MiniTable from "./MiniTable.js";
 
 // The knockout competition splits entrants into WC-style groups; show the table
@@ -14,7 +15,7 @@ export default function MiniKnockout({ entrantId }: { entrantId: number }) {
       entrantId={entrantId}
       title={`Knockout: Group ${group.group}`}
       fullTo="/standings/knockout"
-      rows={group.entrants.map((e) => ({ entrantId: e.entrantId, name: e.name, nameIncomplete: e.nameIncomplete, value: e.total, qualifying: e.qualifying }))}
+      rows={group.entrants.map((e) => ({ entrantId: e.entrantId, name: e.name, nameIncomplete: e.nameIncomplete, value: e.total, key: standingKey(e.total, e.exactCount ?? 0, e.resultCount ?? 0), qualifying: e.qualifying }))}
     />
   );
 }
