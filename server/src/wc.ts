@@ -75,6 +75,48 @@ export const venueForSlot = (slot: string | null | undefined): string | null => 
   return (n && SCHEDULE[n]?.venue) || null;
 };
 
+// Group-stage venue by the football-data match id (api_match_id). The official
+// 2026 schedule fixes a venue per match slot; sourced from the published group
+// schedule and normalised to the same city labels as the knockout SCHEDULE above.
+export const GROUP_VENUES: Record<number, string> = {
+  // Group A
+  537327: "Estadio Azteca, Mexico City", 537328: "Estadio Akron, Guadalajara", 537329: "Mercedes-Benz Stadium, Atlanta",
+  537330: "Estadio Akron, Guadalajara", 537331: "Estadio Azteca, Mexico City", 537332: "Estadio BBVA, Guadalupe",
+  // Group B
+  537333: "BMO Field, Toronto", 537334: "Levi's Stadium, Santa Clara", 537335: "SoFi Stadium, Inglewood",
+  537336: "BC Place, Vancouver", 537337: "BC Place, Vancouver", 537338: "Lumen Field, Seattle",
+  // Group C
+  537339: "MetLife Stadium, East Rutherford", 537340: "Gillette Stadium, Foxborough", 537341: "Lincoln Financial Field, Philadelphia",
+  537342: "Gillette Stadium, Foxborough", 537343: "Hard Rock Stadium, Miami Gardens", 537344: "Mercedes-Benz Stadium, Atlanta",
+  // Group D
+  537345: "SoFi Stadium, Inglewood", 537346: "BC Place, Vancouver", 537347: "Levi's Stadium, Santa Clara",
+  537348: "Lumen Field, Seattle", 537349: "SoFi Stadium, Inglewood", 537350: "Levi's Stadium, Santa Clara",
+  // Group E
+  537351: "NRG Stadium, Houston", 537352: "Lincoln Financial Field, Philadelphia", 537353: "BMO Field, Toronto",
+  537354: "Arrowhead Stadium, Kansas City", 537355: "MetLife Stadium, East Rutherford", 537356: "Lincoln Financial Field, Philadelphia",
+  // Group F
+  537357: "AT&T Stadium, Arlington", 537358: "Estadio BBVA, Guadalupe", 537359: "NRG Stadium, Houston",
+  537360: "Estadio BBVA, Guadalupe", 537361: "Arrowhead Stadium, Kansas City", 537362: "AT&T Stadium, Arlington",
+  // Group G
+  537363: "Lumen Field, Seattle", 537364: "SoFi Stadium, Inglewood", 537365: "SoFi Stadium, Inglewood",
+  537366: "BC Place, Vancouver", 537367: "BC Place, Vancouver", 537368: "Lumen Field, Seattle",
+  // Group H
+  537369: "Mercedes-Benz Stadium, Atlanta", 537370: "Hard Rock Stadium, Miami Gardens", 537371: "Mercedes-Benz Stadium, Atlanta",
+  537372: "Hard Rock Stadium, Miami Gardens", 537373: "Estadio Akron, Guadalajara", 537374: "NRG Stadium, Houston",
+  // Group I
+  537391: "MetLife Stadium, East Rutherford", 537392: "Gillette Stadium, Foxborough", 537393: "Lincoln Financial Field, Philadelphia",
+  537394: "MetLife Stadium, East Rutherford", 537395: "Gillette Stadium, Foxborough", 537396: "BMO Field, Toronto",
+  // Group J
+  537397: "Arrowhead Stadium, Kansas City", 537398: "Levi's Stadium, Santa Clara", 537399: "AT&T Stadium, Arlington",
+  537400: "Levi's Stadium, Santa Clara", 537401: "AT&T Stadium, Arlington", 537402: "Arrowhead Stadium, Kansas City",
+  // Group K
+  537403: "NRG Stadium, Houston", 537404: "Estadio Azteca, Mexico City", 537405: "NRG Stadium, Houston",
+  537406: "Estadio Akron, Guadalajara", 537407: "Hard Rock Stadium, Miami Gardens", 537408: "Mercedes-Benz Stadium, Atlanta",
+  // Group L
+  537409: "AT&T Stadium, Arlington", 537410: "BMO Field, Toronto", 537411: "Gillette Stadium, Foxborough",
+  537412: "BMO Field, Toronto", 537413: "MetLife Stadium, East Rutherford", 537414: "Lincoln Financial Field, Philadelphia",
+};
+
 // Fixed knockout schedule (UTC kickoff + venue), by match number. Formatted to
 // British Summer Time on the client.
 const SCHEDULE: Record<number, { kickoff: string; venue: string }> = {
