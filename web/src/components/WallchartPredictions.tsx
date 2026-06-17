@@ -5,6 +5,15 @@ import PointsPill from "./PointsPill.js";
 
 const MATCH_COLS = "grid grid-cols-[1fr_46px_1fr] items-center gap-1.5";
 
+// What a prediction scored, so the points pill takes the matching colour
+// (green exact / yellow partial / red miss) instead of the neutral fallback.
+function tierOf(ph: number, pa: number, hs: number, as: number): "exact" | "result" | "diff" | "miss" {
+  if (ph === hs && pa === as) return "exact";
+  if (Math.sign(ph - pa) === Math.sign(hs - as)) return "result";
+  if (ph === hs || pa === as) return "diff";
+  return "miss";
+}
+
 function MatchRow({ m }: { m: WallchartMatch }) {
   const played = (m.status === "FINISHED" || m.status === "IN_PLAY") && m.actualHome != null;
   return (
@@ -31,7 +40,7 @@ function MatchRow({ m }: { m: WallchartMatch }) {
           <span className="text-muted">Predicted</span>
           <span className="font-mono text-gold">{m.predHome}–{m.predAway}</span>
           <ScoredChips pick={`${m.predHome}-${m.predAway}`} hs={m.actualHome ?? 0} as={m.actualAway ?? 0} homeCode={m.homeCode ?? ""} awayCode={m.awayCode ?? ""} />
-          <PointsPill points={m.points ?? 0} />
+          <PointsPill points={m.points ?? 0} tier={tierOf(m.predHome, m.predAway, m.actualHome ?? 0, m.actualAway ?? 0)} />
         </div>
       )}
     </div>

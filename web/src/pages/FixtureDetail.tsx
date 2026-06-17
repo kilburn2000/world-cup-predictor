@@ -6,11 +6,12 @@ import ScoredChips from "../components/ScoredChips.js";
 
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
+// Exact = green, anything else that scored = yellow, a miss = red.
 const TIER: Record<string, { label: string; bg: string; fg: string }> = {
-  exact: { label: "Exact", bg: "rgba(201,168,106,0.18)", fg: "#c9a86a" },
-  result: { label: "Result", bg: "rgba(107,191,134,0.16)", fg: "#6bbf86" },
-  diff: { label: "Partial", bg: "rgba(141,147,136,0.18)", fg: "#b9bdb4" },
-  miss: { label: "No points", bg: "rgba(217,146,106,0.12)", fg: "#d9926a" },
+  exact: { label: "Exact", bg: "rgba(107,191,134,0.16)", fg: "#6bbf86" },
+  result: { label: "Result", bg: "rgba(227,197,88,0.16)", fg: "#e3c558" },
+  diff: { label: "Partial", bg: "rgba(227,197,88,0.16)", fg: "#e3c558" },
+  miss: { label: "No points", bg: "rgba(217,83,79,0.16)", fg: "#e08a84" },
 };
 
 function initials(name: string) {

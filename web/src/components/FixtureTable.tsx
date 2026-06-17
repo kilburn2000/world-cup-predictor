@@ -8,6 +8,16 @@ const londonTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
 
 const STAGE: Record<string, string> = { LAST_32: "R32", LAST_16: "R16", QF: "QF", SF: "SF", THIRD_PLACE: "3rd", FINAL: "Final" };
+
+// What a prediction scored, so the points pill takes the matching colour
+// (green exact / yellow partial / red miss).
+function tierOf(pick: string, hs: number, as: number): "exact" | "result" | "diff" | "miss" {
+  const [ph, pa] = pick.split("-").map(Number);
+  if (ph === hs && pa === as) return "exact";
+  if (Math.sign(ph - pa) === Math.sign(hs - as)) return "result";
+  if (ph === hs || pa === as) return "diff";
+  return "miss";
+}
 const stageLabel = (f: Fixture) => (f.stage === "GROUP" ? (f.group ? `Group ${f.group}` : "Group") : STAGE[f.stage] ?? f.stage);
 const pct = (n?: number, total?: number) => (total ? Math.round(((n ?? 0) / total) * 100) : 0);
 const numPct = (n?: number, total?: number) => `${n ?? 0} (${pct(n, total)}%)`;
@@ -113,7 +123,7 @@ export default function FixtureTable({ items }: { items: Fixture[] }) {
                 {(done || live) && f.homeScore != null && f.awayScore != null && (
                   <>
                     <ScoredChips pick={f.myPick} hs={f.homeScore} as={f.awayScore} homeCode={f.homeCode ?? ""} awayCode={f.awayCode ?? ""} />
-                    {f.myPoints != null && <PointsPill points={f.myPoints} />}
+                    {f.myPoints != null && <PointsPill points={f.myPoints} tier={tierOf(f.myPick!, f.homeScore!, f.awayScore!)} />}
                   </>
                 )}
               </div>

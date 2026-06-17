@@ -1,9 +1,11 @@
-function Chip({ label, tone }: { label: string; tone: "gold" | "green" | "team" | "red" }) {
+// Chip colours by what the prediction scored: an exact score is green, anything
+// else that still scored (right result / a team's goals) is yellow, a miss is red.
+function Chip({ label, tone }: { label: string; tone: "exact" | "partial" | "team" | "miss" }) {
   const s = {
-    gold: { background: "rgba(201,168,106,0.18)", color: "#c9a86a" },
-    green: { background: "rgba(107,191,134,0.16)", color: "#6bbf86" },
+    exact: { background: "rgba(107,191,134,0.16)", color: "#6bbf86" },
+    partial: { background: "rgba(227,197,88,0.16)", color: "#e3c558" },
     team: { background: "rgba(232,228,216,0.10)", color: "#cfc8b6" },
-    red: { background: "rgba(217,83,79,0.16)", color: "#e08a84" },
+    miss: { background: "rgba(217,83,79,0.16)", color: "#e08a84" },
   }[tone];
   return <span className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={s}>{label}</span>;
 }
@@ -17,7 +19,7 @@ export default function ScoredChips({
   const [ph, pa] = pick.split("-").map(Number);
   const homeOk = ph === hs;
   const awayOk = pa === as;
-  if (homeOk && awayOk) return <Chip label="EXACT" tone="gold" />;
+  if (homeOk && awayOk) return <Chip label="EXACT" tone="exact" />;
   const resultOk = Math.sign(ph - pa) === Math.sign(hs - as);
   // Calling a draw (right result, wrong score) is its own thing - worth more and
   // labelled distinctly. A non-exact draw can never match a single team's goals.
@@ -28,7 +30,7 @@ export default function ScoredChips({
   if (awayOk) parts.push(`${awayCode} ${as}`);
   // Scored nothing → an explicit red "N/A" chip (rather than a blank), so a miss
   // reads the same way everywhere this component is used.
-  if (!parts.length) return <Chip label="N/A" tone="red" />;
+  if (!parts.length) return <Chip label="N/A" tone="miss" />;
   // combine everything scored into a single chip (e.g. "Result + CZE 1")
-  return <Chip label={parts.join(" + ")} tone="green" />;
+  return <Chip label={parts.join(" + ")} tone="partial" />;
 }
