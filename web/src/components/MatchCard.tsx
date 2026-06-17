@@ -292,10 +292,10 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
         >
             <div className="overflow-hidden">
               <div
-                className="px-5 pb-5 transition-opacity duration-[250ms] sm:px-6"
+                className="transition-opacity duration-[250ms]"
                 style={{ opacity: show ? 1 : 0, transitionDelay: show ? "250ms" : "0ms" }}
               >
-              <div className={boardCols + " items-center px-3 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted"}>
+              <div className={boardCols + " items-center px-5 py-1.5 text-[10px] uppercase tracking-[1.5px] text-muted sm:px-6"}>
                 {showRank && <div>#</div>}
                 <div>Entrant</div>
                 <div className="whitespace-nowrap text-right">{isLive ? "Live Prediction" : "Prediction"}</div>
@@ -303,7 +303,7 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
               {board.map((b, i) => (
                 <div
                   key={b.entrantId}
-                  className={boardCols + " items-center gap-2 rounded-lg border-t border-line px-3 py-2.5" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+                  className={boardCols + " items-center gap-2 border-t border-line px-5 py-2.5 sm:px-6" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
                 >
                   {showRank && <div className="font-mono text-xs text-muted">{rankFor(i)}</div>}
                   <div className="flex min-w-0 items-center gap-1.5">

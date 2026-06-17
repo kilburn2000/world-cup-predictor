@@ -31,7 +31,7 @@ function pillOf(m: LiveMatch, time: string): { label: string; color: string; bg:
 }
 
 /** One-line summary card for the dashboard. Full detail (predictions, events) lives on the fixture page. */
-export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatch; hideStage?: boolean }) {
+export default function CompactMatchCard({ m }: { m: LiveMatch }) {
   const { data: me } = useMe();
   const myId = me?.entrantId;
   const [showEvents, setShowEvents] = useState(false);
@@ -57,8 +57,9 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
     ? new Date(m.kickoff).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "TBC";
   const pill = pillOf(m, time);
-  // left side of the header: stage (unless the page already groups by it) + venue
-  const left = [hideStage ? "" : shortStage(m), m.venue].filter(Boolean).join(" · ");
+  // top-left always shows the group (group stage) or round (knockout); the venue
+  // sits below the score instead.
+  const left = shortStage(m);
   const mine = board.find((b) => b.entrantId === myId);
 
   // A knockout pick: flag + code each side of the predicted score; "(p)" marks the
@@ -133,6 +134,9 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
             {m.awayCode && <div className="mt-0.5 font-mono text-[10px] text-muted">{m.awayCode}</div>}
           </div>
         </div>
+
+        {/* venue, below the fixture/result and above any key events */}
+        {m.venue && <div className="mt-2.5 text-center font-mono text-[10px] uppercase tracking-wide text-muted">{m.venue}</div>}
       </div>
 
       {/* key events, directly beneath the score (above the prediction), toggled by the
@@ -249,10 +253,10 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
         >
           <div className="overflow-hidden">
             <div
-              className="border-t border-line px-3 pb-3 transition-opacity duration-[250ms]"
+              className="border-t border-line transition-opacity duration-[250ms]"
               style={{ opacity: show ? 1 : 0, transitionDelay: show ? "250ms" : "0ms" }}
             >
-              <div className={boardCols + " items-center px-2 py-1.5 text-[9px] uppercase tracking-[1.5px] text-muted"}>
+              <div className={boardCols + " items-center px-4 py-1.5 text-[9px] uppercase tracking-[1.5px] text-muted"}>
                 {showRank && <div>#</div>}
                 <div>Entrant</div>
                 <div className="whitespace-nowrap text-right">{isLive ? "Live Prediction" : "Prediction"}</div>
@@ -260,7 +264,7 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
               {board.map((b, i) => (
                 <div
                   key={b.entrantId}
-                  className={boardCols + " items-center gap-2 rounded-lg border-t border-line px-2 py-2" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+                  className={boardCols + " items-center gap-2 border-t border-line px-4 py-2" + (b.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
                 >
                   {showRank && <div className="font-mono text-[11px] text-muted">{rankFor(i)}</div>}
                   <div className="flex min-w-0 items-center gap-1.5">
