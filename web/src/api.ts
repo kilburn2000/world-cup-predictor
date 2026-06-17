@@ -399,6 +399,8 @@ export interface LiveMatch {
   mostCommonResult?: "HOME" | "DRAW" | "AWAY" | null;
   mostCommonResultCount?: number;
   mostCommonTotal?: number;
+  /** knockout: the most-predicted matchup (codes + names + count) for the slot. */
+  koMatchup?: { home: string; away: string; homeName: string; awayName: string; count: number } | null;
   events: LiveEvent[];
   /** entrants ranked by points they'd win if it ended at the current score. */
   board: LiveBoardRow[];
