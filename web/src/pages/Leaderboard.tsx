@@ -164,6 +164,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: stats } = useStats();
   const { data: me } = useMe();
+  const { data: fixtures } = useFixtures();
   const live = useLivePoints();
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
@@ -173,7 +174,6 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const anyLive = [...live.values()].some((g) => g.length > 0);
   // When nothing's live, the same slot shows everyone's prediction for the next
   // upcoming fixture instead.
-  const { data: fixtures } = useFixtures();
   const next = anyLive ? null : nextPredFor(fixtures, () => true);
   const showPred = anyLive || !!next;
   // Re-derive the total from the confirmed base + the live feed (same source as
@@ -318,13 +318,13 @@ type Phase = "week1" | "week2" | "week3" | "r32" | "r16";
 function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: me } = useMe();
+  const { data: fixtures } = useFixtures();
   const live = useLivePoints();
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
   // Next upcoming fixture in THIS phase, for the Next Prediction column.
-  const { data: fixtures } = useFixtures();
   const inPhase = (m: LiveMatch) =>
     phase === "r32" ? m.stage === "LAST_32"
     : phase === "r16" ? m.stage === "LAST_16"
