@@ -72,6 +72,15 @@ function rankLabeller<T>(list: T[], value: (t: T) => number, isConsensus: (t: T)
   };
 }
 
+// Tiebreak (overall standings): entrants level on points are separated by who has
+// the most exact scores. Encoded as a fractional add-on to the points so the same
+// `value` drives both the sort and the rank labels (more exacts => strictly higher,
+// never enough to overtake a whole point). FLIP THIS TO false TO ROLL BACK to a
+// pure points ranking (ties share a rank, alphabetical within).
+const TIEBREAK_BY_EXACT = true;
+const standingKey = (points: number, exact: number) =>
+  points + (TIEBREAK_BY_EXACT ? Math.min(exact, 999) / 1000 : 0);
+
 // Pick country code -> country name flagFor() understands.
 const SCORER_COUNTRY: Record<string, string> = {
   POR: "Portugal", ENG: "England", NED: "Netherlands", BRA: "Brazil", ARG: "Argentina",
@@ -185,10 +194,12 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const cols = anyLive
     ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_48px_56px_96px_44px] items-center gap-1"
     : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_96px_44px] items-center gap-1";
+  // points first, then the exact-score tiebreak (see standingKey), then name.
+  const keyOf = (e: Row) => standingKey(dispTotal(e), e.exactCount ?? 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
-    (a, b) => dispTotal(b) - dispTotal(a) || a.name.localeCompare(b.name),
+    (a, b) => keyOf(b) - keyOf(a) || a.name.localeCompare(b.name),
   );
-  const rankLabel = rankLabeller(list, dispTotal, (e) => !!e.consensus);
+  const rankLabel = rankLabeller(list, keyOf, (e) => !!e.consensus);
   return (
     <>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
