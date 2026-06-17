@@ -121,7 +121,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, cols }: { e: GroupE
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
       <FormCell games={e.last5 ?? []} className="hidden items-center justify-center gap-0.5 sm:flex" />
-      <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
+      <div className="text-center font-mono text-sm font-semibold text-cream">{e.total}</div>
     </Link>
   );
 }
@@ -196,8 +196,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   // - otherwise it sizes to each row's own content (a word in the header, five
   // chips in a body row) and the mismatch shifts every later column out of line.
   const cols = anyLive
-    ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_48px_56px_var(--formw)_44px] items-center gap-1"
-    : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_var(--formw)_44px] items-center gap-1";
+    ? "grid grid-cols-[26px_1fr_150px_44px] sm:grid-cols-[26px_1fr_186px_40px_52px_var(--formw)_44px] items-center gap-2"
+    : "grid grid-cols-[26px_1fr_44px] sm:grid-cols-[26px_1fr_40px_52px_var(--formw)_44px] items-center gap-2";
   // points first, then exacts, then results (see standingKey), then name.
   const keyOf = (e: Row) => standingKey(dispTotal(e), e.exactCount ?? 0, e.resultCount ?? 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
@@ -215,12 +215,12 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       </div>
       <div className="fl-card overflow-hidden" style={formCss}>
         <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
-          <div>#</div><div>Entrant</div>
-          {anyLive && <div className="text-left">Live Prediction</div>}
+          <div className="text-left">#</div><div className="text-left">Entrant</div>
+          {anyLive && <div className="text-center">Live Prediction</div>}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
           <div className="hidden text-center sm:block">Form</div>
-          <div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
+          <div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
         </div>
         {list.map((e) => {
           const label = rankLabel(e);
@@ -235,7 +235,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.exactCount ?? "–"}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.resultCount ?? "–"}</div>
               <div className="hidden sm:block" />
-              <div className="text-right font-mono text-sm font-semibold text-gold">{e.total}</div>
+              <div className="text-center font-mono text-sm font-semibold text-gold">{e.total}</div>
             </div>
           ) : (
             (() => {
@@ -258,7 +258,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
               <FormCell games={e.last5 ?? []} />
-              <div className="text-right font-mono text-sm font-semibold text-cream">{dispTotal(e)}</div>
+              <div className="text-center font-mono text-sm font-semibold text-cream">{dispTotal(e)}</div>
             </Link>
             );
             })()
@@ -296,17 +296,17 @@ function Knockout() {
           // Still a fixed width per table, so the header and rows stay aligned. The
           // Live column only appears when a game in THIS WC group is in play.
           const cols = anyLive
-            ? "grid grid-cols-[30px_1fr_130px_44px] sm:grid-cols-[30px_1fr_130px_48px_56px_var(--formw)_44px] items-center gap-1"
-            : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_var(--formw)_44px] items-center gap-1";
+            ? "grid grid-cols-[26px_1fr_130px_44px] sm:grid-cols-[26px_1fr_130px_40px_52px_var(--formw)_44px] items-center gap-2"
+            : "grid grid-cols-[26px_1fr_44px] sm:grid-cols-[26px_1fr_40px_52px_var(--formw)_44px] items-center gap-2";
           return (
             <div key={g.group} className="fl-card overflow-hidden" style={{ ["--formw" as string]: formWidth(g.entrants.map((e) => e.last5)) }}>
               <div className={cols + " border-b border-line px-4 py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
-                {anyLive && <div className="text-left">Live</div>}
+                {anyLive && <div className="text-center">Live</div>}
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
                 <div className="hidden text-center sm:block">Form</div>
-                <div className="text-right">{anyLive ? "Live Pts" : "Pts"}</div>
+                <div className="text-center">{anyLive ? "Live Pts" : "Pts"}</div>
               </div>
               {g.entrants.map((e, i) => (
                 <div key={e.entrantId}>
@@ -333,8 +333,8 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
   const cols = anyLive
-    ? "grid grid-cols-[36px_1fr_150px_52px] sm:grid-cols-[36px_1fr_150px_var(--formw)_52px] items-center gap-1"
-    : "grid grid-cols-[36px_1fr_52px] sm:grid-cols-[36px_1fr_var(--formw)_52px] items-center gap-1";
+    ? "grid grid-cols-[26px_1fr_150px_44px] sm:grid-cols-[26px_1fr_150px_var(--formw)_44px] items-center gap-2"
+    : "grid grid-cols-[26px_1fr_44px] sm:grid-cols-[26px_1fr_var(--formw)_44px] items-center gap-2";
   // Live-derive the phase total from the live feed (see Overall). Only the group
   // weeks have a server live delta to strip; r32/r16 have none yet.
   const liveKey = phase === "week1" || phase === "week2" || phase === "week3" ? phase : null;
@@ -350,7 +350,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   return (
     <div className="fl-card overflow-hidden" style={{ ["--formw" as string]: formWidth(list.map((e) => e.formByPhase?.[phase])) }}>
       <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div>#</div><div>Entrant</div>{anyLive && <div className="text-left">Live Prediction</div>}<div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
+        <div className="text-left">#</div><div className="text-left">Entrant</div>{anyLive && <div className="text-center">Live Prediction</div>}<div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
@@ -363,7 +363,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             </div>
             {anyLive && <div />}
             <div className="hidden sm:block" />
-            <div className="text-right font-mono text-sm font-semibold text-gold">{e[phase]}</div>
+            <div className="text-center font-mono text-sm font-semibold text-gold">{e[phase]}</div>
           </div>
         ) : (
           <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
@@ -377,7 +377,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             </div>
             {anyLive && <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} />}
             <FormCell games={e.formByPhase?.[phase] ?? []} />
-            <div className="text-right font-mono text-sm font-semibold text-cream">{dispPhase(e)}</div>
+            <div className="text-center font-mono text-sm font-semibold text-cream">{dispPhase(e)}</div>
           </Link>
         );
       })}
