@@ -664,7 +664,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
   const hasKo = (rows as any[]).some((m) => m.stage !== "GROUP" && m.slot);
   const projBySlot = new Map<string, { home: string; away: string }>();
   const koBoardBySlot = new Map<string, any[]>();
-  const koMcBySlot = new Map<string, { score: string | null; scoreCount: number; total: number; matchupCount: number; home: string; away: string; homeName: string; awayName: string }>();
+  const koMcBySlot = new Map<string, { score: string; count: number; total: number; home: string; away: string; homeName: string; awayName: string; penSide: "home" | "away" | null }>();
   if (hasKo) {
     try {
       const ko = await buildKnockout();
@@ -714,36 +714,32 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
           penSide = advId === p.phid ? "home" : advId === p.paid ? "away" : null;
         }
       }
+      p.penSide = penSide;
       const arr = koBoardBySlot.get(p.slot) ?? [];
       arr.push({ entrantId: p.eid, name: p.name, pick: `${p.phg}-${p.pag}`, predHome: p.phome, predAway: p.paway, predHomeName: p.phomename, predAwayName: p.pawayname, penSide, points: null, tier: null });
       koBoardBySlot.set(p.slot, arr);
     }
     for (const arr of koBoardBySlot.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
 
-    // most-predicted matchup + scoreline per knockout slot, deduced from the picks
-    const koAgg = new Map<string, { score: Map<string, number>; pair: Map<string, number>; orient: Map<string, { count: number; phid: number; paid: number; home: string; away: string; homeName: string; awayName: string }>; total: number }>();
+    // single most-predicted full pick per knockout slot (teams + score combined)
+    const koAgg = new Map<string, { full: Map<string, { count: number; home: string; away: string; homeName: string; awayName: string; score: string; penHome: number; penAway: number }>; total: number }>();
     for (const p of slotPreds as any[]) {
       let a = koAgg.get(p.slot);
-      if (!a) { a = { score: new Map(), pair: new Map(), orient: new Map(), total: 0 }; koAgg.set(p.slot, a); }
+      if (!a) { a = { full: new Map(), total: 0 }; koAgg.set(p.slot, a); }
       a.total++;
-      a.score.set(`${p.phg}-${p.pag}`, (a.score.get(`${p.phg}-${p.pag}`) ?? 0) + 1);
-      const pairKey = [p.phid, p.paid].sort((x: number, y: number) => x - y).join("-");
-      a.pair.set(pairKey, (a.pair.get(pairKey) ?? 0) + 1);
-      const oKey = `${p.phid}-${p.paid}`;
-      const o = a.orient.get(oKey) ?? { count: 0, phid: p.phid, paid: p.paid, home: p.phome, away: p.paway, homeName: p.phomename, awayName: p.pawayname };
-      o.count++;
-      a.orient.set(oKey, o);
+      const key = `${p.phid}-${p.paid}-${p.phg}-${p.pag}`;
+      const f = a.full.get(key) ?? { count: 0, home: p.phome, away: p.paway, homeName: p.phomename, awayName: p.pawayname, score: `${p.phg}-${p.pag}`, penHome: 0, penAway: 0 };
+      f.count++;
+      if (p.penSide === "home") f.penHome++; else if (p.penSide === "away") f.penAway++;
+      a.full.set(key, f);
     }
     for (const [slot, a] of koAgg) {
-      let score: string | null = null, sc = 0;
-      for (const [k, c] of a.score) if (c > sc) { score = k; sc = c; }
-      let topPair = "", pc = 0;
-      for (const [k, c] of a.pair) if (c > pc) { topPair = k; pc = c; }
-      let orient: any = null, oc = 0;
-      for (const o of a.orient.values()) {
-        if ([o.phid, o.paid].sort((x: number, y: number) => x - y).join("-") === topPair && o.count > oc) { orient = o; oc = o.count; }
+      let top: any = null, tc = 0;
+      for (const f of a.full.values()) if (f.count > tc) { top = f; tc = f.count; }
+      if (top) {
+        const penSide = top.penHome > top.penAway ? "home" : top.penAway > top.penHome ? "away" : null;
+        koMcBySlot.set(slot, { score: top.score, count: tc, total: a.total, home: top.home, away: top.away, homeName: top.homeName, awayName: top.awayName, penSide });
       }
-      if (orient) koMcBySlot.set(slot, { score, scoreCount: sc, total: a.total, matchupCount: pc, home: orient.home, away: orient.away, homeName: orient.homeName, awayName: orient.awayName });
     }
   }
 
@@ -801,7 +797,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
     const koMc = koMcBySlot.get(m.slot);
     const mc = m.stage === "GROUP"
       ? mostCommon(predsByMatch.get(m.id) ?? [], m.mh)
-      : { score: koMc?.score ?? null, scoreCount: koMc?.scoreCount ?? 0, result: null as "HOME" | "DRAW" | "AWAY" | null, resultCount: 0, total: koMc?.total ?? 0 };
+      : { score: koMc?.score ?? null, scoreCount: koMc?.count ?? 0, result: null as "HOME" | "DRAW" | "AWAY" | null, resultCount: 0, total: koMc?.total ?? 0 };
     const mine = myId ? board.find((b) => b.entrantId === myId) : null;
 
     return {
@@ -829,7 +825,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       mostCommonResult: mc.result,
       mostCommonResultCount: mc.resultCount,
       mostCommonTotal: mc.total,
-      koMatchup: koMc ? { home: koMc.home, away: koMc.away, homeName: koMc.homeName, awayName: koMc.awayName, count: koMc.matchupCount } : null,
+      koMatchup: koMc ? { home: koMc.home, away: koMc.away, homeName: koMc.homeName, awayName: koMc.awayName, score: koMc.score, count: koMc.count, penSide: koMc.penSide } : null,
       events,
       board,
     };

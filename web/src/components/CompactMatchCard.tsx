@@ -204,11 +204,8 @@ export default function CompactMatchCard({ m, hideStage = false }: { m: LiveMatc
           {m.koMatchup ? (
             <>
               <span className="text-[9px] uppercase tracking-wide">Most predicted</span>
-              <span className="inline-flex items-center gap-1">
-                {flagFor(m.koMatchup.homeName)}<span className="font-mono text-cream">{m.koMatchup.home}</span> v <span className="font-mono text-cream">{m.koMatchup.away}</span>{flagFor(m.koMatchup.awayName)} {frac(m.koMatchup.count, m.mostCommonTotal)}
-              </span>
-              <span>·</span>
-              <span><span className="font-mono text-cream">{m.mostCommonScore?.replace("-", "–")}</span> {frac(m.mostCommonScoreCount, m.mostCommonTotal)}</span>
+              {koPick({ predHome: m.koMatchup.home, predAway: m.koMatchup.away, predHomeName: m.koMatchup.homeName, predAwayName: m.koMatchup.awayName, pick: m.koMatchup.score, penSide: m.koMatchup.penSide })}
+              <span className="text-muted">{frac(m.koMatchup.count, m.mostCommonTotal)}</span>
             </>
           ) : !m.mostCommonScore ? (
             <span className="text-[9px] uppercase tracking-wide">Everyone’s predictions</span>
