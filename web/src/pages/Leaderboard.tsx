@@ -112,7 +112,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive }: { e: GroupEntrant
           <span className="text-muted">{label}</span>
         )}
       </div>
-      <div className="ml-3 flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-1.5">
         <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
         {e.entrantId === myId && <YouBadge />}
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -140,7 +140,7 @@ const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week
 // no padding gaps inside a column) while the rows stay perfectly aligned. The
 // first/last tracks are gutters; rank sits in column 2 (col-start-2), a 1fr name
 // column fills the slack so the stat columns group on the right.
-const SUB_ROW = "col-span-full grid grid-cols-subgrid items-center gap-x-2";
+const SUB_ROW = "col-span-full grid grid-cols-subgrid items-center gap-x-5 px-4";
 
 // A row of colour-coded points chips for an entrant's recent games. Hovering a
 // chip pops a tooltip (portal'd to body so the card's overflow-hidden can't clip
@@ -194,8 +194,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   // results, form, pts, gutter. All stat columns are `auto` so each is exactly as
   // wide as its widest header/cell. Exact/Results/Form hide on mobile.
   const parentCols = anyLive
-    ? "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
-    : "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
+    ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
+    : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
   // points first, then exacts, then results (see standingKey), then name.
   const keyOf = (e: Row) => standingKey(dispTotal(e), e.exactCount ?? 0, e.resultCount ?? 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
@@ -212,7 +212,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       </div>
       <div className={"fl-card overflow-hidden " + parentCols}>
         <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-          <div className="text-center">#</div><div className="ml-3 text-left">Entrant</div>
+          <div className="text-center">#</div><div className="text-left">Entrant</div>
           {anyLive && <div className="text-center">Live Prediction</div>}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
@@ -224,7 +224,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           return e.consensus ? (
             <div key="everyone" className={SUB_ROW + " border-t border-line bg-gold-soft py-2.5 text-[13px]"}>
               <div className="text-center font-mono text-xs text-gold">{label}</div>
-              <div className="ml-3 flex min-w-0 items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
@@ -246,7 +246,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                   <span className="text-muted">{label}</span>
                 )}
               </div>
-              <div className="ml-3 flex min-w-0 items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <span className="truncate text-cream">{e.name}</span>
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -292,8 +292,8 @@ function Knockout() {
           // results, form, pts, gutter. The Live column only appears when a game in
           // THIS WC group is in play.
           const parentCols = anyLive
-            ? "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
-            : "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
+            ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
+            : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
           return (
             <div key={g.group} className={"fl-card overflow-hidden " + parentCols}>
               <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted"}>
@@ -328,10 +328,10 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
-  // Subgrid columns (see SUB_ROW): gutter, rank, name(1fr), [live], form, pts, gutter.
+  // Subgrid columns (see SUB_ROW): rank, name(1fr), [live], exact, results, form, pts.
   const parentCols = anyLive
-    ? "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
-    : "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]";
+    ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
+    : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
   // Live-derive the phase total from the live feed (see Overall). Only the group
   // weeks have a server live delta to strip; r32/r16 have none yet.
   const liveKey = phase === "week1" || phase === "week2" || phase === "week3" ? phase : null;
@@ -347,18 +347,20 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   return (
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div className="text-center">#</div><div className="ml-3 text-left">Entrant</div>{anyLive && <div className="text-center">Live Prediction</div>}<div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
+        <div className="text-center">#</div><div className="text-left">Entrant</div>{anyLive && <div className="text-center">Live Prediction</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
         return e.consensus ? (
           <div key="everyone" className={SUB_ROW + " border-t border-line bg-gold-soft py-2.5 text-[13px]"}>
             <div className="text-center font-mono text-xs text-gold">{label}</div>
-            <div className="ml-3 flex min-w-0 items-center gap-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
               <span className="truncate font-medium text-gold">👥 {e.name}</span>
               <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
             </div>
             {anyLive && <div />}
+            <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{st(e)?.exact ?? "–"}</div>
+            <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{st(e)?.result ?? "–"}</div>
             <div className="hidden sm:block" />
             <div className="text-center font-mono text-sm font-semibold text-gold">{e[phase]}</div>
           </div>
@@ -367,12 +369,14 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             <div className="text-center font-mono text-xs">
               {label !== "=" && Number(label) <= 3 && dispPhase(e) > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="text-muted">{label}</span>}
             </div>
-            <div className="ml-3 flex min-w-0 items-center gap-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
               <span className="truncate text-cream">{e.name}</span>
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
             </div>
             {anyLive && <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} />}
+            <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.exact ?? 0}</div>
+            <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.result ?? 0}</div>
             <FormCell games={e.formByPhase?.[phase] ?? []} />
             <div className="text-center font-mono text-sm font-semibold text-cream">{dispPhase(e)}</div>
           </Link>
