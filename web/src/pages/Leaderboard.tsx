@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame } from "../api.js";
+import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, useFixtures, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame, type LiveMatch } from "../api.js";
 import { standingKey } from "@wc/shared";
 import TabSelect from "../components/TabSelect.js";
 import ScoredChips from "../components/ScoredChips.js";
@@ -99,7 +99,7 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
   );
 }
 
-function GroupRow({ e, myId, label, liveGames = [], anyLive }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean }) {
+function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextPick }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextPick?: string }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
@@ -117,7 +117,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive }: { e: GroupEntrant
         {e.entrantId === myId && <YouBadge />}
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
       </div>
-      {anyLive && <LiveCell games={liveGames} />}
+      {showPred && (anyLive ? <LiveCell games={liveGames} /> : <NextPredCell pick={nextPick} />)}
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
       <FormCell games={e.last5 ?? []} className="hidden items-center justify-center gap-0.5 sm:flex" />
@@ -142,6 +142,24 @@ const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week
 // column fills the slack so the stat columns group on the right.
 const SUB_ROW = "col-span-full grid grid-cols-subgrid items-center gap-x-5 px-4";
 
+// The next not-yet-started fixture matching a scope (earliest kickoff) + each
+// entrant's predicted score for it, for the "Next Prediction" column shown when
+// nothing's live. Picks come straight off the fixture's board.
+function nextPredFor(fixtures: LiveMatch[] | undefined, scope: (m: LiveMatch) => boolean): { game: LiveMatch; picks: Map<number, string> } | null {
+  const game = (fixtures ?? [])
+    .filter((m) => m.status === "SCHEDULED" && m.kickoff && scope(m))
+    .sort((a, b) => ((a.kickoff ?? "") < (b.kickoff ?? "") ? -1 : 1))[0];
+  if (!game) return null;
+  const picks = new Map<number, string>();
+  for (const b of game.board ?? []) picks.set(b.entrantId, b.pick);
+  return { game, picks };
+}
+
+// One entrant's predicted score for the next game.
+function NextPredCell({ pick }: { pick?: string }) {
+  return <div className="text-center font-mono text-[12px] text-cream">{pick ? pick.replace("-", "–") : <span className="text-muted">–</span>}</div>;
+}
+
 function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: stats } = useStats();
@@ -153,16 +171,21 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   // A dedicated Live column (chip + points pill per in-play game) only appears
   // while something's actually being scored, so the table is unchanged otherwise.
   const anyLive = [...live.values()].some((g) => g.length > 0);
+  // When nothing's live, the same slot shows everyone's prediction for the next
+  // upcoming fixture instead.
+  const { data: fixtures } = useFixtures();
+  const next = anyLive ? null : nextPredFor(fixtures, () => true);
+  const showPred = anyLive || !!next;
   // Re-derive the total from the confirmed base + the live feed (same source as
   // the chips) so the points column moves the instant a goal lands, not a poll
   // behind. e.total already folds in the server's (slower) live delta, so strip
   // it back out (e.live.total) before adding the fresh client figure.
   const liveOf = (id: number) => (live.get(id) ?? []).reduce((s, g) => s + g.points, 0);
   const dispTotal = (e: Row) => e.total - (e.live?.total ?? 0) + liveOf(e.entrantId);
-  // Subgrid columns (see SUB_ROW): gutter, rank, name(1fr fills), [live], exact,
-  // results, form, pts, gutter. All stat columns are `auto` so each is exactly as
+  // Subgrid columns (see SUB_ROW): gutter, rank, name(1fr fills), [live/next pred],
+  // exact, results, form, pts. All stat columns are `auto` so each is exactly as
   // wide as its widest header/cell. Exact/Results/Form hide on mobile.
-  const parentCols = anyLive
+  const parentCols = showPred
     ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
     : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
   // points first, then exacts, then results (see standingKey), then name.
@@ -182,7 +205,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       <div className={"fl-card overflow-hidden " + parentCols}>
         <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div className="text-center">#</div><div className="text-left">Entrant</div>
-          {anyLive && <div className="text-center">Live Prediction</div>}
+          {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? "Live Prediction" : "Next Prediction"}</div>}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
           <div className="hidden text-center sm:block">Form</div>
@@ -197,7 +220,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
-              {anyLive && <div />}
+              {showPred && <div />}
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.exactCount ?? "–"}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.resultCount ?? "–"}</div>
               <div className="hidden sm:block" />
@@ -220,7 +243,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
-              {anyLive && <LiveCell games={liveGames} />}
+              {showPred && (anyLive ? <LiveCell games={liveGames} /> : <NextPredCell pick={next!.picks.get(e.entrantId)} />)}
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
               <FormCell games={e.last5 ?? []} />
@@ -238,6 +261,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
 function Knockout() {
   const { data, isLoading, error } = useGroups();
   const { data: me } = useMe();
+  const { data: fixtures } = useFixtures();
   const live = useLivePoints();
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the groups.</p>;
@@ -257,17 +281,19 @@ function Knockout() {
           const rankLabel = rankLabeller(g.entrants, keyOf);
           const liveOf = (eid: number) => groupGames(live.get(eid) ?? [], g.group);
           const anyLive = g.entrants.some((e) => liveOf(e.entrantId).length > 0);
-          // Subgrid columns (see SUB_ROW): gutter, rank, name(1fr), [live], exact,
-          // results, form, pts, gutter. The Live column only appears when a game in
-          // THIS WC group is in play.
-          const parentCols = anyLive
+          // Next upcoming game in THIS WC group, for the Next Prediction column.
+          const next = anyLive ? null : nextPredFor(fixtures, (m) => m.stage === "GROUP" && m.group === g.group);
+          const showPred = anyLive || !!next;
+          // Subgrid columns (see SUB_ROW): gutter, rank, name(1fr), [live/next pred],
+          // exact, results, form, pts, gutter.
+          const parentCols = showPred
             ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
             : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
           return (
             <div key={g.group} className={"fl-card overflow-hidden " + parentCols}>
               <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
-                {anyLive && <div className="text-center">Live</div>}
+                {showPred && <div className={anyLive ? "text-center" : "whitespace-nowrap text-center"}>{anyLive ? "Live" : "Next Prediction"}</div>}
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
                 <div className="hidden text-center sm:block">Form</div>
@@ -275,7 +301,7 @@ function Knockout() {
               </div>
               {g.entrants.map((e, i) => (
                 <Fragment key={e.entrantId}>
-                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} />
+                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextPick={next?.picks.get(e.entrantId)} />
                   {i === 1 && <div className="col-span-full border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
                 </Fragment>
               ))}
@@ -297,8 +323,16 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
-  // Subgrid columns (see SUB_ROW): rank, name(1fr), [live], exact, results, form, pts.
-  const parentCols = anyLive
+  // Next upcoming fixture in THIS phase, for the Next Prediction column.
+  const { data: fixtures } = useFixtures();
+  const inPhase = (m: LiveMatch) =>
+    phase === "r32" ? m.stage === "LAST_32"
+    : phase === "r16" ? m.stage === "LAST_16"
+    : m.stage === "GROUP" && m.matchday === ({ week1: 1, week2: 2, week3: 3 } as const)[phase];
+  const next = anyLive ? null : nextPredFor(fixtures, inPhase);
+  const showPred = anyLive || !!next;
+  // Subgrid columns (see SUB_ROW): rank, name(1fr), [live/next pred], exact, results, form, pts.
+  const parentCols = showPred
     ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
     : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
   // Live-derive the phase total from the live feed (see Overall). Only the group
@@ -316,7 +350,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   return (
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div className="text-center">#</div><div className="text-left">Entrant</div>{anyLive && <div className="text-center">Live Prediction</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
+        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? "Live Prediction" : "Next Prediction"}</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
@@ -327,7 +361,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
               <span className="truncate font-medium text-gold">👥 {e.name}</span>
               <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
             </div>
-            {anyLive && <div />}
+            {showPred && <div />}
             <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{st(e)?.exact ?? "–"}</div>
             <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{st(e)?.result ?? "–"}</div>
             <div className="hidden sm:block" />
@@ -343,7 +377,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
             </div>
-            {anyLive && <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} />}
+            {showPred && (anyLive ? <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} /> : <NextPredCell pick={next!.picks.get(e.entrantId)} />)}
             <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.exact ?? 0}</div>
             <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.result ?? 0}</div>
             <FormCell games={e.formByPhase?.[phase] ?? []} />
