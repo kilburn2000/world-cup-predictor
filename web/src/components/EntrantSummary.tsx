@@ -168,6 +168,12 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
               </Link>
             )}
           </div>
+          {me?.last5 && me.last5.length > 0 && (
+            <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
+              <span className="text-[10px] uppercase tracking-[1px] text-muted">Form</span>
+              <FormCell games={me.last5} className="flex items-center gap-0.5" />
+            </div>
+          )}
           {ts && ts.players.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted sm:justify-start">
               <span className="text-[10px] uppercase tracking-[1px]">Top scorer picks</span>
@@ -178,12 +184,6 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
                   <span className="font-mono text-gold">{p.goals}</span>
                 </span>
               ))}
-            </div>
-          )}
-          {me?.last5 && me.last5.length > 0 && (
-            <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
-              <span className="text-[10px] uppercase tracking-[1px] text-muted">Form</span>
-              <FormCell games={me.last5} className="flex items-center gap-0.5" />
             </div>
           )}
         </div>
