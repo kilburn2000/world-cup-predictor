@@ -161,9 +161,12 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const dispTotal = (e: Row) => e.total - (e.live?.total ?? 0) + liveOf(e.entrantId);
   // The Live column is a FIXED width (content wraps inside it) so a row with three
   // live games can't stretch the column and shove every other column out of line.
+  // Each row is its own grid, so the Form column must be a FIXED width (not auto)
+  // - otherwise it sizes to each row's own content (a word in the header, five
+  // chips in a body row) and the mismatch shifts every later column out of line.
   const cols = anyLive
-    ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_48px_56px_auto_44px] items-center gap-1"
-    : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_auto_44px] items-center gap-1";
+    ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_48px_56px_96px_44px] items-center gap-1"
+    : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_96px_44px] items-center gap-1";
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => dispTotal(b) - dispTotal(a) || a.name.localeCompare(b.name),
   );
