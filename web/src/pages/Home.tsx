@@ -2,24 +2,20 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { login, useMe } from "../auth.js";
-import { useLeaderboard } from "../api.js";
 import EntrantSummary from "../components/EntrantSummary.js";
 import MiniStandings from "../components/MiniStandings.js";
 import MiniTopScorer from "../components/MiniTopScorer.js";
 import MiniWeek from "../components/MiniWeek.js";
 import MiniKnockout from "../components/MiniKnockout.js";
 import DashboardFixtures from "../components/DashboardFixtures.js";
-import FormCell from "../components/FormCell.js";
 import Loader from "../components/Loader.js";
 import { longDate } from "../dates.js";
 
 export default function Home() {
   const { data: me, isLoading } = useMe();
-  const { data: leaderboard } = useLeaderboard();
   // host-country (Pacific) today, shown under the title like the statistics headers
   const [hy, hmo, hd] = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).split("-").map(Number);
   const dateLabel = longDate(new Date(hy, hmo - 1, hd));
-  const myForm = leaderboard?.find((r) => r.entrantId === me?.entrantId)?.last5 ?? [];
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,12 +36,6 @@ export default function Home() {
           <div className="text-[11px] uppercase tracking-[1.8px] text-gold">Whitey’s World Cup 2026</div>
           <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-cream">Dashboard</h1>
           <div className="mt-1 font-mono text-[12px] text-gold">{dateLabel}</div>
-          {myForm.length > 0 && (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="font-mono text-[9px] uppercase tracking-[1.5px] text-muted">Form</span>
-              <FormCell games={myForm} className="flex items-center gap-0.5" />
-            </div>
-          )}
         </div>
         <EntrantSummary id={me.entrantId} eyebrow="Welcome Back" />
         <div className="mt-7">

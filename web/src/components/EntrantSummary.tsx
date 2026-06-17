@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useWallchart, useLeaderboard, useGroups, useWcGroups, useTopScorer, usePhasesStarted } from "../api.js";
 import { standingKey } from "@wc/shared";
+import FormCell from "./FormCell.js";
 import { flagFor } from "../flags.js";
 
 const EyeIcon = ({ size = 14 }: { size?: number }) => (
@@ -177,6 +178,12 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
                   <span className="font-mono text-gold">{p.goals}</span>
                 </span>
               ))}
+            </div>
+          )}
+          {me?.last5 && me.last5.length > 0 && (
+            <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
+              <span className="text-[10px] uppercase tracking-[1px] text-muted">Form</span>
+              <FormCell games={me.last5} className="flex items-center gap-0.5" />
             </div>
           )}
         </div>
