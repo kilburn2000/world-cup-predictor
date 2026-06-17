@@ -117,7 +117,6 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
         <div className="mb-3.5 flex items-center justify-between">
           <div className="text-[11px] uppercase tracking-[1px] text-muted">
             {stageLabel(m)}
-            {m.venue ? ` · ${m.venue}` : ""}
           </div>
           <div
             className="flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 font-mono text-[11.5px] uppercase tracking-[0.5px]"
@@ -180,6 +179,9 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.awayCode}</div>
           </div>
         </div>
+
+        {/* venue, below the fixture/result */}
+        {m.venue && <div className="mt-3 text-center font-mono text-[10px] uppercase tracking-wide text-muted">{m.venue}</div>}
       </div>
 
       {/* key events directly under the score, toggled by the caret. Same reveal as the
