@@ -185,7 +185,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           {anyLive && <div className="text-left">Live Prediction</div>}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
-          <div className="hidden text-right sm:block">Form</div>
+          <div className="hidden text-center sm:block">Form</div>
           <div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
         </div>
         {list.map((e) => {
@@ -223,7 +223,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               {anyLive && <LiveCell games={liveGames} />}
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
-              <div className="hidden items-center justify-end gap-0.5 sm:flex">
+              <div className="hidden items-center justify-center gap-0.5 sm:flex">
                 {(e.last5 ?? []).length ? (e.last5 ?? []).map((g, i) => (
                   <span
                     key={i}
