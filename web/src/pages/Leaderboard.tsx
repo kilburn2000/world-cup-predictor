@@ -133,6 +133,15 @@ const subTab = (active: boolean) =>
 type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; resultCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number }; last5?: FormGame[]; formByPhase?: Partial<Record<Phase, FormGame[]>>; statsByPhase?: Partial<Record<Phase, { exact: number; result: number }>> };
 const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, r16: c.r16, total: c.total, consensus: true });
 
+// Width for the Form column (set as the --formw CSS var on a table/group card).
+// It collapses to the most chips in any row - a compact chip is ~16px - but never
+// narrower than the "Form" header. One fixed width per table keeps the header and
+// every row on identical grid tracks while still shrink-wrapping the content.
+const formWidth = (lists: (FormGame[] | undefined)[]): string => {
+  const maxChips = Math.max(0, ...lists.map((l) => l?.length ?? 0));
+  return `${Math.max(34, 16 * maxChips)}px`;
+};
+
 // A row of colour-coded points chips for an entrant's recent games. Hovering a
 // chip pops a tooltip (portal'd to body so the card's overflow-hidden can't clip
 // it) with the fixture, the prediction vs the final score, and the outcome chip.
@@ -187,14 +196,15 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   // - otherwise it sizes to each row's own content (a word in the header, five
   // chips in a body row) and the mismatch shifts every later column out of line.
   const cols = anyLive
-    ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_48px_56px_96px_44px] items-center gap-1"
-    : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_96px_44px] items-center gap-1";
+    ? "grid grid-cols-[30px_1fr_150px_44px] sm:grid-cols-[30px_1fr_186px_48px_56px_var(--formw)_44px] items-center gap-1"
+    : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_var(--formw)_44px] items-center gap-1";
   // points first, then exacts, then results (see standingKey), then name.
   const keyOf = (e: Row) => standingKey(dispTotal(e), e.exactCount ?? 0, e.resultCount ?? 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
     (a, b) => keyOf(b) - keyOf(a) || a.name.localeCompare(b.name),
   );
   const rankLabel = rankLabeller(list, keyOf, (e) => !!e.consensus);
+  const formCss = { ["--formw" as string]: formWidth(list.map((e) => e.last5)) };
   return (
     <>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -203,7 +213,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
         <StatCard label="Longest Exact Score Streak" l={stats?.longestExactStreak} unit="in a row" unitPlural="in a row" />
         <StatCard label="Longest Correct Result Streak" l={stats?.longestResultStreak} unit="in a row" unitPlural="in a row" />
       </div>
-      <div className="fl-card overflow-hidden">
+      <div className="fl-card overflow-hidden" style={formCss}>
         <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div>#</div><div>Entrant</div>
           {anyLive && <div className="text-left">Live Prediction</div>}
@@ -281,14 +291,15 @@ function Knockout() {
           const rankLabel = rankLabeller(g.entrants, keyOf);
           const liveOf = (eid: number) => groupGames(live.get(eid) ?? [], g.group);
           const anyLive = g.entrants.some((e) => liveOf(e.entrantId).length > 0);
-          // Form is a FIXED width so the header and every row share identical
-          // tracks (see the overall table); the Live column only appears when a
-          // game in THIS WC group is in play. Exact/Results/Form hide on mobile.
+          // The Form track collapses to fit the most chips actually present (via the
+          // shared --formw var below) so it isn't 5-wide when everyone has two games.
+          // Still a fixed width per table, so the header and rows stay aligned. The
+          // Live column only appears when a game in THIS WC group is in play.
           const cols = anyLive
-            ? "grid grid-cols-[30px_1fr_130px_44px] sm:grid-cols-[30px_1fr_130px_48px_56px_96px_44px] items-center gap-1"
-            : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_96px_44px] items-center gap-1";
+            ? "grid grid-cols-[30px_1fr_130px_44px] sm:grid-cols-[30px_1fr_130px_48px_56px_var(--formw)_44px] items-center gap-1"
+            : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_var(--formw)_44px] items-center gap-1";
           return (
-            <div key={g.group} className="fl-card overflow-hidden">
+            <div key={g.group} className="fl-card overflow-hidden" style={{ ["--formw" as string]: formWidth(g.entrants.map((e) => e.last5)) }}>
               <div className={cols + " border-b border-line px-4 py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
                 {anyLive && <div className="text-left">Live</div>}
@@ -322,8 +333,8 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
   const cols = anyLive
-    ? "grid grid-cols-[36px_1fr_150px_52px] sm:grid-cols-[36px_1fr_150px_92px_52px] items-center gap-1"
-    : "grid grid-cols-[36px_1fr_52px] sm:grid-cols-[36px_1fr_92px_52px] items-center gap-1";
+    ? "grid grid-cols-[36px_1fr_150px_52px] sm:grid-cols-[36px_1fr_150px_var(--formw)_52px] items-center gap-1"
+    : "grid grid-cols-[36px_1fr_52px] sm:grid-cols-[36px_1fr_var(--formw)_52px] items-center gap-1";
   // Live-derive the phase total from the live feed (see Overall). Only the group
   // weeks have a server live delta to strip; r32/r16 have none yet.
   const liveKey = phase === "week1" || phase === "week2" || phase === "week3" ? phase : null;
@@ -337,7 +348,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   );
   const rankLabel = rankLabeller(list, keyOf, (e) => !!e.consensus);
   return (
-    <div className="fl-card overflow-hidden">
+    <div className="fl-card overflow-hidden" style={{ ["--formw" as string]: formWidth(list.map((e) => e.formByPhase?.[phase])) }}>
       <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
         <div>#</div><div>Entrant</div>{anyLive && <div className="text-left">Live Prediction</div>}<div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
       </div>
