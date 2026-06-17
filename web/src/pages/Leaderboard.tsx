@@ -105,14 +105,14 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive }: { e: GroupEntrant
       to={`/entrant/${e.entrantId}`}
       className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
     >
-      <div className="col-start-2 font-mono text-xs">
+      <div className="text-center font-mono text-xs">
         {e.qualifying ? (
           <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span>
         ) : (
           <span className="text-muted">{label}</span>
         )}
       </div>
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="ml-3 flex min-w-0 items-center gap-1.5">
         <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
         {e.entrantId === myId && <YouBadge />}
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -194,8 +194,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   // results, form, pts, gutter. All stat columns are `auto` so each is exactly as
   // wide as its widest header/cell. Exact/Results/Form hide on mobile.
   const parentCols = anyLive
-    ? "grid gap-x-2 grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_0.5rem] sm:grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_auto_auto_auto_0.5rem]"
-    : "grid gap-x-2 grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_0.5rem] sm:grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_auto_auto_0.5rem]";
+    ? "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
+    : "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
   // points first, then exacts, then results (see standingKey), then name.
   const keyOf = (e: Row) => standingKey(dispTotal(e), e.exactCount ?? 0, e.resultCount ?? 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
@@ -212,7 +212,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       </div>
       <div className={"fl-card overflow-hidden " + parentCols}>
         <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-          <div className="col-start-2 text-left">#</div><div className="text-left">Entrant</div>
+          <div className="text-center">#</div><div className="ml-3 text-left">Entrant</div>
           {anyLive && <div className="text-center">Live Prediction</div>}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
@@ -223,8 +223,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           const label = rankLabel(e);
           return e.consensus ? (
             <div key="everyone" className={SUB_ROW + " border-t border-line bg-gold-soft py-2.5 text-[13px]"}>
-              <div className="col-start-2 font-mono text-xs text-gold">{label}</div>
-              <div className="flex min-w-0 items-center gap-1.5">
+              <div className="text-center font-mono text-xs text-gold">{label}</div>
+              <div className="ml-3 flex min-w-0 items-center gap-1.5">
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
@@ -239,14 +239,14 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
             const liveGames = live.get(e.entrantId) ?? [];
             return (
             <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
-              <div className="col-start-2 font-mono text-xs">
+              <div className="text-center font-mono text-xs">
                 {label !== "=" && Number(label) <= 3 ? (
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span>
                 ) : (
                   <span className="text-muted">{label}</span>
                 )}
               </div>
-              <div className="flex min-w-0 items-center gap-1.5">
+              <div className="ml-3 flex min-w-0 items-center gap-1.5">
                 <span className="truncate text-cream">{e.name}</span>
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -292,12 +292,12 @@ function Knockout() {
           // results, form, pts, gutter. The Live column only appears when a game in
           // THIS WC group is in play.
           const parentCols = anyLive
-            ? "grid gap-x-2 grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_0.5rem] sm:grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_auto_auto_auto_0.5rem]"
-            : "grid gap-x-2 grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_0.5rem] sm:grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_auto_auto_0.5rem]";
+            ? "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
+            : "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
           return (
             <div key={g.group} className={"fl-card overflow-hidden " + parentCols}>
               <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted"}>
-                <div className="col-start-2 col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
+                <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
                 {anyLive && <div className="text-center">Live</div>}
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
@@ -330,8 +330,8 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
   // Subgrid columns (see SUB_ROW): gutter, rank, name(1fr), [live], form, pts, gutter.
   const parentCols = anyLive
-    ? "grid gap-x-2 grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_0.5rem] sm:grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_auto_0.5rem]"
-    : "grid gap-x-2 grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_0.5rem] sm:grid-cols-[0.5rem_auto_minmax(0,1fr)_auto_auto_0.5rem]";
+    ? "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
+    : "grid gap-x-2 px-4 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]";
   // Live-derive the phase total from the live feed (see Overall). Only the group
   // weeks have a server live delta to strip; r32/r16 have none yet.
   const liveKey = phase === "week1" || phase === "week2" || phase === "week3" ? phase : null;
@@ -347,14 +347,14 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   return (
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div className="col-start-2 text-left">#</div><div className="text-left">Entrant</div>{anyLive && <div className="text-center">Live Prediction</div>}<div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
+        <div className="text-center">#</div><div className="ml-3 text-left">Entrant</div>{anyLive && <div className="text-center">Live Prediction</div>}<div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
         return e.consensus ? (
           <div key="everyone" className={SUB_ROW + " border-t border-line bg-gold-soft py-2.5 text-[13px]"}>
-            <div className="col-start-2 font-mono text-xs text-gold">{label}</div>
-            <div className="flex min-w-0 items-center gap-1.5">
+            <div className="text-center font-mono text-xs text-gold">{label}</div>
+            <div className="ml-3 flex min-w-0 items-center gap-1.5">
               <span className="truncate font-medium text-gold">👥 {e.name}</span>
               <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
             </div>
@@ -364,10 +364,10 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
           </div>
         ) : (
           <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
-            <div className="col-start-2 font-mono text-xs">
+            <div className="text-center font-mono text-xs">
               {label !== "=" && Number(label) <= 3 && dispPhase(e) > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="text-muted">{label}</span>}
             </div>
-            <div className="flex min-w-0 items-center gap-1.5">
+            <div className="ml-3 flex min-w-0 items-center gap-1.5">
               <span className="truncate text-cream">{e.name}</span>
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -395,7 +395,7 @@ function TopScorers() {
     <>
       <div className="fl-card overflow-hidden">
         <div className={cols + " border-b border-line px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
-          <div>#</div><div>Entrant &amp; players</div><div className="text-right">Goals</div>
+          <div className="text-center">#</div><div>Entrant &amp; players</div><div className="text-right">Goals</div>
         </div>
         {list.map((e) => {
           const label = rankLabel(e);
@@ -405,8 +405,8 @@ function TopScorers() {
             to={`/entrant/${e.entrantId}`}
             className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
           >
-            <div className="font-mono text-xs">
-              {label !== "=" && Number(label) <= 3 && e.total > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="pl-1.5 text-muted">{label}</span>}
+            <div className="text-center font-mono text-xs">
+              {label !== "=" && Number(label) <= 3 && e.total > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="text-muted">{label}</span>}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-[13.5px] text-cream">
