@@ -103,7 +103,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, cols }: { e: GroupE
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
-      className={cols + " border-t border-line px-3 py-2 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+      className={cols + " border-t border-line px-4 py-2.5 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
     >
       <div className="font-mono text-xs">
         {e.qualifying ? (
@@ -120,7 +120,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, cols }: { e: GroupE
       {anyLive && <LiveCell games={liveGames} />}
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
-      <FormCell games={e.last5 ?? []} className="hidden items-center justify-end gap-0.5 sm:flex" />
+      <FormCell games={e.last5 ?? []} className="hidden items-center justify-center gap-0.5 sm:flex" />
       <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
     </Link>
   );
@@ -285,16 +285,16 @@ function Knockout() {
           // tracks (see the overall table); the Live column only appears when a
           // game in THIS WC group is in play. Exact/Results/Form hide on mobile.
           const cols = anyLive
-            ? "grid grid-cols-[28px_1fr_130px_44px] sm:grid-cols-[28px_1fr_130px_48px_56px_96px_44px] items-center gap-1"
-            : "grid grid-cols-[28px_1fr_44px] sm:grid-cols-[28px_1fr_48px_56px_96px_44px] items-center gap-1";
+            ? "grid grid-cols-[30px_1fr_130px_44px] sm:grid-cols-[30px_1fr_130px_48px_56px_96px_44px] items-center gap-1"
+            : "grid grid-cols-[30px_1fr_44px] sm:grid-cols-[30px_1fr_48px_56px_96px_44px] items-center gap-1";
           return (
             <div key={g.group} className="fl-card overflow-hidden">
-              <div className={cols + " border-b border-line px-3 py-3 text-[9px] uppercase tracking-wide text-muted"}>
+              <div className={cols + " border-b border-line px-4 py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
                 {anyLive && <div className="text-left">Live</div>}
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
-                <div className="hidden text-right sm:block">Form</div>
+                <div className="hidden text-center sm:block">Form</div>
                 <div className="text-right">{anyLive ? "Live Pts" : "Pts"}</div>
               </div>
               {g.entrants.map((e, i) => (
