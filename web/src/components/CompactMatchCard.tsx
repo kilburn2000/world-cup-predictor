@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { type LiveMatch } from "../api.js";
 import { flagFor } from "../flags.js";
+import { venueMeta } from "../venues.js";
 import { useMe } from "../auth.js";
 import PointsPill from "./PointsPill.js";
 import ScoredChips from "./ScoredChips.js";
@@ -135,8 +136,13 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
           </div>
         </div>
 
-        {/* venue, below the fixture/result and above any key events */}
-        {m.venue && <div className="mt-2.5 text-center font-mono text-[10px] uppercase tracking-wide text-muted">{m.venue}</div>}
+        {/* venue (with host-country flag + state), below the fixture/result and above key events */}
+        {m.venue && (
+          <div className="mt-2.5 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide text-muted">
+            {venueMeta(m.venue) && <span className="normal-case">{flagFor(venueMeta(m.venue)!.country)}</span>}
+            <span>{m.venue}{venueMeta(m.venue) ? `, ${venueMeta(m.venue)!.state}` : ""}</span>
+          </div>
+        )}
       </div>
 
       {/* key events, directly beneath the score (above the prediction), toggled by the

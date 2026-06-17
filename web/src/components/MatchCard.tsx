@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { type LiveMatch } from "../api.js";
 import { flagFor } from "../flags.js";
+import { venueMeta } from "../venues.js";
 import { useMe } from "../auth.js";
 import ScoredChips from "./ScoredChips.js";
 import PointsPill from "./PointsPill.js";
@@ -180,8 +181,13 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           </div>
         </div>
 
-        {/* venue, below the fixture/result */}
-        {m.venue && <div className="mt-3 text-center font-mono text-[10px] uppercase tracking-wide text-muted">{m.venue}</div>}
+        {/* venue (with host-country flag + state), below the fixture/result */}
+        {m.venue && (
+          <div className="mt-3 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide text-muted">
+            {venueMeta(m.venue) && <span className="normal-case">{flagFor(venueMeta(m.venue)!.country)}</span>}
+            <span>{m.venue}{venueMeta(m.venue) ? `, ${venueMeta(m.venue)!.state}` : ""}</span>
+          </div>
+        )}
       </div>
 
       {/* key events directly under the score, toggled by the caret. Same reveal as the
