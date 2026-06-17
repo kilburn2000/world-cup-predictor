@@ -116,7 +116,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, cols }: { e: GroupE
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
       </div>
       {anyLive && <LiveCell games={liveGames} />}
-      <FormCell games={e.last5 ?? []} className="flex items-center justify-center gap-0.5" />
+      <FormCell games={e.last5 ?? []} className="flex items-center justify-end gap-0.5" />
       <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
     </Link>
   );
@@ -275,14 +275,14 @@ function Knockout() {
           // tracks (see the overall table); the Live column only appears when a
           // game in THIS WC group is in play.
           const cols = anyLive
-            ? "grid grid-cols-[28px_1fr_130px_92px_44px] items-center gap-1"
-            : "grid grid-cols-[28px_1fr_92px_44px] items-center gap-1";
+            ? "grid grid-cols-[28px_1fr_130px_96px_44px] items-center gap-1"
+            : "grid grid-cols-[28px_1fr_96px_44px] items-center gap-1";
           return (
             <div key={g.group} className="fl-card overflow-hidden">
               <div className={cols + " border-b border-line px-3 py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
                 {anyLive && <div className="text-left">Live</div>}
-                <div className="text-center">Form</div>
+                <div className="text-right">Form</div>
                 <div className="text-right">{anyLive ? "Live Pts" : "Pts"}</div>
               </div>
               {g.entrants.map((e, i) => (
