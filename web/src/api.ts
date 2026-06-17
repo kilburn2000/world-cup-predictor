@@ -7,6 +7,20 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** one of an entrant's recent games, for a form chip + its hover tooltip. */
+export interface FormGame {
+  points: number;
+  tier: LiveTier | null;
+  home: string;
+  away: string;
+  homeName: string;
+  awayName: string;
+  hs: number;
+  as: number;
+  predHome: number;
+  predAway: number;
+}
+
 export interface LeaderboardRow {
   entrantId: number;
   name: string;
@@ -33,7 +47,10 @@ export interface LeaderboardRow {
   live?: { total: number; week1: number; week2: number; week3: number; exact: number };
   /** each of the entrant's last (up to) 5 finished games, oldest first, with
    * enough to render a per-game form tooltip. */
-  last5?: { points: number; tier: LiveTier | null; home: string; away: string; homeName: string; awayName: string; hs: number; as: number; predHome: number; predAway: number }[];
+  last5?: FormGame[];
+  /** the same, but split per standings phase (week1/2/3, r32, r16) so each
+   * week-by-week table shows form scoped to that phase's games. */
+  formByPhase?: Partial<Record<"week1" | "week2" | "week3" | "r32" | "r16", FormGame[]>>;
 }
 export interface GroupTable {
   group: string;
@@ -57,6 +74,8 @@ export interface GroupEntrant {
   rank: number;
   qualifying: boolean;
   live?: boolean;
+  /** last up-to-5 finished games in the entrant's own WC group, for the form column. */
+  last5?: FormGame[];
 }
 export interface EntrantGroup {
   group: string;

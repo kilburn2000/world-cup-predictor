@@ -161,7 +161,7 @@ app.get("/api/leaderboard", async () => {
   // Carries enough to render a per-game tooltip: the fixture, their pick, the
   // actual score and what it scored on.
   const recent = (await sql`
-    select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko,
+    select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko, m.stage, m.matchday,
            ht.tla hcode, at.tla acode, ht.name hname, at.name aname, m.home_goals hg, m.away_goals ag,
            p.pred_home_goals phg, p.pred_away_goals pag
     from scores s
@@ -170,6 +170,23 @@ app.get("/api/leaderboard", async () => {
     join teams at on at.id = m.away_team_id
     left join predictions p on p.entrant_id = s.entrant_id and p.match_id = m.id and p.scope = 'MATCH'
   `) as any[];
+  const mkGame = (x: any) => {
+    const bd = x.bd ?? {};
+    const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
+    return {
+      points: x.pts, tier,
+      home: x.hcode, away: x.acode,
+      homeName: x.hname, awayName: x.aname,
+      hs: x.hg, as: x.ag,
+      predHome: x.phg, predAway: x.pag,
+    };
+  };
+  // Which standings phase a finished game belongs to (mirrors the week/r32/r16 tabs).
+  const phaseOf = (x: any): string | null =>
+    x.stage === "GROUP" ? (x.matchday >= 1 && x.matchday <= 3 ? `week${x.matchday}` : null)
+    : x.stage === "LAST_32" ? "r32"
+    : x.stage === "LAST_16" ? "r16"
+    : null;
   const recentByEntrant = new Map<number, any[]>();
   for (const x of recent) {
     if (!recentByEntrant.has(x.eid)) recentByEntrant.set(x.eid, []);
@@ -177,17 +194,15 @@ app.get("/api/leaderboard", async () => {
   }
   for (const r of rows as any[]) {
     const list = (recentByEntrant.get(r.entrantId) ?? []).sort((a, b) => (a.ko < b.ko ? -1 : a.ko > b.ko ? 1 : 0));
-    r.last5 = list.slice(-5).map((x) => {
-      const bd = x.bd ?? {};
-      const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
-      return {
-        points: x.pts, tier,
-        home: x.hcode, away: x.acode,
-        homeName: x.hname, awayName: x.aname,
-        hs: x.hg, as: x.ag,
-        predHome: x.phg, predAway: x.pag,
-      };
-    });
+    r.last5 = list.slice(-5).map(mkGame);
+    // Per-phase form: each entrant's last up-to-5 finished games within each
+    // week/round, so the week-by-week tables get their own correctly-scoped form.
+    const byPhase: Record<string, any[]> = {};
+    for (const x of list) {
+      const ph = phaseOf(x);
+      if (ph) (byPhase[ph] = byPhase[ph] ?? []).push(x);
+    }
+    r.formByPhase = Object.fromEntries(Object.entries(byPhase).map(([k, v]) => [k, v.slice(-5).map(mkGame)]));
   }
   rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   return rows;
@@ -415,6 +430,39 @@ app.get("/api/groups", async () => {
     if (l) {
       r.week1 += l.w[1]; r.week2 += l.w[2]; r.week3 += l.w[3]; r.total += l.total;
     }
+  }
+
+  // Group-filtered form: each entrant's last up-to-5 finished games IN THEIR OWN
+  // WC group - the only fixtures that count toward this competition. Carries
+  // enough to render the same per-game tooltip as the overall standings.
+  const recent = (await sql`
+    select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko,
+           ht.tla hcode, at.tla acode, ht.name hname, at.name aname, m.home_goals hg, m.away_goals ag,
+           p.pred_home_goals phg, p.pred_away_goals pag
+    from scores s
+    join entrants e on e.id = s.entrant_id
+    join matches m on m.status = 'FINISHED' and m.stage = 'GROUP'
+                  and m.group_name = e.entrant_group and s.ref = 'match:' || m.id
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    left join predictions p on p.entrant_id = s.entrant_id and p.match_id = m.id and p.scope = 'MATCH'
+  `) as any[];
+  const recentBy = new Map<number, any[]>();
+  for (const x of recent) {
+    if (!recentBy.has(x.eid)) recentBy.set(x.eid, []);
+    recentBy.get(x.eid)!.push(x);
+  }
+  for (const r of rows) {
+    const list = (recentBy.get(r.entrantId) ?? []).sort((a, b) => (a.ko < b.ko ? -1 : a.ko > b.ko ? 1 : 0));
+    r.last5 = list.slice(-5).map((x) => {
+      const bd = x.bd ?? {};
+      const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
+      return {
+        points: x.pts, tier,
+        home: x.hcode, away: x.acode, homeName: x.hname, awayName: x.aname,
+        hs: x.hg, as: x.ag, predHome: x.phg, predAway: x.pag,
+      };
+    });
   }
 
   const byGroup = new Map<string, any[]>();

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, type GroupEntrant, type StatLeader, type Consensus, type PhasesStarted, type LiveTier } from "../api.js";
+import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame } from "../api.js";
 import TabSelect from "../components/TabSelect.js";
 import ScoredChips from "../components/ScoredChips.js";
 import PointsPill from "../components/PointsPill.js";
@@ -78,10 +78,6 @@ const SCORER_COUNTRY: Record<string, string> = {
   SPA: "Spain", FRA: "France", COL: "Colombia", GER: "Germany", NOR: "Norway",
 };
 
-// A points cell: the number once there's a score, "0" once the phase has kicked
-// off (so a started week reads 0, not blank), and "–" before it begins.
-const cell = (v: number, started?: boolean) => (v > 0 ? v : started ? 0 : "–");
-
 function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeader; unit: string; unitPlural?: string }) {
   const has = l && l.name && l.value > 0;
   return (
@@ -101,11 +97,11 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
   );
 }
 
-function GroupRow({ e, started, myId, label, liveGames = [] }: { e: GroupEntrant; started?: PhasesStarted; myId?: number | null; label: string; liveGames?: LiveGame[] }) {
+function GroupRow({ e, myId, label, liveGames = [], anyLive, cols }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; cols: string }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
-      className={"grid grid-cols-[28px_1fr_34px_34px_34px_44px] items-center gap-1 border-t border-line px-3 py-2 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+      className={cols + " border-t border-line px-3 py-2 text-[13px] transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
     >
       <div className="font-mono text-xs">
         {e.qualifying ? (
@@ -114,17 +110,13 @@ function GroupRow({ e, started, myId, label, liveGames = [] }: { e: GroupEntrant
           <span className="pl-1.5 text-muted">{label}</span>
         )}
       </div>
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
-          {e.entrantId === myId && <YouBadge />}
-          {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
-        </div>
-        {liveGames.length > 0 && <LiveCell games={liveGames} />}
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
+        {e.entrantId === myId && <YouBadge />}
+        {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
       </div>
-      <div className="text-center font-mono text-[11px] text-muted">{cell(e.week1, started?.week1)}</div>
-      <div className="text-center font-mono text-[11px] text-muted">{cell(e.week2, started?.week2)}</div>
-      <div className="text-center font-mono text-[11px] text-muted">{cell(e.week3, started?.week3)}</div>
+      {anyLive && <LiveCell games={liveGames} />}
+      <FormCell games={e.last5 ?? []} className="flex items-center justify-center gap-0.5" />
       <div className="text-right font-mono text-sm font-semibold text-cream">{e.total}</div>
     </Link>
   );
@@ -134,20 +126,46 @@ const subTab = (active: boolean) =>
   "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
   (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
-type FormGame = { points: number; tier: LiveTier | null; home: string; away: string; homeName: string; awayName: string; hs: number; as: number; predHome: number; predAway: number };
-type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; resultCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number }; last5?: FormGame[] };
+type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; resultCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number }; last5?: FormGame[]; formByPhase?: Partial<Record<Phase, FormGame[]>> };
 const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, r16: c.r16, total: c.total, consensus: true });
+
+// A row of colour-coded points chips for an entrant's recent games. Hovering a
+// chip pops a tooltip (portal'd to body so the card's overflow-hidden can't clip
+// it) with the fixture, the prediction vs the final score, and the outcome chip.
+function FormCell({ games, className = "hidden items-center justify-center gap-0.5 sm:flex" }: { games: FormGame[]; className?: string }) {
+  const [tip, setTip] = useState<{ g: FormGame; x: number; y: number } | null>(null);
+  return (
+    <div className={className}>
+      {games.length ? games.map((g, i) => (
+        <span
+          key={i}
+          className="inline-flex"
+          onMouseEnter={(ev) => { const r = (ev.currentTarget as HTMLElement).getBoundingClientRect(); setTip({ g, x: r.left + r.width / 2, y: r.top }); }}
+          onMouseLeave={() => setTip(null)}
+        >
+          <PointsPill points={g.points} tier={g.tier} compact />
+        </span>
+      )) : <span className="font-mono text-[11px] text-muted">–</span>}
+      {tip && createPortal(
+        <div className="pointer-events-none fixed z-[60]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-line bg-[#0f120e] px-2.5 py-2 shadow-xl">
+            <span className="font-mono text-[11px] text-cream">{flagFor(tip.g.homeName)} {tip.g.home} v {tip.g.away} {flagFor(tip.g.awayName)}</span>
+            <span className="font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway} · Final {tip.g.hs}-{tip.g.as}</span>
+            <ScoredChips pick={`${tip.g.predHome}-${tip.g.predAway}`} hs={tip.g.hs} as={tip.g.as} homeCode={tip.g.home} awayCode={tip.g.away} />
+          </div>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
 
 function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: stats } = useStats();
-  const { data: started } = usePhasesStarted();
   const { data: me } = useMe();
   const live = useLivePoints();
   const myId = me?.entrantId;
-  // hovered form chip -> a portal'd tooltip (the table card is overflow-hidden, so
-  // the tooltip has to live on document.body to escape the clip).
-  const [tip, setTip] = useState<{ g: FormGame; x: number; y: number } | null>(null);
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   // A dedicated Live column (chip + points pill per in-play game) only appears
@@ -223,18 +241,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               {anyLive && <LiveCell games={liveGames} />}
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
-              <div className="hidden items-center justify-center gap-0.5 sm:flex">
-                {(e.last5 ?? []).length ? (e.last5 ?? []).map((g, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex"
-                    onMouseEnter={(ev) => { const r = (ev.currentTarget as HTMLElement).getBoundingClientRect(); setTip({ g, x: r.left + r.width / 2, y: r.top }); }}
-                    onMouseLeave={() => setTip(null)}
-                  >
-                    <PointsPill points={g.points} tier={g.tier} compact />
-                  </span>
-                )) : <span className="font-mono text-[11px] text-muted">–</span>}
-              </div>
+              <FormCell games={e.last5 ?? []} />
               <div className="text-right font-mono text-sm font-semibold text-cream">{dispTotal(e)}</div>
             </Link>
             );
@@ -242,23 +249,12 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           );
         })}
       </div>
-      {tip && createPortal(
-        <div className="pointer-events-none fixed z-[60]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-line bg-[#0f120e] px-2.5 py-2 shadow-xl">
-            <span className="font-mono text-[11px] text-cream">{flagFor(tip.g.homeName)} {tip.g.home} v {tip.g.away} {flagFor(tip.g.awayName)}</span>
-            <span className="font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway} · Final {tip.g.hs}-{tip.g.as}</span>
-            <ScoredChips pick={`${tip.g.predHome}-${tip.g.predAway}`} hs={tip.g.hs} as={tip.g.as} homeCode={tip.g.home} awayCode={tip.g.away} />
-          </div>
-        </div>,
-        document.body,
-      )}
     </>
   );
 }
 
 function Knockout() {
   const { data, isLoading, error } = useGroups();
-  const { data: started } = usePhasesStarted();
   const { data: me } = useMe();
   const live = useLivePoints();
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
@@ -273,17 +269,25 @@ function Knockout() {
       <div className="grid gap-4 lg:grid-cols-2">
         {data.map((g) => {
           const rankLabel = rankLabeller(g.entrants, (e) => e.total);
+          const liveOf = (eid: number) => groupGames(live.get(eid) ?? [], g.group);
+          const anyLive = g.entrants.some((e) => liveOf(e.entrantId).length > 0);
+          // Form is a FIXED width so the header and every row share identical
+          // tracks (see the overall table); the Live column only appears when a
+          // game in THIS WC group is in play.
+          const cols = anyLive
+            ? "grid grid-cols-[28px_1fr_130px_92px_44px] items-center gap-1"
+            : "grid grid-cols-[28px_1fr_92px_44px] items-center gap-1";
           return (
             <div key={g.group} className="fl-card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-line px-4 py-3">
-                <div className="font-display text-lg text-cream">Group {g.group}</div>
-                <div className="grid grid-cols-[34px_34px_34px_44px] gap-1 text-[9px] uppercase tracking-wide text-muted">
-                  <div className="text-center">W1</div><div className="text-center">W2</div><div className="text-center">W3</div><div className="text-right">Pts</div>
-                </div>
+              <div className={cols + " border-b border-line px-3 py-3 text-[9px] uppercase tracking-wide text-muted"}>
+                <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
+                {anyLive && <div className="text-left">Live</div>}
+                <div className="text-center">Form</div>
+                <div className="text-right">{anyLive ? "Live Pts" : "Pts"}</div>
               </div>
               {g.entrants.map((e, i) => (
                 <div key={e.entrantId}>
-                  <GroupRow e={e} started={started} myId={me?.entrantId} label={rankLabel(e)} liveGames={groupGames(live.get(e.entrantId) ?? [], g.group)} />
+                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} cols={cols} />
                   {i === 1 && <div className="border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
                 </div>
               ))}
@@ -305,7 +309,9 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
-  const cols = anyLive ? "grid grid-cols-[36px_1fr_150px_52px] items-center gap-1" : "grid grid-cols-[36px_1fr_52px] items-center gap-1";
+  const cols = anyLive
+    ? "grid grid-cols-[36px_1fr_150px_52px] sm:grid-cols-[36px_1fr_150px_92px_52px] items-center gap-1"
+    : "grid grid-cols-[36px_1fr_52px] sm:grid-cols-[36px_1fr_92px_52px] items-center gap-1";
   // Live-derive the phase total from the live feed (see Overall). Only the group
   // weeks have a server live delta to strip; r32/r16 have none yet.
   const liveKey = phase === "week1" || phase === "week2" || phase === "week3" ? phase : null;
@@ -317,7 +323,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   return (
     <div className="fl-card overflow-hidden">
       <div className={cols + " px-4 py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div>#</div><div>Entrant</div>{anyLive && <div className="text-left">Live Prediction</div>}<div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
+        <div>#</div><div>Entrant</div>{anyLive && <div className="text-left">Live Prediction</div>}<div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-right">{anyLive ? "Live Pts" : "Pts"}</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
@@ -329,6 +335,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
               <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
             </div>
             {anyLive && <div />}
+            <div className="hidden sm:block" />
             <div className="text-right font-mono text-sm font-semibold text-gold">{e[phase]}</div>
           </div>
         ) : (
@@ -342,6 +349,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
             </div>
             {anyLive && <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} />}
+            <FormCell games={e.formByPhase?.[phase] ?? []} />
             <div className="text-right font-mono text-sm font-semibold text-cream">{dispPhase(e)}</div>
           </Link>
         );
