@@ -181,11 +181,11 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           </div>
         </div>
 
-        {/* venue (with host-country flag + state), below the fixture/result */}
+        {/* venue (host-country flag + stadium + nearby city), below the fixture/result */}
         {m.venue && (
           <div className="mt-3 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide text-muted">
             {venueMeta(m.venue) && <span className="normal-case">{flagFor(venueMeta(m.venue)!.country)}</span>}
-            <span>{m.venue}{venueMeta(m.venue) ? `, ${venueMeta(m.venue)!.state}` : ""}</span>
+            <span>{venueMeta(m.venue)?.label ?? m.venue}</span>
           </div>
         )}
       </div>
