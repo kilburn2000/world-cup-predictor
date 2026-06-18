@@ -60,6 +60,12 @@ const groupGames = (games: LiveGame[], group: string) => games.filter((g) => g.s
 // Gold "you" badge for the logged-in entrant's own row.
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
 
+// Trophy badge for the winner of a completed competition.
+const WinnerBadge = () => <span className="shrink-0 rounded bg-gold/25 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold" title="Winner">🏆 Winner</span>;
+// Row highlight: gold for a declared winner, the softer gold for the logged-in entrant.
+const rowAccent = (won: boolean, you: boolean) =>
+  won ? " bg-gold/20 ring-1 ring-inset ring-gold/70" : you ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "";
+
 // Standard competition ranking: ties share a position (the first shows the
 // number, the rest "="), and the next distinct value skips. Consensus rows don't
 // occupy a position. `list` must already be sorted desc by `value`.
@@ -165,6 +171,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data: stats } = useStats();
   const { data: me } = useMe();
   const { data: fixtures } = useFixtures();
+  const { data: phases } = usePhasesStarted();
   const live = useLivePoints();
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
@@ -194,6 +201,10 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
     (a, b) => keyOf(b) - keyOf(a) || a.name.localeCompare(b.name),
   );
   const rankLabel = rankLabeller(list, keyOf, (e) => !!e.consensus);
+  // Once the whole tournament is over, gold-highlight the winner(s) - the top of
+  // the table (ties share the crown).
+  const maxKey = Math.max(0, ...list.filter((e) => !e.consensus).map(keyOf));
+  const won = (e: Row) => !!phases?.done && !e.consensus && maxKey > 0 && keyOf(e) === maxKey;
   return (
     <>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -230,7 +241,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
             (() => {
             const liveGames = live.get(e.entrantId) ?? [];
             return (
-            <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
+            <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}>
               <div className="text-center font-mono text-xs">
                 {label !== "=" && Number(label) <= 3 ? (
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span>
@@ -239,7 +250,8 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 )}
               </div>
               <div className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate text-cream">{e.name}</span>
+                <span className={"truncate " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</span>
+                {won(e) && <WinnerBadge />}
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
@@ -318,6 +330,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   const { data, isLoading, error } = useLeaderboard();
   const { data: me } = useMe();
   const { data: fixtures } = useFixtures();
+  const { data: phases } = usePhasesStarted();
   const live = useLivePoints();
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
@@ -346,6 +359,10 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
     (a, b) => keyOf(b) - keyOf(a) || a.name.localeCompare(b.name),
   );
   const rankLabel = rankLabeller(list, keyOf, (e) => !!e.consensus);
+  // Gold-highlight the winner once this week/round is fully decided.
+  const phaseDone = !!(phase === "week1" ? phases?.week1Done : phase === "week2" ? phases?.week2Done : phase === "week3" ? phases?.week3Done : phase === "r32" ? phases?.r32Done : phases?.r16Done);
+  const maxKey = Math.max(0, ...list.filter((e) => !e.consensus).map(keyOf));
+  const won = (e: Row) => phaseDone && !e.consensus && maxKey > 0 && keyOf(e) === maxKey;
   return (
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
@@ -367,12 +384,13 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             <div className="text-center font-mono text-sm font-semibold text-gold">{e[phase]}</div>
           </div>
         ) : (
-          <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}>
+          <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}>
             <div className="text-center font-mono text-xs">
               {label !== "=" && Number(label) <= 3 && dispPhase(e) > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="text-muted">{label}</span>}
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate text-cream">{e.name}</span>
+              <span className={"truncate " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</span>
+              {won(e) && <WinnerBadge />}
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
             </div>
@@ -391,11 +409,15 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
 function TopScorers() {
   const { data, isLoading, error } = useTopScorer();
   const { data: me } = useMe();
+  const { data: phases } = usePhasesStarted();
   const myId = me?.entrantId;
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the top scorer table.</p>;
   const list = data ?? [];
   const rankLabel = rankLabeller(list, (e) => e.total);
+  // Top scorer is settled at tournament end; gold-highlight the winner(s) then.
+  const maxGoals = Math.max(0, ...list.map((e) => e.total));
+  const won = (e: typeof list[number]) => !!phases?.done && maxGoals > 0 && e.total === maxGoals;
   const cols = "grid grid-cols-[28px_1fr_auto] items-center gap-2";
   return (
     <>
@@ -409,14 +431,15 @@ function TopScorers() {
           <Link
             key={e.entrantId}
             to={`/entrant/${e.entrantId}`}
-            className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+            className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}
           >
             <div className="text-center font-mono text-xs">
               {label !== "=" && Number(label) <= 3 && e.total > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="text-muted">{label}</span>}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[13.5px] text-cream">
+              <div className={"flex items-center gap-1.5 text-[13.5px] " + (won(e) ? "text-gold" : "text-cream")}>
                 <span className="truncate">{e.name}</span>
+                {won(e) && <WinnerBadge />}
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>

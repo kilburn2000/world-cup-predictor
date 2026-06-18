@@ -36,17 +36,18 @@ const OVERALL_PRIZE: Record<number, number> = {
   1: 500, 2: 325, 3: 200, 4: 175, 5: 150, 6: 125, 7: 100, 8: 90, 9: 80, 10: 80,
 };
 
-function Stat({ label, value, pos, accent, to }: { label: string; value: ReactNode; pos?: string; accent?: boolean; to?: string }) {
+function Stat({ label, value, pos, accent, to, won }: { label: string; value: ReactNode; pos?: string; accent?: boolean; to?: string; won?: boolean }) {
   return (
-    <div className="fl-card relative px-3 py-3 text-center">
+    <div className={"fl-card relative px-3 py-3 text-center" + (won ? " border-gold bg-gold/10" : "")}>
       {to && (
         <Link to={to} aria-label={`View ${label}`} className="absolute right-1.5 top-1.5 text-muted transition-colors hover:text-gold">
           <EyeIcon />
         </Link>
       )}
-      <div className="font-mono text-base leading-tight" style={{ color: accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
+      {won && <div className="text-[11px]">🏆</div>}
+      <div className="font-mono text-base leading-tight" style={{ color: won || accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
       {pos && <div className="mt-1.5 text-[11px] text-gold">({pos})</div>}
-      <div className="mt-1.5 text-[10px] uppercase tracking-[1px] text-muted">{label}</div>
+      <div className={"mt-1.5 text-[10px] uppercase tracking-[1px] " + (won ? "text-gold" : "text-muted")}>{label}</div>
     </div>
   );
 }
@@ -110,6 +111,15 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
         pos: phases?.week1 ? posLabel(ts.total, topScorer!.map((t) => t.total)) : "TBC",
       };
 
+  // Which competitions this entrant has WON: the period is fully decided and
+  // they're top of it (reused for the gold stat cards + the header winner chips).
+  const phaseDoneOf = (f: Phase) =>
+    ({ week1: phases?.week1Done, week2: phases?.week2Done, week3: phases?.week3Done, r32: phases?.r32Done, r16: phases?.r16Done }[f]);
+  const wonPhase = (f: Phase): boolean =>
+    !!me && lb.length > 0 && !!phaseDoneOf(f) && me[f] > 0 && phaseKeyOf(me, f) === Math.max(...lb.map((e) => phaseKeyOf(e, f)));
+  const wonOverall = !!phases?.done && !!me && lb.length > 0 && keyOf(me) === Math.max(...lb.map(keyOf));
+  const wonTopScorer = !!phases?.done && !!ts && ts.total > 0 && ts.total === Math.max(0, ...(topScorer ?? []).map((t) => t.total));
+
   // Prize money WON: only counts a prize once its period is fully decided -
   // a week/round when all its games are played, and the overall / wooden spoon /
   // top-scorer prizes only when the whole tournament is finished.
@@ -134,14 +144,23 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
   // A stat card only appears once its week/round/competition has actually started.
   // Knockout + Top Scorer both run off the group games, so they begin with Week 1.
   const statCards = [
-    { label: "Knockout", card: knockout, to: "/standings/knockout", show: !!phases?.week1 },
-    { label: "Top scorer", card: tsCard, to: "/standings/top-scorer", show: !!phases?.week1 },
-    { label: "Week 1", card: phaseValue("week1"), to: "/standings/week-1", show: !!phases?.week1 },
-    { label: "Week 2", card: phaseValue("week2"), to: "/standings/week-2", show: !!phases?.week2 },
-    { label: "Week 3", card: phaseValue("week3"), to: "/standings/week-3", show: !!phases?.week3 },
-    { label: "Round of 32", card: phaseValue("r32"), to: "/standings/round-of-32", show: !!phases?.r32 },
-    { label: "Round of 16", card: phaseValue("r16"), to: "/standings/round-of-16", show: !!phases?.r16 },
+    { label: "Knockout", card: knockout, to: "/standings/knockout", show: !!phases?.week1, won: false },
+    { label: "Top scorer", card: tsCard, to: "/standings/top-scorer", show: !!phases?.week1, won: wonTopScorer },
+    { label: "Week 1", card: phaseValue("week1"), to: "/standings/week-1", show: !!phases?.week1, won: wonPhase("week1") },
+    { label: "Week 2", card: phaseValue("week2"), to: "/standings/week-2", show: !!phases?.week2, won: wonPhase("week2") },
+    { label: "Week 3", card: phaseValue("week3"), to: "/standings/week-3", show: !!phases?.week3, won: wonPhase("week3") },
+    { label: "Round of 32", card: phaseValue("r32"), to: "/standings/round-of-32", show: !!phases?.r32, won: wonPhase("r32") },
+    { label: "Round of 16", card: phaseValue("r16"), to: "/standings/round-of-16", show: !!phases?.r16, won: wonPhase("r16") },
   ].filter((c) => c.show);
+
+  // "Week 1 Winner" etc chips for every competition this entrant has won.
+  const PHASE_WIN_LABEL: Record<Phase, string> = {
+    week1: "Week 1 Winner", week2: "Week 2 Winner", week3: "Week 3 Winner", r32: "Round of 32 Winner", r16: "Round of 16 Winner",
+  };
+  const wonChips: string[] = [];
+  if (wonOverall) wonChips.push("Champion");
+  for (const f of ["week1", "week2", "week3", "r32", "r16"] as Phase[]) if (wonPhase(f)) wonChips.push(PHASE_WIN_LABEL[f]);
+  if (wonTopScorer) wonChips.push("Top Scorer Winner");
 
   const inits = data.entrant.name
     .split(" ")
@@ -168,6 +187,13 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
               </Link>
             )}
           </div>
+          {wonChips.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+              {wonChips.map((c) => (
+                <span key={c} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gold/50 bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">🏆 {c}</span>
+              ))}
+            </div>
+          )}
           {me?.last5 && me.last5.length > 0 && (
             <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
               <span className="text-[10px] uppercase tracking-[1px] text-muted">Form</span>
@@ -205,7 +231,7 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
       {statCards.length > 0 && (
         <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2">
           {statCards.map((c) => (
-            <Stat key={c.label} label={c.label} {...c.card} to={linkCards ? c.to : undefined} />
+            <Stat key={c.label} label={c.label} {...c.card} to={linkCards ? c.to : undefined} won={c.won} />
           ))}
         </div>
       )}
