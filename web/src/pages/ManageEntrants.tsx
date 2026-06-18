@@ -1,41 +1,15 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEntrants, renameEntrant, deleteEntrant, setEntrantIncomplete, type EntrantRow } from "../api.js";
+import { useEntrants, deleteEntrant, type EntrantRow } from "../api.js";
 import { getToken } from "../auth.js";
 
 function Row({ e, onChanged }: { e: EntrantRow; onChanged: () => void }) {
-  const [val, setVal] = useState(e.name);
-  const [saved, setSaved] = useState(false);
-  const [incompleteName, setIncompleteName] = useState(!!e.nameIncomplete);
   const predsIncomplete = e.predictions !== 104;
-
-  async function commit() {
-    if (val.trim() && val.trim() !== e.name) {
-      await renameEntrant(e.id, val.trim(), getToken());
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1200);
-      onChanged();
-    }
-  }
-
-  async function toggleIncomplete() {
-    const next = !incompleteName;
-    setIncompleteName(next);
-    await setEntrantIncomplete(e.id, next, getToken());
-    onChanged();
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0">
-      <input
-        value={val}
-        onChange={(ev) => setVal(ev.target.value)}
-        onBlur={commit}
-        onKeyDown={(ev) => ev.key === "Enter" && (ev.target as HTMLInputElement).blur()}
-        className="fl-input max-w-[200px] flex-1 py-2"
-      />
-      {incompleteName && (
+      <Link to={`/entrant/${e.id}/edit`} className="max-w-[220px] flex-1 truncate text-[13px] text-cream hover:text-gold">{e.name}</Link>
+      {e.nameIncomplete && (
         <span className="rounded px-1.5 py-0.5 font-mono text-[10px]" style={{ background: "rgba(227,197,88,0.16)", color: "#e3c558" }}>
           name?
         </span>
@@ -43,11 +17,7 @@ function Row({ e, onChanged }: { e: EntrantRow; onChanged: () => void }) {
       <span className={"font-mono text-xs shrink-0 " + (predsIncomplete ? "text-down" : "text-muted")}>
         {e.predictions}/104{predsIncomplete ? " ⚠" : ""}
       </span>
-      {saved && <span className="text-xs text-up shrink-0">saved</span>}
       <div className="ml-auto flex items-center gap-3 shrink-0">
-        <button onClick={toggleIncomplete} className="text-xs text-muted hover:text-cream">
-          {incompleteName ? "✓ full name" : "mark unknown"}
-        </button>
         <Link to={`/entrant/${e.id}/edit`} className="text-xs text-gold hover:underline">edit</Link>
         <Link to={`/entrant/${e.id}`} className="text-xs text-muted hover:text-cream">view</Link>
         <button
@@ -85,7 +55,7 @@ export default function ManageEntrants() {
         <div>
           <h1 className="font-display text-4xl font-medium tracking-tight text-cream">Manage entrants</h1>
           <p className="mt-1.5 text-[13px] text-muted">
-            Edit a name to fix a misread (click away to save). {incomplete > 0 && <span className="text-down">{incomplete} sheet{incomplete > 1 ? "s" : ""} read incomplete - re-upload on Add Entrant.</span>}
+            Open an entrant to edit their name, account and predictions. {incomplete > 0 && <span className="text-down">{incomplete} sheet{incomplete > 1 ? "s" : ""} read incomplete - re-upload on Add Entrant.</span>}
           </p>
         </div>
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…" className="fl-input w-56" />

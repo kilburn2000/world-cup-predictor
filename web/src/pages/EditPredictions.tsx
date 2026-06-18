@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEditWallchart, savePredictions, type EditGroup, type EditKnockout, type ParsedPrediction } from "../api.js";
+import { useEditWallchart, savePredictions, updateEntrant, type EditGroup, type EditKnockout, type ParsedPrediction } from "../api.js";
 import { getToken } from "../auth.js";
 
 const cell = "rounded-md border border-line bg-black/20 px-2 py-1 text-cream outline-none focus:border-gold";
@@ -24,13 +24,43 @@ export default function EditPredictions() {
   const [status, setStatus] = useState<string | null>(null);
   const [statusOk, setStatusOk] = useState(false);
   const [busy, setBusy] = useState(false);
+  // account editor
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [acct, setAcct] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [acctBusy, setAcctBusy] = useState(false);
 
   useEffect(() => {
     if (data) {
       setGroups(data.groups);
       setKnockout(data.knockout);
+      setName(data.entrant.name);
+      setEmail(data.entrant.email ?? "");
     }
   }, [data]);
+
+  async function saveAccount() {
+    if (!data) return;
+    const patch: { name?: string; email?: string; password?: string } = {};
+    if (name.trim() && name.trim() !== data.entrant.name) patch.name = name.trim();
+    if (email.trim() !== (data.entrant.email ?? "")) patch.email = email.trim();
+    if (password) patch.password = password;
+    if (!Object.keys(patch).length) { setAcct({ msg: "Nothing to save.", ok: false }); return; }
+    setAcctBusy(true);
+    setAcct(null);
+    try {
+      await updateEntrant(data.entrant.id, patch, getToken());
+      setPassword("");
+      setAcct({ msg: "Account updated.", ok: true });
+      qc.invalidateQueries({ queryKey: ["edit", id] });
+      qc.invalidateQueries({ queryKey: ["entrants"] });
+    } catch (e) {
+      setAcct({ msg: e instanceof Error ? e.message : "Failed to update.", ok: false });
+    } finally {
+      setAcctBusy(false);
+    }
+  }
 
   if (isLoading || !data) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
 
@@ -93,6 +123,31 @@ export default function EditPredictions() {
           <span className="text-down">{groupBlanks} group + {koBlanks} knockout still blank.</span>
         )}
       </p>
+
+      {/* account: name + login email + password */}
+      <div className="fl-card mb-5 p-5">
+        <h4 className="mb-3 text-[10px] uppercase tracking-[1.5px] text-gold">Account</h4>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-[11px] text-muted">Name</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} className={cell + " w-full py-2"} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] text-muted">Login email</span>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="none set" className={cell + " w-full py-2"} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] text-muted">New password</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="leave blank to keep current" autoComplete="new-password" className={cell + " w-full py-2"} />
+          </label>
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <button onClick={saveAccount} disabled={acctBusy} className="rounded-lg border border-gold bg-gold-soft px-4 py-2 text-sm text-cream transition-colors hover:bg-gold/20 disabled:opacity-50">
+            {acctBusy ? "Saving…" : "Save account"}
+          </button>
+          {acct && <span className="text-[13px]" style={{ color: acct.ok ? "#6bbf86" : "#d9926a" }}>{acct.msg}</span>}
+        </div>
+      </div>
 
       <div className="fl-card p-5">
         {groupSecs.map((s) => (

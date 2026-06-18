@@ -247,9 +247,23 @@ export interface EditKnockout {
   awayGoals: number | null;
 }
 export interface EditWallchart {
-  entrant: { id: number; name: string };
+  entrant: { id: number; name: string; email: string | null };
   groups: EditGroup[];
   knockout: EditKnockout[];
+}
+
+// Admin: update an entrant's name and/or their login account email + password.
+export async function updateEntrant(id: number, patch: { name?: string; email?: string; password?: string }, adminToken: string) {
+  const res = await fetch(`/api/admin/entrants/${id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", "x-admin-token": adminToken },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || `HTTP ${res.status}`);
+  }
+  return res.json();
 }
 
 export const useEditWallchart = (id: string | number) =>

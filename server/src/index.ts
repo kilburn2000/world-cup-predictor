@@ -17,7 +17,7 @@ import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents } from "./scorers.js";
-import { loginByEmail, userForToken, deleteSession, SESSION_COOKIE, type SessionUser } from "./auth.js";
+import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
 import { REUPLOAD_2026_06_16 } from "./reupload_2026_06_16.js";
 import { extractFromPhoto, toPredictions } from "./photoImport.js";
@@ -686,7 +686,11 @@ const KO_SLOTS: { slot: string; label: string }[] = [
 
 app.get("/api/entrants/:id/edit", async (req: any, reply) => {
   const id = Number(req.params.id);
-  const [entrant] = await sql`select id, name from entrants where id = ${id}`;
+  const [entrant] = await sql`
+    select e.id, e.name, u.email
+    from entrants e left join users u on u.entrant_id = e.id
+    where e.id = ${id}
+  `;
   if (!entrant) return reply.code(404).send({ error: "not found" });
 
   const groupRows = await sql`
@@ -1154,6 +1158,18 @@ app.patch("/api/admin/entrants/:id", async (req: any, reply) => {
   }
   if (typeof body.incomplete === "boolean") {
     await sql`update entrants set name_incomplete = ${body.incomplete} where id = ${id}`;
+  }
+  // The login account (users row) email + password for this entrant.
+  if (typeof body.email === "string" && body.email.trim()) {
+    const email = body.email.trim();
+    const clash = await sql`select 1 from users where lower(email) = lower(${email}) and entrant_id <> ${id} limit 1`;
+    if (clash.length) return reply.code(409).send({ error: "That email is already in use by another account." });
+    await sql`update entrants set email = ${email} where id = ${id}`;
+    await sql`update users set email = ${email} where entrant_id = ${id}`;
+  }
+  if (typeof body.password === "string" && body.password) {
+    if (body.password.length < 6) return reply.code(400).send({ error: "Password must be at least 6 characters." });
+    await sql`update users set password_hash = ${hashPassword(body.password)} where entrant_id = ${id}`;
   }
   return { ok: true };
 });
