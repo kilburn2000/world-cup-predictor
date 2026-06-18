@@ -44,7 +44,7 @@ function Stat({ label, value, pos, accent, to, won }: { label: string; value: Re
           <EyeIcon />
         </Link>
       )}
-      {won && <div className="text-[11px]">🏆</div>}
+      {won && <div className="absolute left-1.5 top-1.5 text-[11px] leading-none">🏆</div>}
       <div className="font-mono text-base leading-tight" style={{ color: won || accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
       {pos && <div className="mt-1.5 text-[11px] text-gold">({pos})</div>}
       <div className={"mt-1.5 text-[10px] uppercase tracking-[1px] " + (won ? "text-gold" : "text-muted")}>{label}</div>
@@ -172,7 +172,14 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
   return (
     <>
       {/* header */}
-      <div className="fl-card flex flex-col flex-wrap items-center gap-5 p-6 text-center sm:flex-row sm:text-left">
+      <div className="fl-card relative flex flex-col flex-wrap items-center gap-5 p-6 text-center sm:flex-row sm:text-left">
+        {wonChips.length > 0 && (
+          <div className="pointer-events-none absolute right-3 top-3 flex max-w-[55%] flex-wrap justify-end gap-1">
+            {wonChips.map((c) => (
+              <span key={c} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gold/50 bg-gold/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gold">🏆 {c}</span>
+            ))}
+          </div>
+        )}
         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-gold font-mono text-xl font-semibold text-gold">
           {inits}
         </div>
@@ -187,13 +194,6 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
               </Link>
             )}
           </div>
-          {wonChips.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
-              {wonChips.map((c) => (
-                <span key={c} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gold/50 bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">🏆 {c}</span>
-              ))}
-            </div>
-          )}
           {me?.last5 && me.last5.length > 0 && (
             <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
               <span className="text-[10px] uppercase tracking-[1px] text-muted">Form</span>
