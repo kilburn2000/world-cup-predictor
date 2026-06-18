@@ -128,7 +128,7 @@ export default function Prizes() {
         <h2 className="text-[11px] uppercase tracking-[1.8px] text-gold">Overall standings</h2>
         <PrizeStatus won={overallWon} />
       </div>
-      <div className={"fl-card mb-7 overflow-hidden" + (overallWon ? " border-gold" : "")}>
+      <div className={"fl-card mb-7 overflow-hidden" + (overallWon ? " ring-1 ring-inset ring-gold" : "")}>
         {groups.length === 0 && (
           <div className="px-4 py-4 text-[13px] text-muted">Standings will appear once games are played.</div>
         )}
@@ -190,7 +190,7 @@ export default function Prizes() {
           const holder =
             p.field === "knockout" ? "Not decided yet" : leaders.length ? holderText(leaders) : "Not played yet";
           return (
-            <div key={p.label} className={"fl-card px-4 py-3.5" + (won ? " border-gold bg-gold/10" : "")}>
+            <div key={p.label} className={"fl-card px-4 py-3.5" + (won ? " bg-gold/10 ring-1 ring-inset ring-gold" : "")}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-[13.5px] text-cream">{p.label}</span>
@@ -210,7 +210,7 @@ export default function Prizes() {
         <h2 className="text-[11px] uppercase tracking-[1.8px] text-gold">Top scorer</h2>
         <PrizeStatus won={overallWon} />
       </div>
-      <div className={"fl-card px-4 py-3.5" + (overallWon ? " border-gold bg-gold/10" : "")}>
+      <div className={"fl-card px-4 py-3.5" + (overallWon ? " bg-gold/10 ring-1 ring-inset ring-gold" : "")}>
         <div className="flex items-center justify-between gap-2">
           <span className="text-[13.5px] text-cream">Most combined goals from your two players</span>
           <span className="font-mono text-base font-semibold text-gold">
