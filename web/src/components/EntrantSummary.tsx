@@ -44,7 +44,7 @@ function Stat({ label, value, pos, accent, to, won }: { label: string; value: Re
           <EyeIcon />
         </Link>
       )}
-      {won && <div className="absolute left-1.5 top-1.5 text-[11px] leading-none">🏆</div>}
+      {won && <div className="absolute left-2.5 top-2.5 text-[11px] leading-none">🏆</div>}
       <div className="font-mono text-base leading-tight" style={{ color: won || accent ? "#c9a86a" : "#e8e4d8" }}>{value}</div>
       {pos && <div className="mt-1.5 text-[11px] text-gold">({pos})</div>}
       <div className={"mt-1.5 text-[10px] uppercase tracking-[1px] " + (won ? "text-gold" : "text-muted")}>{label}</div>
