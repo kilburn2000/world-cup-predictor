@@ -481,6 +481,15 @@ export default function Leaderboard() {
     : t.key === "r16" ? started?.r16
     : true,
   );
+  // A competition is "complete" once its period is fully decided: weeks/rounds when
+  // that phase finishes, overall/knockout/top-scorer at tournament end.
+  const isComplete = (key: Tab): boolean =>
+    key === "week1" ? !!started?.week1Done
+    : key === "week2" ? !!started?.week2Done
+    : key === "week3" ? !!started?.week3Done
+    : key === "r32" ? !!started?.r32Done
+    : key === "r16" ? !!started?.r16Done
+    : !!started?.done;
   const consensusTab = tab !== "knockout" && tab !== "topscorer";
   const everyone = showConsensus && consensusTab ? consensus ?? null : null;
 
@@ -505,7 +514,7 @@ export default function Leaderboard() {
             className="flex-1"
             value={tab}
             onChange={(v) => setTab(v as Tab)}
-            options={visibleTabs.map((t) => ({ value: t.key, label: t.label }))}
+            options={visibleTabs.map((t) => ({ value: t.key, label: t.label + (isComplete(t.key) ? " ✓" : "") }))}
           />
           {consensusTab && (
             <button
@@ -523,7 +532,9 @@ export default function Leaderboard() {
         {/* Desktop: full pill row. */}
         <div className="hidden flex-wrap items-center gap-2 sm:flex">
           {visibleTabs.map((t) => (
-            <button key={t.key} className={subTab(tab === t.key)} onClick={() => setTab(t.key)}>{t.label}</button>
+            <button key={t.key} className={subTab(tab === t.key)} onClick={() => setTab(t.key)}>
+              {t.label}{isComplete(t.key) && <span className="ml-1.5 text-gold">✓</span>}
+            </button>
           ))}
           {consensusTab && (
             <button
