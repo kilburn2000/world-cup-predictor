@@ -219,21 +219,39 @@ app.get("/api/leaderboard", async () => {
 // Which scoring phases have kicked off (any game no longer SCHEDULED). Used by
 // the standings to show "0" rather than "–" once a week is under way.
 app.get("/api/phases", async () => {
+  // A phase counts as "started" once its own games kick off OR the previous phase
+  // is fully finished - so week 2 opens the moment week 1 ends, week 3 when week 2
+  // ends, the knockout when the group stage ends, etc. "done" = every game in that
+  // phase finished (prizes lock in then).
   const [r] = await sql`
+    with p as (
+      select
+        coalesce(bool_or(stage = 'GROUP'   and matchday = 1 and status <> 'SCHEDULED'), false) as w1_started,
+        coalesce(bool_or(stage = 'GROUP'   and matchday = 2 and status <> 'SCHEDULED'), false) as w2_started,
+        coalesce(bool_or(stage = 'GROUP'   and matchday = 3 and status <> 'SCHEDULED'), false) as w3_started,
+        coalesce(bool_or(stage = 'LAST_32' and status <> 'SCHEDULED'), false) as r32_started,
+        coalesce(bool_or(stage = 'LAST_16' and status <> 'SCHEDULED'), false) as r16_started,
+        coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 1), false) as w1_done,
+        coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 2), false) as w2_done,
+        coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 3), false) as w3_done,
+        coalesce(bool_and(status = 'FINISHED') filter (where stage = 'LAST_32'), false) as r32_done,
+        coalesce(bool_and(status = 'FINISHED') filter (where stage = 'LAST_16'), false) as r16_done,
+        coalesce(bool_and(status = 'FINISHED'), false) as all_done
+      from matches
+    )
     select
-      coalesce(bool_or(stage = 'GROUP'   and matchday = 1 and status <> 'SCHEDULED'), false) as week1,
-      coalesce(bool_or(stage = 'GROUP'   and matchday = 2 and status <> 'SCHEDULED'), false) as week2,
-      coalesce(bool_or(stage = 'GROUP'   and matchday = 3 and status <> 'SCHEDULED'), false) as week3,
-      coalesce(bool_or(stage = 'LAST_32' and status <> 'SCHEDULED'), false) as r32,
-      coalesce(bool_or(stage = 'LAST_16' and status <> 'SCHEDULED'), false) as r16,
-      -- "done" = every game in that period is finished (prizes lock in then)
-      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 1), false) as "week1Done",
-      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 2), false) as "week2Done",
-      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'GROUP'   and matchday = 3), false) as "week3Done",
-      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'LAST_32'), false) as "r32Done",
-      coalesce(bool_and(status = 'FINISHED') filter (where stage = 'LAST_16'), false) as "r16Done",
-      coalesce(bool_and(status = 'FINISHED'), false) as done
-    from matches
+      w1_started as week1,
+      (w1_done or w2_started) as week2,
+      (w2_done or w3_started) as week3,
+      (w3_done or r32_started) as r32,
+      (r32_done or r16_started) as r16,
+      w1_done as "week1Done",
+      w2_done as "week2Done",
+      w3_done as "week3Done",
+      r32_done as "r32Done",
+      r16_done as "r16Done",
+      all_done as done
+    from p
   `;
   return r;
 });
