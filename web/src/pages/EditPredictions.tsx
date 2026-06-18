@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEditWallchart, savePredictions, updateEntrant, type EditGroup, type EditKnockout, type ParsedPrediction } from "../api.js";
 import { getToken } from "../auth.js";
+import { flagFor } from "../flags.js";
 
 const cell = "rounded-md border border-line bg-black/20 px-2 py-1 text-cream outline-none focus:border-gold";
 const numCell = "w-10 text-center font-mono " + cell;
@@ -24,12 +25,16 @@ export default function EditPredictions() {
   const [status, setStatus] = useState<string | null>(null);
   const [statusOk, setStatusOk] = useState(false);
   const [busy, setBusy] = useState(false);
-  // account editor
+  // profile editor (name + login email)
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [prof, setProf] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [profBusy, setProfBusy] = useState(false);
+  // password editor
   const [password, setPassword] = useState("");
-  const [acct, setAcct] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [acctBusy, setAcctBusy] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [pw, setPw] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [pwBusy, setPwBusy] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -40,25 +45,41 @@ export default function EditPredictions() {
     }
   }, [data]);
 
-  async function saveAccount() {
+  async function saveProfile() {
     if (!data) return;
-    const patch: { name?: string; email?: string; password?: string } = {};
+    const patch: { name?: string; email?: string } = {};
     if (name.trim() && name.trim() !== data.entrant.name) patch.name = name.trim();
     if (email.trim() !== (data.entrant.email ?? "")) patch.email = email.trim();
-    if (password) patch.password = password;
-    if (!Object.keys(patch).length) { setAcct({ msg: "Nothing to save.", ok: false }); return; }
-    setAcctBusy(true);
-    setAcct(null);
+    if (!Object.keys(patch).length) { setProf({ msg: "No changes to save.", ok: false }); return; }
+    setProfBusy(true);
+    setProf(null);
     try {
       await updateEntrant(data.entrant.id, patch, getToken());
-      setPassword("");
-      setAcct({ msg: "Account updated.", ok: true });
+      setProf({ msg: "Profile updated.", ok: true });
       qc.invalidateQueries({ queryKey: ["edit", id] });
       qc.invalidateQueries({ queryKey: ["entrants"] });
     } catch (e) {
-      setAcct({ msg: e instanceof Error ? e.message : "Failed to update.", ok: false });
+      setProf({ msg: e instanceof Error ? e.message : "Failed to update.", ok: false });
     } finally {
-      setAcctBusy(false);
+      setProfBusy(false);
+    }
+  }
+
+  async function savePassword() {
+    if (!data) return;
+    if (password.length < 6) { setPw({ msg: "Password must be at least 6 characters.", ok: false }); return; }
+    if (password !== confirm) { setPw({ msg: "Passwords don't match.", ok: false }); return; }
+    setPwBusy(true);
+    setPw(null);
+    try {
+      await updateEntrant(data.entrant.id, { password }, getToken());
+      setPassword("");
+      setConfirm("");
+      setPw({ msg: "Password changed.", ok: true });
+    } catch (e) {
+      setPw({ msg: e instanceof Error ? e.message : "Failed to change password.", ok: false });
+    } finally {
+      setPwBusy(false);
     }
   }
 
@@ -111,44 +132,79 @@ export default function EditPredictions() {
     s.rows.push({ k, i });
   });
 
+  const inits = data.entrant.name.split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
+  const filled = 104 - groupBlanks - koBlanks;
+  const complete = groupBlanks === 0 && koBlanks === 0;
+
   return (
     <div className="fl-enter mx-auto max-w-2xl">
       <div className="mb-2 text-[11px] uppercase tracking-[1.8px]">
         <Link to="/manage" className="text-muted hover:text-cream">← Manage entrants</Link>
       </div>
-      <h1 className="font-display text-3xl font-medium text-cream">Edit · {data.entrant.name}</h1>
-      <p className="mb-5 mt-1 text-[13px] text-muted">
+
+      {/* header */}
+      <div className="fl-card mb-6 flex flex-wrap items-center gap-4 p-5">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-gold font-mono text-lg font-semibold text-gold">
+          {inits}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[11px] uppercase tracking-[1.5px] text-gold">Edit entrant</div>
+          <h1 className="mt-0.5 font-display text-3xl font-medium tracking-tight text-cream">{data.entrant.name}</h1>
+          <div className="mt-1 text-[12px] text-muted">{data.entrant.email ?? "No login email set"}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-[1.5px] text-muted">Predictions</div>
+          <div className={"font-mono text-2xl " + (complete ? "text-up" : "text-down")}>{filled}<span className="text-muted">/104</span></div>
+        </div>
+      </div>
+
+      {/* account: name + login email */}
+      <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">Account</h2>
+      <div className="fl-card mb-7 p-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] uppercase tracking-[1px] text-muted">Name</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} className="fl-input" />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] uppercase tracking-[1px] text-muted">Login email</span>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="none set" className="fl-input" />
+          </label>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <button onClick={saveProfile} disabled={profBusy} className="btn-gold px-4 py-2.5 text-sm">{profBusy ? "Saving…" : "Save account"}</button>
+          {prof && <span className="text-[13px]" style={{ color: prof.ok ? "#6bbf86" : "#d9926a" }}>{prof.msg}</span>}
+        </div>
+      </div>
+
+      {/* password: separate card */}
+      <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">Password</h2>
+      <div className="fl-card mb-7 p-5">
+        <p className="mb-4 text-[12px] text-muted">Set a new login password for this entrant. They'll use their email and this password to sign in.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] uppercase tracking-[1px] text-muted">New password</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="at least 6 characters" autoComplete="new-password" className="fl-input" />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] uppercase tracking-[1px] text-muted">Confirm password</span>
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="re-enter password" autoComplete="new-password" className="fl-input" />
+          </label>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <button onClick={savePassword} disabled={pwBusy || !password} className="btn-gold px-4 py-2.5 text-sm">{pwBusy ? "Saving…" : "Change password"}</button>
+          {pw && <span className="text-[13px]" style={{ color: pw.ok ? "#6bbf86" : "#d9926a" }}>{pw.msg}</span>}
+        </div>
+      </div>
+
+      {/* predictions */}
+      <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">Predictions</h2>
+      <p className="mb-3 text-[13px] text-muted">
         Fill any blanks the import missed. Group fixtures are fixed - just enter the score.{" "}
         {(groupBlanks > 0 || koBlanks > 0) && (
           <span className="text-down">{groupBlanks} group + {koBlanks} knockout still blank.</span>
         )}
       </p>
-
-      {/* account: name + login email + password */}
-      <div className="fl-card mb-5 p-5">
-        <h4 className="mb-3 text-[10px] uppercase tracking-[1.5px] text-gold">Account</h4>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-[11px] text-muted">Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} className={cell + " w-full py-2"} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] text-muted">Login email</span>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="none set" className={cell + " w-full py-2"} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] text-muted">New password</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="leave blank to keep current" autoComplete="new-password" className={cell + " w-full py-2"} />
-          </label>
-        </div>
-        <div className="mt-3 flex items-center gap-3">
-          <button onClick={saveAccount} disabled={acctBusy} className="rounded-lg border border-gold bg-gold-soft px-4 py-2 text-sm text-cream transition-colors hover:bg-gold/20 disabled:opacity-50">
-            {acctBusy ? "Saving…" : "Save account"}
-          </button>
-          {acct && <span className="text-[13px]" style={{ color: acct.ok ? "#6bbf86" : "#d9926a" }}>{acct.msg}</span>}
-        </div>
-      </div>
-
       <div className="fl-card p-5">
         {groupSecs.map((s) => (
           <div key={s.label} className="mb-4">
@@ -158,11 +214,17 @@ export default function EditPredictions() {
                 const blank = g.homeGoals === null || g.awayGoals === null;
                 return (
                   <div key={g.matchId} className={"flex items-center gap-1.5 text-[13px] " + (blank ? "rounded-md bg-down/5 px-1" : "")}>
-                    <span className="flex-1 truncate text-right text-cream">{g.home}</span>
+                    <span className="flex flex-1 items-center justify-end gap-1.5 truncate text-right text-cream">
+                      <span className="truncate">{g.home}</span>
+                      <span className="shrink-0 text-base leading-none">{flagFor(g.home)}</span>
+                    </span>
                     <input value={num(g.homeGoals)} onChange={(e) => setG(i, { homeGoals: parseNum(e.target.value) })} placeholder="–" className={numCell + (blank ? " border-down" : "")} />
                     <span className="text-muted">–</span>
                     <input value={num(g.awayGoals)} onChange={(e) => setG(i, { awayGoals: parseNum(e.target.value) })} placeholder="–" className={numCell + (blank ? " border-down" : "")} />
-                    <span className="flex-1 truncate text-cream">{g.away}</span>
+                    <span className="flex flex-1 items-center gap-1.5 truncate text-cream">
+                      <span className="shrink-0 text-base leading-none">{flagFor(g.away)}</span>
+                      <span className="truncate">{g.away}</span>
+                    </span>
                   </div>
                 );
               })}
@@ -178,11 +240,13 @@ export default function EditPredictions() {
                 const blank = !k.home || !k.away || k.homeGoals === null || k.awayGoals === null;
                 return (
                   <div key={k.slot} className={"flex items-center gap-1.5 text-[13px] " + (blank ? "rounded-md bg-down/5 px-1" : "")}>
+                    <span className="w-5 shrink-0 text-center text-base leading-none">{flagFor(k.home)}</span>
                     <input value={k.home ?? ""} onChange={(e) => setK(i, { home: e.target.value })} placeholder="team" className={"flex-1 text-right " + cell + (!k.home ? " border-down" : "")} />
                     <input value={num(k.homeGoals)} onChange={(e) => setK(i, { homeGoals: parseNum(e.target.value) })} placeholder="–" className={numCell} />
                     <span className="text-muted">–</span>
                     <input value={num(k.awayGoals)} onChange={(e) => setK(i, { awayGoals: parseNum(e.target.value) })} placeholder="–" className={numCell} />
                     <input value={k.away ?? ""} onChange={(e) => setK(i, { away: e.target.value })} placeholder="team" className={"flex-1 " + cell + (!k.away ? " border-down" : "")} />
+                    <span className="w-5 shrink-0 text-center text-base leading-none">{flagFor(k.away)}</span>
                   </div>
                 );
               })}

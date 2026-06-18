@@ -99,11 +99,17 @@ export default function WallchartPredictions({ id, view = "all" }: { id: string 
                   key={k.slot}
                   className="flex items-center gap-2 border-t border-line py-1.5 text-[13px] first:border-t-0"
                 >
-                  <span className="flex-1 truncate text-right text-cream">{k.home}</span>
+                  <span className="flex flex-1 items-center justify-end gap-1.5 truncate text-right text-cream">
+                    <span className="truncate">{k.home}</span>
+                    <span className="shrink-0">{flagFor(k.home)}</span>
+                  </span>
                   <span className="w-11 text-center font-mono text-gold">
                     {k.predHome}–{k.predAway}
                   </span>
-                  <span className="flex-1 truncate text-cream">{k.away}</span>
+                  <span className="flex flex-1 items-center gap-1.5 truncate text-cream">
+                    <span className="shrink-0">{flagFor(k.away)}</span>
+                    <span className="truncate">{k.away}</span>
+                  </span>
                 </div>
               ))}
             </div>
