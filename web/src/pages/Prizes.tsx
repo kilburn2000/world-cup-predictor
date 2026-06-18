@@ -1,7 +1,23 @@
-import { useLeaderboard, useTopScorer, type LeaderboardRow } from "../api.js";
+import { useLeaderboard, useTopScorer, usePhasesStarted, type LeaderboardRow, type PhasesStarted } from "../api.js";
 import { standingKey } from "@wc/shared";
 
 type Field = "week1" | "week2" | "week3" | "r32" | "r16" | "knockout";
+
+// A prize is settled once its period is fully decided. Weekly/round prizes lock
+// in when that phase finishes; the overall placings, wooden spoon, top scorer and
+// the knockout competition only at the end of the tournament.
+const DONE_FLAG: Record<Field, keyof PhasesStarted> = {
+  week1: "week1Done", week2: "week2Done", week3: "week3Done", r32: "r32Done", r16: "r16Done", knockout: "done",
+};
+
+// Small status chip: "Won" once settled, otherwise "Projected".
+function PrizeStatus({ won }: { won: boolean }) {
+  return won ? (
+    <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gold">✓ Won</span>
+  ) : (
+    <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted">Projected</span>
+  );
+}
 
 const PHASE_PRIZES: { label: string; amount: number; field: Field }[] = [
   { label: "Highest Week 1 Score", amount: 125, field: "week1" },
@@ -44,7 +60,9 @@ interface PrizeGroup {
 
 export default function Prizes() {
   const { data } = useLeaderboard();
+  const { data: phases } = usePhasesStarted();
   const rows = data ?? [];
+  const overallWon = !!phases?.done; // overall placings + wooden spoon + top scorer
   // Same composite ranking as the standings: points, then exacts, then results.
   const keyOf = (e: LeaderboardRow) => standingKey(e.total, e.exactCount ?? 0, e.resultCount ?? 0);
   const phaseKeyOf = (e: LeaderboardRow, f: "week1" | "week2" | "week3" | "r32" | "r16") =>
@@ -106,7 +124,10 @@ export default function Prizes() {
         </div>
       </div>
 
-      <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">Overall standings</h2>
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="text-[11px] uppercase tracking-[1.8px] text-gold">Overall standings</h2>
+        <PrizeStatus won={overallWon} />
+      </div>
       <div className="fl-card mb-7 overflow-hidden">
         {groups.length === 0 && (
           <div className="px-4 py-4 text-[13px] text-muted">Standings will appear once games are played.</div>
@@ -163,6 +184,7 @@ export default function Prizes() {
       <h2 className="mb-3 text-[11px] uppercase tracking-[1.8px] text-gold">Weekly &amp; round prizes</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {PHASE_PRIZES.map((p) => {
+          const won = !!phases?.[DONE_FLAG[p.field]];
           const leaders = p.field === "knockout" ? [] : weeklyLeaders(p.field);
           const share = leaders.length ? p.amount / leaders.length : p.amount;
           const holder =
@@ -170,8 +192,11 @@ export default function Prizes() {
           return (
             <div key={p.label} className="fl-card px-4 py-3.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[13.5px] text-cream">{p.label}</span>
-                <span className="font-mono text-base font-semibold text-gold">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-[13.5px] text-cream">{p.label}</span>
+                  <PrizeStatus won={won} />
+                </div>
+                <span className="shrink-0 font-mono text-base font-semibold text-gold">
                   {gbp(share)}{leaders.length > 1 ? " each" : ""}
                 </span>
               </div>
@@ -181,7 +206,10 @@ export default function Prizes() {
         })}
       </div>
 
-      <h2 className="mb-3 mt-7 text-[11px] uppercase tracking-[1.8px] text-gold">Top scorer</h2>
+      <div className="mb-3 mt-7 flex items-center gap-2">
+        <h2 className="text-[11px] uppercase tracking-[1.8px] text-gold">Top scorer</h2>
+        <PrizeStatus won={overallWon} />
+      </div>
       <div className="fl-card px-4 py-3.5">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[13.5px] text-cream">Most combined goals from your two players</span>
