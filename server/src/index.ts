@@ -85,13 +85,23 @@ app.get("/api/me", async (req: any) => ({ user: (req.user as SessionUser) ?? nul
 
 // Provisional points from group matches IN PLAY right now - so everything moves
 // mid-game. Returns entrantId -> list of their in-play games with the breakdown.
+interface LiveFormGame {
+  matchday: number; group: string; kickoff: any; points: number; exact: boolean; outcome: boolean;
+  // enough to render a form chip + tooltip, like a finished game (FormGame shape)
+  home: string; away: string; homeName: string; awayName: string;
+  hs: number; as: number; predHome: number; predAway: number; tier: string;
+}
 async function inPlayProvisional() {
   const cfg = await loadConfig();
   const liveMatches = (await sql`
-    select id, matchday, group_name grp, home_team_id mh, home_goals hg, away_goals ag, kickoff_utc
-    from matches where stage = 'GROUP' and status = 'IN_PLAY' and home_goals is not null and away_goals is not null
+    select m.id, m.matchday, m.group_name grp, m.home_team_id mh, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
+           ht.tla hcode, at.tla acode, ht.name hname, at.name aname
+    from matches m
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    where m.stage = 'GROUP' and m.status = 'IN_PLAY' and m.home_goals is not null and m.away_goals is not null
   `) as any[];
-  const map = new Map<number, { matchday: number; group: string; kickoff: any; points: number; exact: boolean; outcome: boolean }[]>();
+  const map = new Map<number, LiveFormGame[]>();
   if (!liveMatches.length) return map;
   const ids = liveMatches.map((m) => m.id);
   const byMatch = new Map(liveMatches.map((m) => [m.id, m]));
@@ -105,12 +115,23 @@ async function inPlayProvisional() {
     const predH = p.ph === m.mh ? p.phg : p.pag;
     const predA = p.ph === m.mh ? p.pag : p.phg;
     const b = scoreGroupMatch(predH, predA, m.hg, m.ag, cfg);
+    const tier = b.exact ? "exact" : b.outcome ? "result" : b.homeGoals || b.awayGoals ? "diff" : "miss";
     const arr = map.get(p.entrant_id) ?? [];
-    arr.push({ matchday: m.matchday, group: m.grp, kickoff: m.kickoff_utc, points: b.points, exact: b.exact, outcome: b.outcome });
+    arr.push({
+      matchday: m.matchday, group: m.grp, kickoff: m.kickoff_utc, points: b.points, exact: b.exact, outcome: b.outcome,
+      home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname,
+      hs: m.hg, as: m.ag, predHome: predH, predAway: predA, tier,
+    });
     map.set(p.entrant_id, arr);
   }
   return map;
 }
+
+// A live in-play game rendered as a form chip (FormGame shape + live flag).
+const liveFormGame = (x: LiveFormGame) => ({
+  points: x.points, tier: x.tier, home: x.home, away: x.away, homeName: x.homeName, awayName: x.awayName,
+  hs: x.hs, as: x.as, predHome: x.predHome, predAway: x.predAway, live: true,
+});
 
 // Live leaderboard for the (single) default league. Includes in-play provisional
 // points so the overall standings (and everything built on them) move mid-game.
@@ -194,7 +215,10 @@ app.get("/api/leaderboard", async () => {
   }
   for (const r of rows as any[]) {
     const list = (recentByEntrant.get(r.entrantId) ?? []).sort((a, b) => (a.ko < b.ko ? -1 : a.ko > b.ko ? 1 : 0));
-    r.last5 = list.slice(-5).map(mkGame);
+    // Append any in-play game(s) as the most recent form entries, so the form
+    // column moves live alongside the points - flagged so the chip reads as live.
+    const liveGames = (live.get(r.entrantId) ?? []).map(liveFormGame);
+    r.last5 = [...list.slice(-5).map(mkGame), ...liveGames].slice(-5);
     // Per-phase form + tiebreak stats: each entrant's last up-to-5 finished games
     // within each week/round (for the form column) and that phase's exact/result
     // counts (so the week-by-week tables can break ties the same way Overall does).
@@ -210,6 +234,13 @@ app.get("/api/leaderboard", async () => {
       if (bd.outcome) st.result++;
     }
     r.formByPhase = Object.fromEntries(Object.entries(byPhase).map(([k, v]) => [k, v.slice(-5).map(mkGame)]));
+    // Live game also belongs to its week's form column (week1/2/3).
+    for (const lg of live.get(r.entrantId) ?? []) {
+      const ph = `week${lg.matchday}`;
+      const arr = (r.formByPhase[ph] = r.formByPhase[ph] ?? []);
+      arr.push(liveFormGame(lg));
+      if (arr.length > 5) arr.splice(0, arr.length - 5);
+    }
     r.statsByPhase = statsByPhase;
   }
   rows.sort((a, b) => standingKey(b.total, b.exactCount, b.resultCount) - standingKey(a.total, a.exactCount, a.resultCount) || a.name.localeCompare(b.name));
@@ -426,11 +457,14 @@ app.get("/api/groups", async () => {
   // provisional points from IN-PLAY group games - but still only the entrant's
   // own WC group counts toward their knockout-competition score.
   const liveMatches = await sql`
-    select id, matchday, group_name grp, home_team_id mh, home_goals hg, away_goals ag
-    from matches
-    where stage = 'GROUP' and status = 'IN_PLAY' and home_goals is not null and away_goals is not null
+    select m.id, m.matchday, m.group_name grp, m.home_team_id mh, m.home_goals hg, m.away_goals ag,
+           ht.tla hcode, at.tla acode, ht.name hname, at.name aname
+    from matches m
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    where m.stage = 'GROUP' and m.status = 'IN_PLAY' and m.home_goals is not null and m.away_goals is not null
   `;
-  const live = new Map<number, { w: [number, number, number, number]; total: number }>();
+  const live = new Map<number, { w: [number, number, number, number]; total: number; games: any[] }>();
   if ((liveMatches as any[]).length) {
     const ids = (liveMatches as any[]).map((m) => m.id);
     const byMatch = new Map((liveMatches as any[]).map((m) => [m.id, m]));
@@ -444,10 +478,15 @@ app.get("/api/groups", async () => {
       if (entrantGroup.get(p.entrant_id) !== m.grp) continue; // only your own WC group
       const predH = p.ph === m.mh ? p.phg : p.pag;
       const predA = p.ph === m.mh ? p.pag : p.phg;
-      const pts = scoreGroupMatch(predH, predA, m.hg, m.ag, cfg).points;
-      const cur = live.get(p.entrant_id) ?? { w: [0, 0, 0, 0], total: 0 };
-      cur.w[m.matchday] = (cur.w[m.matchday] ?? 0) + pts;
-      cur.total += pts;
+      const b = scoreGroupMatch(predH, predA, m.hg, m.ag, cfg);
+      const tier = b.exact ? "exact" : b.outcome ? "result" : b.homeGoals || b.awayGoals ? "diff" : "miss";
+      const cur = live.get(p.entrant_id) ?? { w: [0, 0, 0, 0], total: 0, games: [] };
+      cur.w[m.matchday] = (cur.w[m.matchday] ?? 0) + b.points;
+      cur.total += b.points;
+      cur.games.push({
+        points: b.points, tier, home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname,
+        hs: m.hg, as: m.ag, predHome: predH, predAway: predA, live: true,
+      });
       live.set(p.entrant_id, cur);
     }
   }
@@ -485,7 +524,7 @@ app.get("/api/groups", async () => {
     // group games (the only fixtures that count toward this competition).
     r.exactCount = list.filter((x) => x.bd?.exact).length;
     r.resultCount = list.filter((x) => x.bd?.outcome).length;
-    r.last5 = list.slice(-5).map((x) => {
+    const finished = list.slice(-5).map((x) => {
       const bd = x.bd ?? {};
       const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
       return {
@@ -494,6 +533,8 @@ app.get("/api/groups", async () => {
         hs: x.hg, as: x.ag, predHome: x.phg, predAway: x.pag,
       };
     });
+    // Append any in-play game in the entrant's WC group as the most recent chip.
+    r.last5 = [...finished, ...(live.get(r.entrantId)?.games ?? [])].slice(-5);
   }
 
   const byGroup = new Map<string, any[]>();

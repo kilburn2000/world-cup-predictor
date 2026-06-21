@@ -11,6 +11,13 @@ function initials(name: string) {
 const londonTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
 
+// In-play status label: half-time, the live minute, or a bare "Live" fallback.
+const HALFTIME = /half[\s-]?time|^ht$/i;
+function liveLabel(m: LiveMatch): string {
+  if (m.status === "PAUSED" || (m.half && HALFTIME.test(m.half))) return "HT";
+  return m.minute != null ? `${m.minute}'` : "Live";
+}
+
 const Avatar = ({ name }: { name: string | null }) => (
   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gold font-mono text-[10px] font-semibold text-gold">
     {name ? initials(name) : "?"}
@@ -28,7 +35,10 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
       <Avatar name={name} />
       <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
         {live ? (
-          <span className="h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
+            <span className="font-mono text-[10px] font-semibold text-[#d9534f]">{liveLabel(m)}</span>
+          </span>
         ) : (
           <span className="text-[8.5px] uppercase tracking-[1.5px] text-muted">Next{m.kickoff ? ` · ${londonTime(m.kickoff)}` : ""}</span>
         )}

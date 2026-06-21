@@ -19,6 +19,8 @@ export interface FormGame {
   as: number;
   predHome: number;
   predAway: number;
+  /** true when this is the match currently in play (provisional points so far) */
+  live?: boolean;
 }
 
 export interface LeaderboardRow {
