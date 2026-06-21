@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLiveMatches, type LiveMatch, type LiveEvent } from "../api.js";
 import { flagFor } from "../flags.js";
 
@@ -57,6 +58,7 @@ function phaseOf(m: LiveMatch): Phase {
 // toast in for kick-off, goals, cards, half-time and full-time.
 export default function LiveToasts() {
   const { data } = useLiveMatches();
+  const qc = useQueryClient();
   const seen = useRef<Set<string>>(new Set());
   const phase = useRef<Map<number, Phase>>(new Map());
   const initialised = useRef(false);
@@ -100,8 +102,14 @@ export default function LiveToasts() {
       for (const f of fresh) {
         setTimeout(() => setToasts((t) => t.filter((x) => x.id !== f.id)), 6500);
       }
+      // A goal / state change just moved the scores - push the dependent queries
+      // to refetch now instead of waiting out their own ~10s timers, so the
+      // standings and header score snap into step with the toast.
+      for (const key of [["leaderboard"], ["live"], ["top-scorer"], ["fixtures"], ["stats"]]) {
+        qc.invalidateQueries({ queryKey: key });
+      }
     }
-  }, [data]);
+  }, [data, qc]);
 
   if (!toasts.length) return null;
   const teamCls = (t: Toast, side: "home" | "away") =>

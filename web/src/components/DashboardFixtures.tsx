@@ -8,12 +8,10 @@ export default function DashboardFixtures() {
   const today = useLiveMatches(0).data ?? [];
   const yesterday = useLiveMatches(-1).data ?? [];
 
-  // Live first, then finished results, then still-to-play - so played games never
-  // sit below upcoming ones on the same day.
-  const rank = (m: LiveMatch) =>
-    m.status === "IN_PLAY" || m.status === "PAUSED" ? 0 : m.status === "FINISHED" ? 1 : 2;
+  // Chronological by kickoff - so the day reads in order: earlier finished games,
+  // then whatever is live now, then later kick-offs.
   const sortDay = (arr: LiveMatch[]) =>
-    [...arr].sort((a, b) => rank(a) - rank(b) || (a.kickoff ?? "").localeCompare(b.kickoff ?? ""));
+    [...arr].sort((a, b) => (a.kickoff ?? "").localeCompare(b.kickoff ?? ""));
 
   const days = [
     { offset: -1, label: "Yesterday", items: sortDay(yesterday) },
