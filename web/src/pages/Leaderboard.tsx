@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, useFixtures, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame, type LiveMatch } from "../api.js";
 import { standingKey, knockoutGroupKey } from "@wc/shared";
@@ -12,7 +13,7 @@ import { useMe } from "../auth.js";
 // Per-entrant provisional points from matches in play right now: the points each
 // would win if every live game ended at its current score, plus what they're
 // scoring on (for the chips). Built from each live match's precomputed board.
-type LiveGame = { pick: string; hs: number; as: number; homeCode: string; awayCode: string; tier: LiveTier | null; points: number; group: string | null; stage: string; matchday: number | null };
+type LiveGame = { pick: string; hs: number; as: number; home: string; away: string; homeCode: string; awayCode: string; minute: number | null; tier: LiveTier | null; points: number; group: string | null; stage: string; matchday: number | null };
 type LiveAgg = Map<number, LiveGame[]>;
 function useLivePoints(): LiveAgg {
   const { data } = useLiveMatches(0);
@@ -23,7 +24,7 @@ function useLivePoints(): LiveAgg {
       for (const b of mt.board) {
         if (b.points == null) continue;
         const arr = m.get(b.entrantId) ?? [];
-        arr.push({ pick: b.pick, hs: mt.homeScore, as: mt.awayScore, homeCode: mt.homeCode, awayCode: mt.awayCode, tier: b.tier, points: b.points, group: mt.group ?? null, stage: mt.stage, matchday: mt.matchday ?? null });
+        arr.push({ pick: b.pick, hs: mt.homeScore, as: mt.awayScore, home: mt.home, away: mt.away, homeCode: mt.homeCode, awayCode: mt.awayCode, minute: mt.minute ?? null, tier: b.tier, points: b.points, group: mt.group ?? null, stage: mt.stage, matchday: mt.matchday ?? null });
         m.set(b.entrantId, arr);
       }
     }
@@ -45,29 +46,65 @@ function LiveLine({ g }: { g: LiveGame }) {
   );
 }
 
+// Hover tooltip for a live game: fixture, the entrant's pick vs the live score,
+// and the scoring chips. Portal'd to body so a card's overflow can't clip it.
+function LiveTip({ tip }: { tip: { g: LiveGame; x: number; y: number } }) {
+  const g = tip.g;
+  return createPortal(
+    <div className="pointer-events-none fixed z-[60]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
+      <div className="flex flex-col items-center gap-1 rounded-lg border bg-[#0f120e] px-2.5 py-2 shadow-xl" style={{ borderColor: "rgba(217,83,79,0.6)" }}>
+        <span className="whitespace-nowrap font-mono text-[11px] text-cream">{flagFor(g.home)} {g.homeCode} v {g.awayCode} {flagFor(g.away)}</span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[10px] text-[#d9534f]">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
+          LIVE · {g.hs}-{g.as}{g.minute != null ? ` · ${g.minute}'` : ""}
+        </span>
+        <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {g.pick.replace("-", "–")}</span>
+        <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // When several games are live, the cell becomes a slider rotating through them
 // every 5s (synced across rows via the wall clock) rather than stacking; a single
-// live game shows statically.
+// live game shows statically. Hovering a line shows its game tooltip and freezes
+// the rotation so it doesn't slide out from under the cursor.
 const ROTATE_MS = 5000;
 function LiveCell({ games }: { games: LiveGame[] }) {
   const rotate = games.length > 1;
   const [, force] = useState(0);
+  const [tip, setTip] = useState<{ g: LiveGame; x: number; y: number } | null>(null);
+  const idxRef = useRef(0);
   useEffect(() => {
     if (!rotate) return;
     const id = setInterval(() => force((t) => t + 1), ROTATE_MS);
     return () => clearInterval(id);
   }, [rotate]);
   if (!games.length) return <div />;
-  if (!rotate) return <div className="flex min-w-0 items-center overflow-hidden"><LiveLine g={games[0]} /></div>;
-  const idx = Math.floor(Date.now() / ROTATE_MS) % games.length;
+  const enter = (g: LiveGame, ev: ReactMouseEvent) => {
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    setTip({ g, x: r.left + r.width / 2, y: r.top });
+  };
+  if (!rotate) {
+    return (
+      <div className="flex min-w-0 items-center overflow-hidden">
+        <span className="inline-flex" onMouseEnter={(e) => enter(games[0], e)} onMouseLeave={() => setTip(null)}><LiveLine g={games[0]} /></span>
+        {tip && <LiveTip tip={tip} />}
+      </div>
+    );
+  }
+  if (!tip) idxRef.current = Math.floor(Date.now() / ROTATE_MS) % games.length; // freeze while hovering
+  const idx = idxRef.current;
   return (
     <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-      <span key={idx} className="fl-enter inline-flex"><LiveLine g={games[idx]} /></span>
+      <span key={idx} className="fl-enter inline-flex" onMouseEnter={(e) => enter(games[idx], e)} onMouseLeave={() => setTip(null)}><LiveLine g={games[idx]} /></span>
       <span className="flex shrink-0 items-center gap-0.5">
         {games.map((_, i) => (
           <span key={i} className={"h-1 w-1 rounded-full " + (i === idx ? "bg-gold" : "bg-muted/40")} />
         ))}
       </span>
+      {tip && <LiveTip tip={tip} />}
     </div>
   );
 }

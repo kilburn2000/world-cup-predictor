@@ -29,14 +29,14 @@ export default function FormCell({ games, className = "hidden items-center justi
       {tip && createPortal(
         <div className="pointer-events-none fixed z-[60]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
           <div className={"flex flex-col items-center gap-1 rounded-lg border bg-[#0f120e] px-2.5 py-2 shadow-xl " + (tip.g.live ? "border-[#d9534f]/60" : "border-line")}>
-            <span className="font-mono text-[11px] text-cream">{flagFor(tip.g.homeName)} {tip.g.home} v {tip.g.away} {flagFor(tip.g.awayName)}</span>
+            <span className="whitespace-nowrap font-mono text-[11px] text-cream">{flagFor(tip.g.homeName)} {tip.g.home} v {tip.g.away} {flagFor(tip.g.awayName)}</span>
             {tip.g.live ? (
-              <span className="flex items-center gap-1.5 font-mono text-[10px] text-[#d9534f]">
+              <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[10px] text-[#d9534f]">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
                 LIVE · {tip.g.hs}-{tip.g.as}
               </span>
             ) : (
-              <span className="font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway} · Final {tip.g.hs}-{tip.g.as}</span>
+              <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway} · Final {tip.g.hs}-{tip.g.as}</span>
             )}
             <ScoredChips pick={`${tip.g.predHome}-${tip.g.predAway}`} hs={tip.g.hs} as={tip.g.as} homeCode={tip.g.home} awayCode={tip.g.away} />
           </div>
