@@ -301,10 +301,6 @@ function Knockout() {
   if (!data?.length) return <p className="text-muted">No groups set yet.</p>;
   return (
     <>
-      <p className="mb-4 text-[13px] text-muted">
-        Each entrant is scored <span className="text-cream">only on their own World Cup group’s games</span> (Group A on WC Group A, etc.).
-        The <span className="text-gold">top two</span> in each group qualify for the knockout bracket.
-      </p>
       <div className="space-y-4">
         {data.map((g) => {
           // Group competition: group points, then overall points (the backend
@@ -540,7 +536,9 @@ export default function Leaderboard() {
 
   const sub =
     tab === "overall" ? "The main competition - every entrant ranked on all their predictions across the whole tournament."
-    : tab === "knockout" ? "A second competition: entrant groups, scored on each player’s own World Cup group, top two into the bracket."
+    : tab === "knockout" ? (
+        <>A second competition: each entrant is scored <span className="text-cream">only on their own World Cup group’s games</span> (Group A on WC Group A, etc.). The <span className="text-gold">top two</span> in each group qualify for the knockout bracket.</>
+      )
     : tab === "topscorer" ? "Each entrant has two players - the pair with the most combined goals across the tournament wins."
     : `Points scored in ${TITLES[tab]} only.`;
 
