@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { useWallchart, useLeaderboard, useGroups, useWcGroups, useTopScorer, usePhasesStarted } from "../api.js";
 import { standingKey, knockoutGroupKey } from "@wc/shared";
@@ -226,15 +226,24 @@ export default function EntrantSummary({ id, eyebrow = "Entrant", linkCards = tr
         </div>
       </div>
 
-      {/* stat cards - only those whose week/competition has started; the grid
-          auto-fits so however many show, they fill the row evenly */}
-      {statCards.length > 0 && (
-        <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2">
-          {statCards.map((c) => (
-            <Stat key={c.label} label={c.label} {...c.card} to={linkCards ? c.to : undefined} won={c.won} />
-          ))}
-        </div>
-      )}
+      {/* stat cards - only those whose week/competition has started. Mobile packs
+          them into balanced rows of at most 3 (4 -> 2+2, 5 -> 3+2) so they fill
+          the width evenly; desktop spreads them all across one row. */}
+      {statCards.length > 0 && (() => {
+        const n = statCards.length;
+        const rows = Math.ceil(n / 3);          // at most 3 per row on mobile
+        const cols = Math.ceil(n / rows);       // balanced columns
+        return (
+          <div
+            className="mt-4 grid gap-2 grid-cols-[repeat(var(--sc-cols),minmax(0,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(110px,1fr))]"
+            style={{ ["--sc-cols" as string]: cols } as CSSProperties}
+          >
+            {statCards.map((c) => (
+              <Stat key={c.label} label={c.label} {...c.card} to={linkCards ? c.to : undefined} won={c.won} />
+            ))}
+          </div>
+        );
+      })()}
     </>
   );
 }
