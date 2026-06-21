@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, useFixtures, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame, type LiveMatch } from "../api.js";
 import { standingKey, knockoutGroupKey } from "@wc/shared";
@@ -34,16 +34,41 @@ function useLivePoints(): LiveAgg {
 // One entrant's live predictions for a given context (already filtered), rendered
 // as: predicted score + scoring chip + points pill, one line each. Shared by the
 // Overall, Knockout and per-phase standings tables.
-function LiveCell({ games }: { games: LiveGame[] }) {
+// One live game's row: the entrant's pick, scored chips and points so far.
+function LiveLine({ g }: { g: LiveGame }) {
   return (
-    <div className="flex min-w-0 flex-col items-start gap-0.5 overflow-hidden">
-      {games.map((g, i) => (
-        <span key={i} className="flex items-center gap-1 whitespace-nowrap">
-          <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
-          <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
-          <PointsPill points={g.points} tier={g.tier} />
-        </span>
-      ))}
+    <span className="flex items-center gap-1 whitespace-nowrap">
+      <span className="mr-1 font-mono text-[10px] text-muted">{g.homeCode}–{g.awayCode}</span>
+      <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
+      <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
+      <PointsPill points={g.points} tier={g.tier} />
+    </span>
+  );
+}
+
+// When several games are live, the cell becomes a slider rotating through them
+// every 5s (synced across rows via the wall clock) rather than stacking; a single
+// live game shows statically.
+const ROTATE_MS = 5000;
+function LiveCell({ games }: { games: LiveGame[] }) {
+  const rotate = games.length > 1;
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!rotate) return;
+    const id = setInterval(() => force((t) => t + 1), ROTATE_MS);
+    return () => clearInterval(id);
+  }, [rotate]);
+  if (!games.length) return <div />;
+  if (!rotate) return <div className="flex min-w-0 items-center overflow-hidden"><LiveLine g={games[0]} /></div>;
+  const idx = Math.floor(Date.now() / ROTATE_MS) % games.length;
+  return (
+    <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+      <span key={idx} className="fl-enter inline-flex"><LiveLine g={games[idx]} /></span>
+      <span className="flex shrink-0 items-center gap-0.5">
+        {games.map((_, i) => (
+          <span key={i} className={"h-1 w-1 rounded-full " + (i === idx ? "bg-gold" : "bg-muted/40")} />
+        ))}
+      </span>
     </div>
   );
 }
@@ -176,7 +201,7 @@ function LiveBanner({ games }: { games: LiveMatch[] }) {
     <div className="mb-3 flex items-center gap-1.5 rounded-xl px-3.5 py-2.5" style={{ border: "1px solid rgba(217,83,79,0.3)", background: "rgba(217,83,79,0.07)" }}>
       <span className="flex items-center gap-1.5 text-[#d9534f]">
         <span className="h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
-        <span className="text-[10px] font-semibold uppercase tracking-[1.5px]">Game in progress</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[1.5px]">{games.length > 1 ? "Games in progress" : "Game in progress"}</span>
       </span>
       <span className="text-[11px] text-muted">Standings are live</span>
     </div>
@@ -200,6 +225,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   // A dedicated Live column (chip + points pill per in-play game) only appears
   // while something's actually being scored, so the table is unchanged otherwise.
   const anyLive = [...live.values()].some((g) => g.length > 0);
+  const liveCount = Math.max(0, ...[...live.values()].map((g) => g.length));
   // When nothing's live, the same slot shows everyone's prediction for the next
   // upcoming fixture instead.
   const next = anyLive ? null : nextPredFor(fixtures, () => true);
@@ -237,7 +263,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       <div className={"fl-card overflow-hidden " + parentCols}>
         <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div className="text-center">#</div><div className="text-left">Entrant</div>
-          {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? "Live Prediction" : "Next Prediction"}</div>}
+          {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
           <div className="hidden text-center sm:block">Form</div>
@@ -309,6 +335,7 @@ function Knockout() {
           const rankLabel = rankLabeller(g.entrants, keyOf);
           const liveOf = (eid: number) => groupGames(live.get(eid) ?? [], g.group);
           const anyLive = g.entrants.some((e) => liveOf(e.entrantId).length > 0);
+          const liveCount = Math.max(0, ...g.entrants.map((e) => liveOf(e.entrantId).length));
           // Next upcoming game in THIS WC group, for the Next Prediction column.
           const next = anyLive ? null : nextPredFor(fixtures, (m) => m.stage === "GROUP" && m.group === g.group);
           const showPred = anyLive || !!next;
@@ -321,7 +348,7 @@ function Knockout() {
             <div key={g.group} className={"fl-card overflow-hidden " + parentCols}>
               <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
-                {showPred && <div className={anyLive ? "text-center" : "whitespace-nowrap text-center"}>{anyLive ? "Live" : "Next Prediction"}</div>}
+                {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
                 <div className="hidden text-center sm:block">Form</div>
@@ -353,6 +380,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
+  const liveCount = Math.max(0, ...[...live.values()].map((g) => phaseGames(g, phase).length));
   // Next upcoming fixture in THIS phase, for the Next Prediction column.
   const inPhase = (m: LiveMatch) =>
     phase === "r32" ? m.stage === "LAST_32"
@@ -383,7 +411,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   return (
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? "Live Prediction" : "Next Prediction"}</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
+        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
