@@ -10,6 +10,10 @@ const TONE: Record<LiveTier, { bg: string; fg: string }> = {
   miss: { bg: "rgba(217,83,79,0.16)", fg: "#e08a84" },
 };
 
+// The chip's text colour for a tier (neutral blue when untiered). Shared so the
+// form column can outline a live chip in its own text colour.
+export const pillFg = (tier?: LiveTier | null) => (tier ? TONE[tier].fg : "#9db8e6");
+
 export default function PointsPill({ points, tier, compact }: { points: number; tier?: LiveTier | null; compact?: boolean }) {
   const t = tier ? TONE[tier] : { bg: "rgba(122,162,214,0.18)", fg: "#9db8e6" };
   return (

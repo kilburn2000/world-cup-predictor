@@ -166,6 +166,27 @@ function NextPredCell({ pick }: { pick?: string }) {
   return <div className="text-center font-mono text-[12px] text-cream">{pick ? pick.replace("-", "–") : <span className="text-muted">–</span>}</div>;
 }
 
+// A strip above a standings table flagging that a game is currently being scored,
+// so the "Pts" column reads as live without relabelling it. The fixture itself is
+// already shown in the header bar, so this just states the standings are live.
+// Renders nothing when no relevant game is in play.
+function LiveBanner({ games }: { games: LiveMatch[] }) {
+  if (!games.length) return null;
+  return (
+    <div className="mb-3 flex items-center gap-1.5 rounded-xl px-3.5 py-2.5" style={{ border: "1px solid rgba(217,83,79,0.3)", background: "rgba(217,83,79,0.07)" }}>
+      <span className="flex items-center gap-1.5 text-[#d9534f]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
+        <span className="text-[10px] font-semibold uppercase tracking-[1.5px]">Game in progress</span>
+      </span>
+      <span className="text-[11px] text-muted">Standings are live</span>
+    </div>
+  );
+}
+
+// In-play fixtures (any), used to populate the banner above tables.
+const liveFixtures = (fixtures: LiveMatch[] | undefined, scope: (m: LiveMatch) => boolean = () => true) =>
+  (fixtures ?? []).filter((m) => (m.status === "IN_PLAY" || m.status === "PAUSED") && scope(m));
+
 function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data, isLoading, error } = useLeaderboard();
   const { data: stats } = useStats();
@@ -220,7 +241,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
           <div className="hidden text-center sm:block">Form</div>
-          <div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
+          <div className="whitespace-nowrap text-center">Pts</div>
         </div>
         {list.map((e) => {
           const label = rankLabel(e);
@@ -308,7 +329,7 @@ function Knockout() {
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
                 <div className="hidden text-center sm:block">Form</div>
-                <div className="text-center">{anyLive ? "Live Pts" : "Pts"}</div>
+                <div className="text-center">Pts</div>
               </div>
               {g.entrants.map((e, i) => (
                 <Fragment key={e.entrantId}>
@@ -366,7 +387,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   return (
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? "Live Prediction" : "Next Prediction"}</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">{anyLive ? "Live Pts" : "Pts"}</div>
+        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? "Live Prediction" : "Next Prediction"}</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
@@ -495,6 +516,7 @@ export default function Leaderboard() {
   const [showConsensus, setShowConsensus] = useState(false);
   const { data: consensus } = useConsensus();
   const { data: started } = usePhasesStarted();
+  const { data: fixtures } = useFixtures();
   // Week / R32 tabs only appear once a game in that period has kicked off.
   const visibleTabs = TABS.filter((t) =>
     t.key === "week1" ? started?.week1
@@ -573,6 +595,8 @@ export default function Leaderboard() {
           )}
         </div>
       </div>
+
+      <LiveBanner games={liveFixtures(fixtures)} />
 
       {tab === "overall" ? <Overall everyone={everyone} /> : tab === "knockout" ? <Knockout /> : tab === "topscorer" ? <TopScorers /> : <PhaseBoard phase={tab} everyone={everyone} />}
     </div>
