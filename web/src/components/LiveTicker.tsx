@@ -114,10 +114,10 @@ export default function LiveTicker() {
   const m = rows[idx];
 
   return (
-    <div className="mt-2 flex flex-col items-center gap-1 border-t border-line pt-2">
-      <div key={m.id} className="fl-enter w-full"><Row m={m} live={live} name={me.name} /></div>
+    <div className="mt-2 flex items-center gap-2 border-t border-line pt-2">
+      <div key={m.id} className="fl-enter min-w-0 flex-1"><Row m={m} live={live} name={me.name} /></div>
       {rotate && (
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {rows.map((_, i) => <span key={i} className={"h-1 w-1 rounded-full " + (i === idx ? "bg-gold" : "bg-muted/40")} />)}
         </div>
       )}
