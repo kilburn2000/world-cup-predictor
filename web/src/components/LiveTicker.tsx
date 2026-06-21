@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLiveMatches, type LiveMatch } from "../api.js";
 import { useMe } from "../auth.js";
@@ -10,6 +11,8 @@ function initials(name: string) {
 }
 const londonTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
+
+const ROTATE_MS = 5000;
 
 // In-play status label: half-time, the live minute, or a bare "Live" fallback.
 const HALFTIME = /half[\s-]?time|^ht$/i;
@@ -95,11 +98,29 @@ export default function LiveTicker() {
     live = false;
   }
 
+  // Several games at once: rotate through them every 5s (synced via the wall
+  // clock) instead of stacking, the same as the standings live column.
+  const rotate = rows.length > 1;
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!rotate) return;
+    const id = setInterval(() => force((t) => t + 1), ROTATE_MS);
+    return () => clearInterval(id);
+  }, [rotate]);
+
   if (!me || !rows.length) return null;
 
+  const idx = rotate ? Math.floor(Date.now() / ROTATE_MS) % rows.length : 0;
+  const m = rows[idx];
+
   return (
-    <div className="mt-2 flex flex-col gap-1.5 border-t border-line pt-2">
-      {rows.map((m) => <Row key={m.id} m={m} live={live} name={me.name} />)}
+    <div className="mt-2 flex flex-col items-center gap-1 border-t border-line pt-2">
+      <div key={m.id} className="fl-enter w-full"><Row m={m} live={live} name={me.name} /></div>
+      {rotate && (
+        <div className="flex items-center gap-1">
+          {rows.map((_, i) => <span key={i} className={"h-1 w-1 rounded-full " + (i === idx ? "bg-gold" : "bg-muted/40")} />)}
+        </div>
+      )}
     </div>
   );
 }
