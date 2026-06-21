@@ -38,7 +38,6 @@ function useLivePoints(): LiveAgg {
 function LiveLine({ g }: { g: LiveGame }) {
   return (
     <span className="flex items-center gap-1 whitespace-nowrap">
-      <span className="mr-1 font-mono text-[10px] text-muted">{g.homeCode}–{g.awayCode}</span>
       <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
       <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
       <PointsPill points={g.points} tier={g.tier} />
