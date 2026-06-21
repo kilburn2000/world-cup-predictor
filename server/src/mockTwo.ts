@@ -17,6 +17,8 @@ if (mode === "down") {
     await sql`update matches set status='SCHEDULED', home_goals=null, away_goals=null,
       winner_team_id=null, result_overridden=false, kickoff_utc=${s.kickoff} where id=${s.id}`;
   }
+  // the scorer backfill captures the mock feed's events into match_events - drop them
+  await sql`delete from match_events where player ilike '%simul%'`;
   rmSync(STATE_PATH, { force: true });
   await recomputeAll();
   console.log(`Reset ${state.length} game(s) and removed the mock feed.`);
