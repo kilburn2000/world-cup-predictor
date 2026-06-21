@@ -1,18 +1,21 @@
-import { useLiveMatches } from "../api.js";
+import { useLiveMatches, usePhasesStarted } from "../api.js";
 import LiveTabs from "../components/LiveTabs.js";
 import MatchCard from "../components/MatchCard.js";
 import { longDate } from "../dates.js";
 
 export default function LiveScores({ day = 0, liveOnly = false }: { day?: number; liveOnly?: boolean }) {
   const { data, isLoading, error } = useLiveMatches(day);
+  const { data: phases } = usePhasesStarted();
   const matches = data ?? [];
   const byKickoff = (a: typeof matches[number], b: typeof matches[number]) =>
     (a.kickoff ?? "").localeCompare(b.kickoff ?? "");
   const live = matches.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
 
   const dayLabel = day === -1 ? "Yesterday" : day === 1 ? "Tomorrow" : "Today";
-  // host-country (Pacific) date for the selected day
-  const [hy, hmo, hd] = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).split("-").map(Number);
+  // Date for the selected day, relative to the current football day (which rolls
+  // over when the day's last game ends). Falls back to the Pacific calendar date.
+  const cd = phases?.currentDay ?? new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const [hy, hmo, hd] = cd.split("-").map(Number);
   const dateLabel = longDate(new Date(hy, hmo - 1, hd + day));
 
   // Live Games tab: just the in-play games. Day view: every game in true

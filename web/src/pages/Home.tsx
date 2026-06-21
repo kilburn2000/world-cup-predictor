@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { login, useMe } from "../auth.js";
+import { usePhasesStarted } from "../api.js";
 import EntrantSummary from "../components/EntrantSummary.js";
 import MiniStandings from "../components/MiniStandings.js";
 import MiniTopScorer from "../components/MiniTopScorer.js";
@@ -13,8 +14,12 @@ import { longDate } from "../dates.js";
 
 export default function Home() {
   const { data: me, isLoading } = useMe();
-  // host-country (Pacific) today, shown under the title like the statistics headers
-  const [hy, hmo, hd] = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).split("-").map(Number);
+  const { data: phases } = usePhasesStarted();
+  // The current football day (rolls over when the day's last game ends, not at
+  // midnight), shown under the title like the statistics headers. Falls back to
+  // the host-country (Pacific) calendar date until phases load.
+  const cd = phases?.currentDay ?? new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const [hy, hmo, hd] = cd.split("-").map(Number);
   const dateLabel = longDate(new Date(hy, hmo - 1, hd));
   const qc = useQueryClient();
   const [email, setEmail] = useState("");

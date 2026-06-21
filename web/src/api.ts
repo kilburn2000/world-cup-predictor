@@ -123,6 +123,9 @@ export interface PhasesStarted {
   r32Done: boolean;
   r16Done: boolean;
   done: boolean;
+  /** The current "football day" (YYYY-MM-DD, host/Pacific date) - rolls over when
+   *  the day's last game ends, not at midnight. Anchors Yesterday/Today/Tomorrow. */
+  currentDay: string;
 }
 export const usePhasesStarted = () =>
   useQuery({ queryKey: ["phases"], queryFn: () => get<PhasesStarted>("/api/phases"), refetchInterval: 30_000 });

@@ -83,6 +83,21 @@ app.post("/api/logout", async (req: any, reply) => {
 // The current user (null if not logged in).
 app.get("/api/me", async (req: any) => ({ user: (req.user as SessionUser) ?? null }));
 
+// The "current football day" (a host-country / Pacific date). Unlike a calendar
+// rollover at midnight, it stays on today's slate until the day's LAST game has
+// finished, then advances - so a game that ends in the small hours doesn't flip
+// the app to "tomorrow" while it's still being talked about, and the morning
+// after, the just-played slate reads as "yesterday". Defined as the earliest
+// host-day that still has an unfinished game (or the final day once it's all
+// over). Used for the Yesterday/Today/Tomorrow buckets and their date labels.
+const CURRENT_DAY = sql`(
+  select coalesce(
+    min((kickoff_utc at time zone 'America/Los_Angeles')::date) filter (where status <> 'FINISHED'),
+    max((kickoff_utc at time zone 'America/Los_Angeles')::date)
+  )
+  from matches where kickoff_utc is not null
+)`;
+
 // Provisional points from group matches IN PLAY right now - so everything moves
 // mid-game. Returns entrantId -> list of their in-play games with the breakdown.
 interface LiveFormGame {
@@ -281,7 +296,8 @@ app.get("/api/phases", async () => {
       w3_done as "week3Done",
       r32_done as "r32Done",
       r16_done as "r16Done",
-      all_done as done
+      all_done as done,
+      to_char(${CURRENT_DAY}, 'YYYY-MM-DD') as "currentDay"
     from p
   `;
   return r;
@@ -1007,9 +1023,11 @@ app.get("/api/live", async (req: any) => {
     join teams ht on ht.id = m.home_team_id
     join teams at on at.id = m.away_team_id
     -- games on the selected host-country day (US/Canada/Mexico), using the
-    -- westernmost host tz so no game lands on the wrong day. day = -1/0/+1.
+    -- westernmost host tz so no game lands on the wrong day. day = -1/0/+1,
+    -- relative to the current football day (which rolls over when the last
+    -- game of the day ends, not at midnight - see CURRENT_DAY).
     where (m.kickoff_utc at time zone 'America/Los_Angeles')::date
-        = (now() at time zone 'America/Los_Angeles')::date + ${day}::int
+        = ${CURRENT_DAY} + ${day}::int
     order by
       (case m.status when 'IN_PLAY' then 0 when 'SCHEDULED' then 1 else 2 end),
       case when m.status = 'FINISHED' then m.kickoff_utc end desc nulls last,
