@@ -119,7 +119,7 @@ export default function App() {
         <div className="mx-auto max-w-5xl px-4 py-3">
           <div className="relative flex items-center justify-between sm:gap-4">
             <NavLink to="/" className="flex items-center">
-              <img src="/whiteys-logo-horizontal.png" alt="Whitey’s World Cup 2026 Sweepstake" className="h-14 w-auto shrink-0 object-contain sm:h-20" />
+              <img src="/whiteys-logo-horizontal.png" alt="Whitey’s World Cup 2026 Sweepstake" className="h-20 w-auto shrink-0 object-contain" />
             </NavLink>
 
             {/* Mobile: burger toggle. */}
