@@ -19,17 +19,28 @@ function readMock(): EspnMatch[] {
   }
 }
 
-let cache: { at: number; data: any } | null = null;
+const cache = new Map<string, { at: number; data: any }>();
 const CACHE_MS = 8000;
 
 async function getScoreboard(dates?: string): Promise<any> {
-  if (!dates && cache && Date.now() - cache.at < CACHE_MS) return cache.data;
+  const key = dates ?? "default";
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
   const url = dates ? `${SCOREBOARD}?dates=${dates}` : SCOREBOARD;
   const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 worldcup-predictor" } });
   if (!res.ok) throw new Error(`ESPN scoreboard HTTP ${res.status}`);
   const data = await res.json();
-  if (!dates) cache = { at: Date.now(), data };
+  cache.set(key, { at: Date.now(), data });
   return data;
+}
+
+// ESPN buckets games by US date, so a kickoff just after midnight ET lands in
+// the *next* day's bucket while the default scoreboard still serves the prior
+// day - making a live late-night game invisible. Query a yesterday→tomorrow
+// window (UTC) so whichever bucket the game falls in, we catch it.
+function ymd(offsetDays: number): string {
+  const d = new Date(Date.now() + offsetDays * 86400_000);
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
 }
 
 export interface LiveEvent {
@@ -136,7 +147,7 @@ export async function getMatchesForDate(dates: string): Promise<EspnMatch[]> {
 }
 
 async function getRealMatches(): Promise<EspnMatch[]> {
-  return parseScoreboard(await getScoreboard());
+  return parseScoreboard(await getScoreboard(`${ymd(-1)}-${ymd(1)}`));
 }
 
 function parseScoreboard(data: any): EspnMatch[] {
