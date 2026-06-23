@@ -7,8 +7,28 @@ import TabSelect from "../components/TabSelect.js";
 import ScoredChips from "../components/ScoredChips.js";
 import PointsPill from "../components/PointsPill.js";
 import FormCell from "../components/FormCell.js";
+import TrendModal from "../components/TrendModal.js";
 import { flagFor } from "../flags.js";
 import { useMe } from "../auth.js";
+
+// Rank cell that, when clicked, opens the entrant's position-trend modal. Lives
+// inside the row <Link>, so it stops the click from navigating to the entrant.
+function RankCell({ label, top3, onOpen }: { label: string; top3: boolean; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      title="View position trend"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpen(); }}
+      className="flex items-center justify-center font-mono text-xs"
+    >
+      {top3 ? (
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold transition hover:ring-1 hover:ring-gold">{label}</span>
+      ) : (
+        <span className="text-muted underline-offset-2 transition hover:text-gold hover:underline">{label}</span>
+      )}
+    </button>
+  );
+}
 
 // Per-entrant provisional points from matches in play right now: the points each
 // would win if every live game ended at its current score, plus what they're
@@ -166,19 +186,13 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
   );
 }
 
-function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextPick }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextPick?: string }) {
+function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextPick, onOpenTrend }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextPick?: string; onOpenTrend: () => void }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
       className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
     >
-      <div className="text-center font-mono text-xs">
-        {e.qualifying ? (
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span>
-        ) : (
-          <span className="text-muted">{label}</span>
-        )}
-      </div>
+      <RankCell label={label} top3={!!e.qualifying} onOpen={onOpenTrend} />
       <div className="flex min-w-0 items-center gap-1.5">
         <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
         {e.entrantId === myId && <YouBadge />}
@@ -256,6 +270,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   const { data: phases } = usePhasesStarted();
   const live = useLivePoints();
   const myId = me?.entrantId;
+  const [trendFor, setTrendFor] = useState<{ id: number; name: string } | null>(null);
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   // A dedicated Live column (chip + points pill per in-play game) only appears
@@ -325,13 +340,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
             const liveGames = live.get(e.entrantId) ?? [];
             return (
             <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}>
-              <div className="text-center font-mono text-xs">
-                {label !== "=" && Number(label) <= 3 ? (
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span>
-                ) : (
-                  <span className="text-muted">{label}</span>
-                )}
-              </div>
+              <RankCell label={label} top3={label !== "=" && Number(label) <= 3} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
               <div className="flex min-w-0 items-center gap-1.5">
                 <span className={"truncate " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</span>
                 {won(e) && <WinnerBadge />}
@@ -349,6 +358,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
           );
         })}
       </div>
+      {trendFor && <TrendModal entrantId={trendFor.id} entrantName={trendFor.name} scope="overall" scopeLabel="Overall" onClose={() => setTrendFor(null)} />}
     </>
   );
 }
@@ -358,6 +368,7 @@ function Knockout() {
   const { data: me } = useMe();
   const { data: fixtures } = useFixtures();
   const live = useLivePoints();
+  const [trendFor, setTrendFor] = useState<{ id: number; name: string; group: string } | null>(null);
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the groups.</p>;
   if (!data?.length) return <p className="text-muted">No groups set yet.</p>;
@@ -392,7 +403,7 @@ function Knockout() {
               </div>
               {g.entrants.map((e, i) => (
                 <Fragment key={e.entrantId}>
-                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextPick={next?.picks.get(e.entrantId)} />
+                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextPick={next?.picks.get(e.entrantId)} onOpenTrend={() => setTrendFor({ id: e.entrantId, name: e.name, group: g.group })} />
                   {i === 1 && <div className="col-span-full border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
                 </Fragment>
               ))}
@@ -400,6 +411,7 @@ function Knockout() {
           );
         })}
       </div>
+      {trendFor && <TrendModal entrantId={trendFor.id} entrantName={trendFor.name} scope="knockout" scopeLabel={`Knockout · Group ${trendFor.group}`} onClose={() => setTrendFor(null)} />}
     </>
   );
 }
@@ -413,6 +425,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   const { data: phases } = usePhasesStarted();
   const live = useLivePoints();
   const myId = me?.entrantId;
+  const [trendFor, setTrendFor] = useState<{ id: number; name: string } | null>(null);
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the leaderboard.</p>;
   const anyLive = [...live.values()].some((g) => phaseGames(g, phase).length > 0);
@@ -445,6 +458,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   const maxKey = Math.max(0, ...list.filter((e) => !e.consensus).map(keyOf));
   const won = (e: Row) => phaseDone && !e.consensus && maxKey > 0 && keyOf(e) === maxKey;
   return (
+    <>
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
         <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
@@ -466,9 +480,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
           </div>
         ) : (
           <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}>
-            <div className="text-center font-mono text-xs">
-              {label !== "=" && Number(label) <= 3 && dispPhase(e) > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="text-muted">{label}</span>}
-            </div>
+            <RankCell label={label} top3={label !== "=" && Number(label) <= 3 && dispPhase(e) > 0} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
             <div className="flex min-w-0 items-center gap-1.5">
               <span className={"truncate " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</span>
               {won(e) && <WinnerBadge />}
@@ -484,6 +496,8 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
         );
       })}
     </div>
+    {trendFor && <TrendModal entrantId={trendFor.id} entrantName={trendFor.name} scope={phase} scopeLabel={TITLES[phase]} onClose={() => setTrendFor(null)} />}
+    </>
   );
 }
 

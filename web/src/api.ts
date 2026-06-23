@@ -23,6 +23,37 @@ export interface FormGame {
   live?: boolean;
 }
 
+/** one game on an entrant's position-trend graph: their points + rank after it. */
+export interface TrendPoint {
+  matchId: number;
+  kickoff: string;
+  home: string;
+  away: string;
+  homeCode: string;
+  awayCode: string;
+  hs: number;
+  as: number;
+  predHome: number;
+  predAway: number;
+  points: number;
+  tier: LiveTier | null;
+  cumulative: number;
+  rank: number;
+}
+export interface TrendData {
+  scope: string;
+  entrant: string;
+  fieldSize: number;
+  points: TrendPoint[];
+}
+export const useEntrantTrend = (id: number | null, scope: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ["trend", id, scope],
+    queryFn: () => get<TrendData>(`/api/entrants/${id}/trend?scope=${scope}`),
+    enabled: enabled && id != null,
+    staleTime: 30_000,
+  });
+
 export interface LeaderboardRow {
   entrantId: number;
   name: string;

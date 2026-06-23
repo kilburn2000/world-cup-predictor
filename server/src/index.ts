@@ -306,6 +306,93 @@ app.get("/api/phases", async () => {
 // Top Scorer side competition: each entrant's player pair + combined goals.
 app.get("/api/top-scorer", async () => topScorerStandings());
 
+// Position trend: an entrant's per-game points + running rank over time, scoped to
+// one competition (overall / a week / a round / their knockout group). One finished
+// game per point, in kickoff order, carrying enough to render a form-style chip +
+// tooltip and to plot the entrant's rank after that game. Ties share a rank.
+app.get("/api/entrants/:id/trend", async (req: any, reply) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return reply.code(400).send({ error: "Bad id" });
+  const scope = String(req.query?.scope ?? "overall");
+  const [ent] = await sql`select name, entrant_group grp from entrants where id = ${id}`;
+  if (!ent) return reply.code(404).send({ error: "Unknown entrant" });
+
+  // scope -> which finished games make up the timeline
+  const filters: Record<string, any> = {
+    overall: sql`m.status = 'FINISHED'`,
+    week1: sql`m.status = 'FINISHED' and m.stage = 'GROUP' and m.matchday = 1`,
+    week2: sql`m.status = 'FINISHED' and m.stage = 'GROUP' and m.matchday = 2`,
+    week3: sql`m.status = 'FINISHED' and m.stage = 'GROUP' and m.matchday = 3`,
+    r32: sql`m.status = 'FINISHED' and m.stage = 'LAST_32'`,
+    r16: sql`m.status = 'FINISHED' and m.stage = 'LAST_16'`,
+    knockout: sql`m.status = 'FINISHED' and m.stage = 'GROUP' and m.group_name = ${ent.grp}`,
+  };
+  const mf = filters[scope];
+  if (!mf) return reply.code(400).send({ error: "Bad scope" });
+  // who is in the ranking field: the whole league, or just this entrant's WC group
+  const fieldFilter = scope === "knockout" ? sql`e.entrant_group = ${ent.grp}` : sql`true`;
+
+  // timeline games, chronological
+  const games = (await sql`
+    select m.id, m.kickoff_utc ko, ht.name home, ht.tla hcode, at.name away, at.tla acode,
+           m.home_goals hg, m.away_goals ag
+    from matches m
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    where ${mf}
+    order by m.kickoff_utc asc, m.id asc
+  `) as any[];
+  if (!games.length) return { scope, fieldSize: 0, points: [] };
+
+  // every field entrant's points per timeline game (for the running cumulative + rank)
+  const pts = (await sql`
+    select s.entrant_id eid, m.id mid, s.points
+    from scores s
+    join entrants e on e.id = s.entrant_id
+    join matches m on m.id = split_part(s.ref, ':', 2)::int and ${mf}
+    where s.kind = 'MATCH' and ${fieldFilter}
+  `) as any[];
+
+  // the clicked entrant's per-game breakdown + prediction (chip tier + tooltip)
+  const mine = (await sql`
+    select m.id mid, s.points, s.breakdown bd, p.pred_home_goals phg, p.pred_away_goals pag
+    from scores s
+    join matches m on m.id = split_part(s.ref, ':', 2)::int and ${mf}
+    left join predictions p on p.entrant_id = ${id} and p.match_id = m.id and p.scope = 'MATCH'
+    where s.kind = 'MATCH' and s.entrant_id = ${id}
+  `) as any[];
+
+  const fieldEnts = (await sql`select e.id from entrants e where ${fieldFilter}`) as any[];
+  const cum = new Map<number, number>(fieldEnts.map((e) => [e.id, 0]));
+  const ptsByGame = new Map<number, Map<number, number>>();
+  for (const r of pts) {
+    let g = ptsByGame.get(r.mid);
+    if (!g) ptsByGame.set(r.mid, (g = new Map()));
+    g.set(r.eid, r.points);
+  }
+  const mineByGame = new Map<number, any>(mine.map((r) => [r.mid, r]));
+
+  const out: any[] = [];
+  for (const g of games) {
+    const gp = ptsByGame.get(g.id);
+    if (gp) for (const [eid, p] of gp) cum.set(eid, (cum.get(eid) ?? 0) + p);
+    const my = mineByGame.get(g.id);
+    if (!my) continue; // entrant wasn't scored on this game (no prediction)
+    const myCum = cum.get(id) ?? 0;
+    let rank = 1;
+    for (const [eid, c] of cum) if (eid !== id && c > myCum) rank++;
+    const bd = my.bd ?? {};
+    const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
+    out.push({
+      matchId: g.id, kickoff: g.ko,
+      home: g.home, away: g.away, homeCode: g.hcode, awayCode: g.acode,
+      hs: g.hg, as: g.ag, predHome: my.phg, predAway: my.pag,
+      points: my.points, tier, cumulative: myCum, rank,
+    });
+  }
+  return { scope, entrant: ent.name, fieldSize: fieldEnts.length, points: out };
+});
+
 // Admin: list all tracked players with their feed + manual goal tallies.
 app.get("/api/admin/scorer-players", async (req: any, reply) => {
   if (!requireAdmin(req, reply)) return;
