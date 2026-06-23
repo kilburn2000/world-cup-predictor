@@ -7,8 +7,8 @@ import ScoredChips from "./ScoredChips.js";
 
 // Plot geometry. STEP is the horizontal gap between games (the plot scrolls
 // sideways once they don't fit); rank maps onto the vertical axis, 1st at top.
-const STEP = 30;
-const PAD_X = 22;
+const STEP = 22;
+const PAD_X = 18;
 const H = 240;
 const PAD_TOP = 22;
 const PAD_BOT = 22;
@@ -42,6 +42,15 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
   const plotW = Math.max(PAD_X * 2 + Math.max(0, pts.length - 1) * STEP, 220);
   const line = pts.map((p, i) => `${x(i)},${y(p.rank)}`).join(" ");
   const last = pts[pts.length - 1];
+  // rank gridlines: top, 10th/20th/30th (where they exist) and the field floor
+  const ticks = [1, 10, 20, 30, N].filter((r, i, a) => r <= N && a.indexOf(r) === i);
+  // contiguous runs of the same phase, to draw week/round breaks + labels
+  const runs: { phase: string; start: number; end: number }[] = [];
+  pts.forEach((p, i) => {
+    const last = runs[runs.length - 1];
+    if (last && last.phase === p.phase) last.end = i;
+    else runs.push({ phase: p.phase, start: i, end: i });
+  });
 
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-3" onClick={onClose}>
@@ -69,22 +78,35 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
           <div className="px-5 py-16 text-center text-[13px] text-muted">No finished games in this competition yet.</div>
         ) : (
           <>
-            <div className="flex pt-3">
-              {/* fixed rank axis */}
-              <div className="relative shrink-0" style={{ width: 40, height: H }}>
-                {[1, N].map((r) => (
+            <div className="flex pl-4 pt-3">
+              {/* fixed rank axis: a 'Rank' caption then the tick numbers */}
+              <div className="relative shrink-0 self-stretch" style={{ width: 14 }}>
+                <div className="absolute left-1/2 top-1/2 origin-center -translate-x-1/2 -translate-y-1/2 -rotate-90 whitespace-nowrap text-[9px] uppercase tracking-[1.5px] text-muted">Rank</div>
+              </div>
+              <div className="relative shrink-0" style={{ width: 26, height: H }}>
+                {ticks.map((r) => (
                   <div key={r} className="absolute right-1.5 -translate-y-1/2 font-mono text-[10px] text-muted" style={{ top: y(r) }}>{r}</div>
                 ))}
-                <div className="absolute left-0 top-1/2 origin-center -translate-y-1/2 -rotate-90 whitespace-nowrap text-[9px] uppercase tracking-[1.5px] text-muted" style={{ left: -8 }}>Rank</div>
               </div>
               {/* scrollable plot */}
               <div className="overflow-x-auto pb-2 pr-5">
                 <div className="relative" style={{ width: plotW, height: H }}>
                   <svg width={plotW} height={H} className="absolute inset-0">
-                    <line x1={0} y1={y(1)} x2={plotW} y2={y(1)} stroke="rgba(201,168,106,0.12)" />
-                    <line x1={0} y1={y(N)} x2={plotW} y2={y(N)} stroke="rgba(201,168,106,0.12)" />
-                    <polyline points={line} fill="none" stroke="var(--color-gold)" strokeWidth={1.5} strokeOpacity={0.55} />
+                    {/* rank gridlines (10th / 20th / 30th etc.) */}
+                    {ticks.map((r) => (
+                      <line key={r} x1={0} y1={y(r)} x2={plotW} y2={y(r)} stroke="rgba(201,168,106,0.22)" />
+                    ))}
+                    {/* week/round break lines */}
+                    {runs.slice(1).map((run, k) => {
+                      const bx = (x(runs[k].end) + x(run.start)) / 2;
+                      return <line key={run.start} x1={bx} y1={PAD_TOP - 8} x2={bx} y2={H - PAD_BOT + 8} stroke="rgba(201,168,106,0.55)" strokeDasharray="3 3" />;
+                    })}
+                    <polyline points={line} fill="none" stroke="var(--color-gold)" strokeWidth={1.5} strokeOpacity={0.5} />
                   </svg>
+                  {/* phase labels above each run (only when more than one phase) */}
+                  {runs.length > 1 && runs.map((run) => (
+                    <div key={run.start} className="absolute -translate-x-1/2 whitespace-nowrap text-[8px] uppercase tracking-[1px] text-muted" style={{ left: (x(run.start) + x(run.end)) / 2, top: 1 }}>{run.phase}</div>
+                  ))}
                   {pts.map((p, i) => (
                     <div
                       key={p.matchId}

@@ -334,7 +334,7 @@ app.get("/api/entrants/:id/trend", async (req: any, reply) => {
 
   // timeline games, chronological
   const games = (await sql`
-    select m.id, m.kickoff_utc ko, ht.name home, ht.tla hcode, at.name away, at.tla acode,
+    select m.id, m.kickoff_utc ko, m.stage, m.matchday, ht.name home, ht.tla hcode, at.name away, at.tla acode,
            m.home_goals hg, m.away_goals ag
     from matches m
     join teams ht on ht.id = m.home_team_id
@@ -342,6 +342,10 @@ app.get("/api/entrants/:id/trend", async (req: any, reply) => {
     where ${mf}
     order by m.kickoff_utc asc, m.id asc
   `) as any[];
+  // short phase label per game, used to draw the week/round breaks on the chart
+  const phaseLabel = (stage: string, md: number | null) =>
+    stage === "GROUP" ? `Week ${md}` : stage === "LAST_32" ? "R32" : stage === "LAST_16" ? "R16"
+    : stage === "LAST_8" ? "QF" : stage === "LAST_4" ? "SF" : stage === "FINAL" ? "Final" : stage;
   if (!games.length) return { scope, fieldSize: 0, points: [] };
 
   // every field entrant's points per timeline game (for the running cumulative + rank)
@@ -384,7 +388,7 @@ app.get("/api/entrants/:id/trend", async (req: any, reply) => {
     const bd = my.bd ?? {};
     const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
     out.push({
-      matchId: g.id, kickoff: g.ko,
+      matchId: g.id, kickoff: g.ko, phase: phaseLabel(g.stage, g.matchday),
       home: g.home, away: g.away, homeCode: g.hcode, awayCode: g.acode,
       hs: g.hg, as: g.ag, predHome: my.phg, predAway: my.pag,
       points: my.points, tier, cumulative: myCum, rank,

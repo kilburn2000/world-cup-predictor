@@ -27,6 +27,8 @@ export interface FormGame {
 export interface TrendPoint {
   matchId: number;
   kickoff: string;
+  /** short phase label (Week 1 / R32 / ...) - used to draw week/round breaks */
+  phase: string;
   home: string;
   away: string;
   homeCode: string;
