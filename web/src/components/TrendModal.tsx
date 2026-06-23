@@ -49,12 +49,12 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
 
   const pts = data?.points ?? [];
   const N = Math.max(1, data?.fieldSize ?? 1);
-  // Spread the games to fill the available width, but clamped: never tighter than
-  // a floor (so a long run - overall - stays tight and scrolls) nor wider than a
-  // ceiling (so a handful of games - a knockout group - don't stretch into huge
-  // gaps; the plot is centred instead).
+  // Spread the games to fill the available width, but clamped to [floor, ceiling]:
+  // a long run (overall) packs tight and scrolls; a sparse run (knockout, top
+  // scorer) sits left-aligned at a comfortable spacing and grows rightward as more
+  // games are played, rather than stretching to fill or bunching up.
   const avail = availW || 640;
-  const STEP = pts.length > 1 ? Math.min(50, Math.max(16, (avail - PAD_X * 2) / (pts.length - 1))) : 50;
+  const STEP = pts.length > 1 ? Math.min(52, Math.max(16, (avail - PAD_X * 2) / (pts.length - 1))) : 52;
   const yScale = H - PAD_TOP - PAD_BOT;
   const x = (i: number) => PAD_X + i * STEP;
   const y = (rank: number) => PAD_TOP + (N <= 1 ? yScale / 2 : ((rank - 1) / (N - 1)) * yScale);
@@ -109,7 +109,7 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
               </div>
               {/* scrollable plot */}
               <div ref={scrollRef} className="min-w-0 flex-1 overflow-x-auto pb-2 pr-5">
-                <div className="relative mx-auto" style={{ width: plotW, height: H }}>
+                <div className="relative" style={{ width: plotW, height: H }}>
                   <svg width={plotW} height={H} className="absolute inset-0">
                     {/* rank gridlines (10th / 20th / 30th etc.) */}
                     {ticks.map((r) => (
