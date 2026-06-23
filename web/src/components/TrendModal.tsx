@@ -7,8 +7,8 @@ import ScoredChips from "./ScoredChips.js";
 
 // Plot geometry. STEP is the horizontal gap between games (the plot scrolls
 // sideways once they don't fit); rank maps onto the vertical axis, 1st at top.
-const STEP = 22;
-const PAD_X = 18;
+const STEP = 16;
+const PAD_X = 14;
 const H = 240;
 const PAD_TOP = 22;
 const PAD_BOT = 22;
@@ -101,7 +101,7 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
                       const bx = (x(runs[k].end) + x(run.start)) / 2;
                       return <line key={run.start} x1={bx} y1={PAD_TOP - 8} x2={bx} y2={H - PAD_BOT + 8} stroke="rgba(201,168,106,0.55)" strokeDasharray="3 3" />;
                     })}
-                    <polyline points={line} fill="none" stroke="var(--color-gold)" strokeWidth={1.5} strokeOpacity={0.5} />
+                    <polyline points={line} fill="none" stroke="var(--color-gold)" strokeWidth={1.25} strokeOpacity={0.38} />
                   </svg>
                   {/* phase labels above each run (only when more than one phase) */}
                   {runs.length > 1 && runs.map((run) => (
@@ -115,7 +115,10 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
                       onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setTip({ p, x: r.left + r.width / 2, y: r.top }); }}
                       onMouseLeave={() => setTip(null)}
                     >
-                      <PointsPill points={p.points} tier={p.tier} compact />
+                      {/* solid backing so the chip reads on top of the trend line */}
+                      <span className="block rounded bg-pitch-900 ring-1 ring-pitch-900">
+                        <PointsPill points={p.points} tier={p.tier} compact />
+                      </span>
                     </div>
                   ))}
                 </div>
