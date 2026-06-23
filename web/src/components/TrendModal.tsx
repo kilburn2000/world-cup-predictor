@@ -7,8 +7,8 @@ import ScoredChips from "./ScoredChips.js";
 
 // Plot geometry. STEP is the horizontal gap between games (the plot scrolls
 // sideways once they don't fit); rank maps onto the vertical axis, 1st at top.
-const STEP = 46;
-const PAD_X = 28;
+const STEP = 30;
+const PAD_X = 22;
 const H = 240;
 const PAD_TOP = 22;
 const PAD_BOT = 22;
