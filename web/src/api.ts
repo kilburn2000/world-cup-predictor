@@ -35,12 +35,14 @@ export interface TrendPoint {
   awayCode: string;
   hs: number;
   as: number;
-  predHome: number;
-  predAway: number;
+  predHome: number | null;
+  predAway: number | null;
   points: number;
   tier: LiveTier | null;
   cumulative: number;
   rank: number;
+  /** Top Scorer trend: who scored that game (instead of a prediction). */
+  note?: string;
 }
 export interface TrendData {
   scope: string;

@@ -506,6 +506,7 @@ function TopScorers() {
   const { data: me } = useMe();
   const { data: phases } = usePhasesStarted();
   const myId = me?.entrantId;
+  const [trendFor, setTrendFor] = useState<{ id: number; name: string } | null>(null);
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the top scorer table.</p>;
   const list = data ?? [];
@@ -528,9 +529,7 @@ function TopScorers() {
             to={`/entrant/${e.entrantId}`}
             className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}
           >
-            <div className="text-center font-mono text-xs">
-              {label !== "=" && Number(label) <= 3 && e.total > 0 ? <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold/15 font-semibold text-gold">{label}</span> : <span className="text-muted">{label}</span>}
-            </div>
+            <RankCell label={label} top3={label !== "=" && Number(label) <= 3 && e.total > 0} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
             <div className="min-w-0">
               <div className={"flex items-center gap-1.5 text-[13.5px] " + (won(e) ? "text-gold" : "text-cream")}>
                 <span className="truncate">{e.name}</span>
@@ -554,6 +553,7 @@ function TopScorers() {
           );
         })}
       </div>
+      {trendFor && <TrendModal entrantId={trendFor.id} entrantName={trendFor.name} scope="topscorer" scopeLabel="Top Scorer" onClose={() => setTrendFor(null)} />}
     </>
   );
 }

@@ -307,3 +307,75 @@ export async function topScorerStandings() {
     order by total desc, e.name
   `;
 }
+
+// Top Scorer position trend: an entrant's rank by combined goals over time. Built
+// from the captured goal events (own goals excluded), attributed to tracked players
+// by surname + country - the same matching the feed totals use. One chip per game
+// in which the entrant's players scored; rank is across the whole field after each
+// scoring game.
+export async function topScorerTrend(entrantId: number) {
+  const [ent] = (await sql`select name from entrants where id = ${entrantId}`) as any[];
+  if (!ent) return null;
+  const players = ((await sql`select id, name, country from scorer_players`) as any[]).map((p) => ({
+    id: p.id, key: keyToken(p.name), wantCountry: CODE_TO_COUNTRY[p.country] as string | undefined,
+    display: p.name as string,
+  }));
+  const picks = (await sql`select entrant_id eid, player_id pid from scorer_picks`) as any[];
+  const entrantsByPlayer = new Map<number, number[]>();
+  for (const p of picks) (entrantsByPlayer.get(p.pid) ?? entrantsByPlayer.set(p.pid, []).get(p.pid)!).push(p.eid);
+  const myPlayers = new Set(picks.filter((p) => p.eid === entrantId).map((p) => p.pid));
+  const fieldSize = new Set(picks.map((p) => p.eid)).size;
+  const displayById = new Map(players.map((p) => [p.id, p.display]));
+
+  // every captured goal, chronological, with the scoring side's country to match on
+  const evs = (await sql`
+    select me.match_id mid, m.kickoff_utc ko, m.stage, m.matchday, me.team side, me.player,
+           ht.name hname, ht.tla hcode, at.name aname, at.tla acode, m.home_goals hg, m.away_goals ag
+    from match_events me
+    join matches m on m.id = me.match_id and m.status = 'FINISHED'
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    where me.type = 'goal' and coalesce(me.own, false) = false
+    order by m.kickoff_utc asc, m.id asc, me.minute asc
+  `) as any[];
+
+  const phaseLabel = (stage: string, md: number | null) =>
+    stage === "GROUP" ? `Week ${md}` : stage === "LAST_32" ? "R32" : stage === "LAST_16" ? "R16" : stage;
+
+  const cum = new Map<number, number>();
+  const out: any[] = [];
+  let gi = 0;
+  while (gi < evs.length) {
+    // collect all goal events for this game
+    const mid = evs[gi].mid;
+    const g = evs[gi];
+    const perEntrant = new Map<number, number>(); // goals this game per entrant
+    const myScorers = new Map<string, number>(); // clicked entrant's scorers this game
+    while (gi < evs.length && evs[gi].mid === mid) {
+      const e = evs[gi];
+      const country = e.side === "home" ? e.hname : e.aname;
+      const token = normName(e.player ?? "").split(" ");
+      for (const pl of players) {
+        if (!token.includes(pl.key)) continue;
+        if (pl.wantCountry && pl.wantCountry !== country) continue;
+        for (const eid of entrantsByPlayer.get(pl.id) ?? []) perEntrant.set(eid, (perEntrant.get(eid) ?? 0) + 1);
+        if (myPlayers.has(pl.id)) myScorers.set(displayById.get(pl.id)!, (myScorers.get(displayById.get(pl.id)!) ?? 0) + 1);
+      }
+      gi++;
+    }
+    for (const [eid, n] of perEntrant) cum.set(eid, (cum.get(eid) ?? 0) + n);
+    const mine = perEntrant.get(entrantId) ?? 0;
+    if (mine <= 0) continue; // only chip the games this entrant scored in
+    const myCum = cum.get(entrantId) ?? 0;
+    let rank = 1;
+    for (const [eid, c] of cum) if (eid !== entrantId && c > myCum) rank++;
+    out.push({
+      matchId: mid, kickoff: g.ko, phase: phaseLabel(g.stage, g.matchday),
+      home: g.hname, away: g.aname, homeCode: g.hcode, awayCode: g.acode,
+      hs: g.hg, as: g.ag, predHome: null, predAway: null,
+      points: mine, tier: "exact", cumulative: myCum, rank,
+      note: [...myScorers].map(([n, c]) => `${n}${c > 1 ? " ×" + c : ""}`).join(", "),
+    });
+  }
+  return { scope: "topscorer", entrant: ent.name, fieldSize, points: out };
+}

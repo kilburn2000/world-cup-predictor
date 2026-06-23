@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useEntrantTrend, type TrendPoint } from "../api.js";
 import { flagFor } from "../flags.js";
@@ -7,7 +7,6 @@ import ScoredChips from "./ScoredChips.js";
 
 // Plot geometry. STEP is the horizontal gap between games (the plot scrolls
 // sideways once they don't fit); rank maps onto the vertical axis, 1st at top.
-const STEP = 16;
 const PAD_X = 14;
 const H = 240;
 const PAD_TOP = 22;
@@ -27,6 +26,8 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
 }) {
   const { data, isLoading } = useEntrantTrend(entrantId, scope, true);
   const [tip, setTip] = useState<{ p: TrendPoint; x: number; y: number } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [availW, setAvailW] = useState(0);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -34,8 +35,24 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // Measure the visible plot area so the chart can fill it (and only scroll once
+  // there are too many games to fit at the minimum spacing).
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => setAvailW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [data]);
+
   const pts = data?.points ?? [];
   const N = Math.max(1, data?.fieldSize ?? 1);
+  // Spread the games to fill the available width, but never tighter than a floor
+  // (so a long run - the overall chart - stays tight and scrolls instead).
+  const avail = availW || 640;
+  const STEP = pts.length > 1 ? Math.max(16, (avail - PAD_X * 2) / (pts.length - 1)) : 60;
   const yScale = H - PAD_TOP - PAD_BOT;
   const x = (i: number) => PAD_X + i * STEP;
   const y = (rank: number) => PAD_TOP + (N <= 1 ? yScale / 2 : ((rank - 1) / (N - 1)) * yScale);
@@ -89,7 +106,7 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
                 ))}
               </div>
               {/* scrollable plot */}
-              <div className="overflow-x-auto pb-2 pr-5">
+              <div ref={scrollRef} className="min-w-0 flex-1 overflow-x-auto pb-2 pr-5">
                 <div className="relative" style={{ width: plotW, height: H }}>
                   <svg width={plotW} height={H} className="absolute inset-0">
                     {/* rank gridlines (10th / 20th / 30th etc.) */}
@@ -105,7 +122,7 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
                   </svg>
                   {/* phase labels above each run (only when more than one phase) */}
                   {runs.length > 1 && runs.map((run) => (
-                    <div key={run.start} className="absolute -translate-x-1/2 whitespace-nowrap text-[8px] uppercase tracking-[1px] text-muted" style={{ left: (x(run.start) + x(run.end)) / 2, top: 1 }}>{run.phase}</div>
+                    <div key={run.start} className="absolute -translate-x-1/2 whitespace-nowrap text-[8px] uppercase tracking-[1px] text-muted" style={{ left: Math.min(Math.max((x(run.start) + x(run.end)) / 2, 24), plotW - 24), top: 1 }}>{run.phase}</div>
                   ))}
                   {pts.map((p, i) => (
                     <div
@@ -135,9 +152,18 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
         <div className="pointer-events-none fixed z-[90]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
           <div className="flex flex-col items-center gap-1 rounded-lg border border-line bg-[#0f120e] px-2.5 py-2 shadow-xl">
             <span className="whitespace-nowrap font-mono text-[11px] text-cream">{flagFor(tip.p.home)} {tip.p.homeCode} v {tip.p.awayCode} {flagFor(tip.p.away)}</span>
-            <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {tip.p.predHome}-{tip.p.predAway} · Final {tip.p.hs}-{tip.p.as}</span>
-            <ScoredChips pick={`${tip.p.predHome}-${tip.p.predAway}`} hs={tip.p.hs} as={tip.p.as} homeCode={tip.p.homeCode} awayCode={tip.p.awayCode} />
-            <span className="whitespace-nowrap font-mono text-[10px] text-gold">{ordinal(tip.p.rank)} · {tip.p.cumulative} pts</span>
+            {tip.p.note != null ? (
+              <>
+                <span className="whitespace-nowrap font-mono text-[10px] text-muted">⚽ {tip.p.note} · Final {tip.p.hs}-{tip.p.as}</span>
+                <span className="whitespace-nowrap font-mono text-[10px] text-gold">{ordinal(tip.p.rank)} · {tip.p.cumulative} {tip.p.cumulative === 1 ? "goal" : "goals"}</span>
+              </>
+            ) : (
+              <>
+                <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {tip.p.predHome}-{tip.p.predAway} · Final {tip.p.hs}-{tip.p.as}</span>
+                <ScoredChips pick={`${tip.p.predHome}-${tip.p.predAway}`} hs={tip.p.hs} as={tip.p.as} homeCode={tip.p.homeCode} awayCode={tip.p.awayCode} />
+                <span className="whitespace-nowrap font-mono text-[10px] text-gold">{ordinal(tip.p.rank)} · {tip.p.cumulative} pts</span>
+              </>
+            )}
           </div>
         </div>,
         document.body,

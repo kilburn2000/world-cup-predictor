@@ -16,7 +16,7 @@ import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
 import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES } from "./wc.js";
-import { topScorerStandings, eventsForMatches, matchEvents } from "./scorers.js";
+import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
 import { REUPLOAD_2026_06_16 } from "./reupload_2026_06_16.js";
@@ -314,6 +314,11 @@ app.get("/api/entrants/:id/trend", async (req: any, reply) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return reply.code(400).send({ error: "Bad id" });
   const scope = String(req.query?.scope ?? "overall");
+  // Top Scorer ranks by goals, not prediction points - its own (goals) builder.
+  if (scope === "topscorer") {
+    const t = await topScorerTrend(id);
+    return t ?? reply.code(404).send({ error: "Unknown entrant" });
+  }
   const [ent] = await sql`select name, entrant_group grp from entrants where id = ${id}`;
   if (!ent) return reply.code(404).send({ error: "Unknown entrant" });
 
