@@ -3,9 +3,9 @@ import { flagFor } from "../flags.js";
 import LiveTabs from "../components/LiveTabs.js";
 
 function Row({ t, pos }: { t: WcStanding; pos: number }) {
-  const qualify = pos <= 2;
+  const qualify = t.qualified;
   return (
-    <div className="grid grid-cols-[22px_1fr_22px_22px_22px_22px_30px_34px] items-center gap-1 border-t border-line px-3 py-1.5 text-[12.5px] first:border-t-0">
+    <div className={"grid grid-cols-[22px_1fr_22px_22px_22px_22px_30px_34px] items-center gap-1 border-t border-line px-3 py-1.5 text-[12.5px] first:border-t-0" + (qualify ? " bg-gold/10" : "")}>
       <div className="font-mono text-[11px] text-muted">{pos}</div>
       <div className="flex min-w-0 items-center gap-1.5">
         <span>{flagFor(t.name)}</span>
@@ -50,12 +50,7 @@ export default function WCGroups() {
                 <div className="text-right">Pts</div>
               </div>
             </div>
-            {g.table.map((t, i) => (
-              <div key={t.teamId}>
-                <Row t={t} pos={i + 1} />
-                {i === 1 && <div className="border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
-              </div>
-            ))}
+            {g.table.map((t, i) => <Row key={t.teamId} t={t} pos={i + 1} />)}
           </div>
         ))}
       </div>

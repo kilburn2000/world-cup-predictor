@@ -103,9 +103,9 @@ export default function LiveTicker() {
     rows = liveGames;
     live = true;
   } else {
-    // Only games this entrant has actually predicted - in the knockouts they don't
-    // predict every round (their bracket starts at R16), so skip fixtures they have
-    // no pick for rather than showing a "next" game with no prediction.
+    // Keep the strip on a game this entrant actually has a pick for (in practice
+    // they predict every fixture, so this is a safety guard against showing a
+    // "next" game with no prediction attached).
     const upcoming = [...today, ...tomorrow]
       .filter((m) => m.status === "SCHEDULED" && m.myPick != null)
       .sort((a, b) => (a.kickoff ?? "").localeCompare(b.kickoff ?? ""));

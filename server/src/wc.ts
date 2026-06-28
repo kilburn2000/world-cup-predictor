@@ -1,4 +1,5 @@
 import { sql } from "./db/index.js";
+import { ANNEX_C } from "./annexC.js";
 
 // --- Group standings, computed from our own finished group matches ---
 export interface StandingRow {
@@ -13,6 +14,8 @@ export interface StandingRow {
   ga: number;
   gd: number;
   points: number;
+  /** through to the knockouts: top 2 of the group, or one of the 8 best third-placed teams. */
+  qualified: boolean;
 }
 
 export async function computeGroupStandings(): Promise<{ group: string; decided: boolean; table: StandingRow[] }[]> {
@@ -24,7 +27,7 @@ export async function computeGroupStandings(): Promise<{ group: string; decided:
   `;
   const stat = new Map<number, StandingRow & { grp: string }>();
   for (const t of teams as any[])
-    stat.set(t.id, { teamId: t.id, name: t.name, tla: t.tla, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0, grp: t.grp });
+    stat.set(t.id, { teamId: t.id, name: t.name, tla: t.tla, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0, qualified: false, grp: t.grp });
 
   for (const m of matches as any[]) {
     const H = stat.get(m.h);
@@ -43,16 +46,28 @@ export async function computeGroupStandings(): Promise<{ group: string; decided:
     if (!groups.has(s.grp)) groups.set(s.grp, []);
     groups.get(s.grp)!.push(s);
   }
-  return [...groups.keys()].sort().map((g) => {
-    const rows = groups.get(g)!.sort(
-      (a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name),
-    );
-    return {
-      group: g,
-      decided: rows.every((r) => r.played >= 3),
-      table: rows.map(({ grp, ...r }) => r),
-    };
+  // Sort each group and mark the top two as qualified.
+  const cmp = (a: StandingRow, b: StandingRow) =>
+    b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name);
+  const sortedGroups = [...groups.keys()].sort().map((g) => {
+    const rows = groups.get(g)!.sort(cmp);
+    rows.forEach((r, i) => { if (i < 2) r.qualified = true; });
+    return { group: g, rows };
   });
+
+  // The 8 best third-placed teams across all 12 groups also go through. FIFA ranks
+  // them by points, then goal difference, then goals scored, then disciplinary
+  // conduct and finally drawing of lots - we don't track conduct, so ties beyond
+  // goals scored fall back to name (rare, and the live R32 draw is authoritative).
+  const thirds = sortedGroups.map((g) => g.rows[2]).filter(Boolean);
+  thirds.sort(cmp);
+  thirds.slice(0, 8).forEach((t) => { t.qualified = true; });
+
+  return sortedGroups.map((g) => ({
+    group: g.group,
+    decided: g.rows.every((r) => r.played >= 3),
+    table: g.rows.map(({ grp, ...r }) => r),
+  }));
 }
 
 // --- Knockout bracket skeleton (2026 format, from Wikipedia) ---
@@ -210,6 +225,38 @@ const ALL_KO: { match: number; a: Src; b: Src }[] = [
   ...LATER.map(({ match, a, b }) => ({ match, a, b })),
 ];
 
+// The R32 match that hosts each group-winner-vs-third slot (winner -> match no).
+const WINNER_MATCH: Record<string, number> = { A: 79, B: 85, D: 81, E: 74, G: 82, I: 77, K: 87, L: 80 };
+
+// FIFA Annex C: work out which third-placed team fills each R32 third slot, from
+// the group standings. The 8 best third-placed teams qualify (marked .qualified),
+// and which winner each plays is a fixed published table (ANNEX_C), keyed by the
+// set of 8 qualifying groups. Only resolves once all 12 groups are decided and
+// exactly 8 thirds have qualified. Returns match-number -> the third-placed team.
+export function thirdSlotTeams(
+  standings: { group: string; decided: boolean; table: StandingRow[] }[],
+): Map<number, StandingRow> {
+  const out = new Map<number, StandingRow>();
+  if (!standings.every((g) => g.decided)) return out;
+  const thirdByGroup = new Map<string, StandingRow>();
+  const qualGroups: string[] = [];
+  for (const g of standings) {
+    const third = g.table[2];
+    if (!third) continue;
+    thirdByGroup.set(g.group, third);
+    if (third.qualified) qualGroups.push(g.group);
+  }
+  if (qualGroups.length !== 8) return out;
+  const alloc = ANNEX_C[qualGroups.slice().sort().join("")];
+  if (!alloc) return out;
+  for (const [winnerGroup, thirdGroup] of Object.entries(alloc)) {
+    const match = WINNER_MATCH[winnerGroup];
+    const team = thirdByGroup.get(thirdGroup);
+    if (match && team) out.set(match, team);
+  }
+  return out;
+}
+
 // Assign bracket slots and resolve actual teams into the knockout fixtures as
 // results come in. Deterministic + idempotent; safe to run on every recompute.
 //  - winner/runner-up sides resolve from our own group standings once a group is
@@ -217,10 +264,11 @@ const ALL_KO: { match: number; a: Src; b: Src }[] = [
 //  - "winner/loser of match N" sides resolve from that tie's actual result
 //    (explicit winner_team_id wins, else the higher score; a draw with no
 //    recorded winner - i.e. an un-entered shootout - stays unresolved);
-//  - third-placed sides are NOT touched here (admin assigns those, since FIFA's
-//    best-thirds slotting is a published lookup, not derivable from standings).
+//  - third-placed sides are auto-filled from FIFA's Annex C table (thirdSlotTeams)
+//    once all groups are decided, but ONLY when the slot is still empty - an
+//    already-assigned third (admin or real draw) is never overwritten.
 // Deterministic sides are owned by the resolver and overwritten/cleared to track
-// corrections; third sides are preserved.
+// corrections; third sides are filled-if-empty, then preserved.
 export async function resolveBracket(): Promise<void> {
   // 1. Ensure every knockout fixture carries its bracket slot.
   for (const { match } of ALL_KO) {
@@ -232,6 +280,8 @@ export async function resolveBracket(): Promise<void> {
   const standings = await computeGroupStandings();
   const pos = new Map<string, { winner?: StandingRow; runnerUp?: StandingRow; decided: boolean }>();
   for (const g of standings) pos.set(g.group, { winner: g.table[0], runnerUp: g.table[1], decided: g.decided });
+  // FIFA Annex C: which third-placed team belongs in each R32 third slot.
+  const thirds = thirdSlotTeams(standings);
 
   // 3. Knockout fixtures in memory, ascending so later rounds see resolved earlier ones.
   const ko = (await sql`
@@ -268,8 +318,10 @@ export async function resolveBracket(): Promise<void> {
     const src = bySrc.get(m.id);
     if (!src) continue;
     let h = m.home_team_id, a = m.away_team_id, changed = false;
-    if (src.a.type !== "third") { const v = resolveSrc(src.a); if (v !== m.home_team_id) { h = v; changed = true; } }
-    if (src.b.type !== "third") { const v = resolveSrc(src.b); if (v !== m.away_team_id) { a = v; changed = true; } }
+    if (src.a.type === "third") { const t = thirds.get(m.id); if (t && m.home_team_id == null) { h = t.teamId; changed = true; } }
+    else { const v = resolveSrc(src.a); if (v !== m.home_team_id) { h = v; changed = true; } }
+    if (src.b.type === "third") { const t = thirds.get(m.id); if (t && m.away_team_id == null) { a = t.teamId; changed = true; } }
+    else { const v = resolveSrc(src.b); if (v !== m.away_team_id) { a = v; changed = true; } }
     if (changed) {
       await sql`update matches set home_team_id = ${h}, away_team_id = ${a} where id = ${m.id}`;
       m.home_team_id = h; m.away_team_id = a; // keep fresh for downstream winnerOf
@@ -281,8 +333,9 @@ export async function buildKnockout() {
   const standings = await computeGroupStandings();
   const pos = new Map<string, { winner?: StandingRow; runnerUp?: StandingRow; decided: boolean }>();
   for (const g of standings) pos.set(g.group, { winner: g.table[0], runnerUp: g.table[1], decided: g.decided });
+  const thirds = thirdSlotTeams(standings);
 
-  const resolve = (s: Src) => {
+  const resolve = (s: Src, matchNo: number) => {
     if (s.type === "w") {
       const p = pos.get(s.g);
       // only reveal the team once the group is confirmed (fully played)
@@ -294,7 +347,7 @@ export async function buildKnockout() {
       const team = p?.decided ? p.runnerUp : undefined;
       return { label: `Runner-up ${s.g}`, team: team ? { name: team.name, tla: team.tla } : null, projected: false };
     }
-    if (s.type === "third") return { label: `3rd ${s.groups.join("/")}`, team: null, projected: false };
+    if (s.type === "third") { const t = thirds.get(matchNo); return { label: `3rd ${s.groups.join("/")}`, team: t ? { name: t.name, tla: t.tla } : null, projected: false }; }
     if (s.type === "ml") return { label: `Loser of match ${s.m}`, team: null, projected: false };
     if (s.type === "mw") return { label: `Winner of match ${s.m}`, team: null, projected: false };
     return { label: "TBD", team: null, projected: false };
@@ -302,8 +355,8 @@ export async function buildKnockout() {
 
   const withSched = (m: { match: number; a: Src; b: Src }) => ({
     match: m.match,
-    a: resolve(m.a),
-    b: resolve(m.b),
+    a: resolve(m.a, m.match),
+    b: resolve(m.b, m.match),
     kickoff: SCHEDULE[m.match]?.kickoff ?? null,
     venue: SCHEDULE[m.match]?.venue ?? null,
   });

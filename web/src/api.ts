@@ -555,6 +555,8 @@ export interface WcStanding {
   ga: number;
   gd: number;
   points: number;
+  /** through to the knockouts (top 2, or one of the 8 best third-placed teams). */
+  qualified: boolean;
 }
 export interface WcGroup {
   group: string;
