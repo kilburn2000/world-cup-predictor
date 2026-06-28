@@ -61,7 +61,20 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
         {m.myPick && (
           <span className="ml-1 flex items-center gap-2">
             <span className={"text-[8.5px] uppercase tracking-[1.5px] text-gold/80 " + (live ? "hidden sm:inline" : "inline")}>Your Prediction</span>
-            <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
+            {m.stage !== "GROUP" ? (
+              // Knockouts: show the matchup they predicted (can differ from the
+              // actual fixture), flags + FIFA codes either side of their score.
+              <span className="flex items-center gap-1.5">
+                <span>{flagFor(m.myPredHomeName ?? m.home)}</span>
+                <span className="font-mono text-[11px] text-muted">{m.myPredHomeCode ?? m.homeCode}</span>
+                <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
+                <span className="font-mono text-[11px] text-muted">{m.myPredAwayCode ?? m.awayCode}</span>
+                <span>{flagFor(m.myPredAwayName ?? m.away)}</span>
+              </span>
+            ) : (
+              // Group games: predicted teams are the fixture teams, so just the score.
+              <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
+            )}
             {live && (
               <>
                 <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
@@ -90,8 +103,11 @@ export default function LiveTicker() {
     rows = liveGames;
     live = true;
   } else {
+    // Only games this entrant has actually predicted - in the knockouts they don't
+    // predict every round (their bracket starts at R16), so skip fixtures they have
+    // no pick for rather than showing a "next" game with no prediction.
     const upcoming = [...today, ...tomorrow]
-      .filter((m) => m.status === "SCHEDULED")
+      .filter((m) => m.status === "SCHEDULED" && m.myPick != null)
       .sort((a, b) => (a.kickoff ?? "").localeCompare(b.kickoff ?? ""));
     const firstKick = upcoming[0]?.kickoff;
     rows = firstKick ? upcoming.filter((m) => m.kickoff === firstKick) : [];

@@ -481,6 +481,13 @@ export interface LiveMatch {
   myPick?: string | null;
   myPoints?: number | null;
   myTier?: LiveTier | null;
+  /** the teams the logged-in entrant predicted for this match (knockouts: their
+   *  bracket matchup, which can differ from the actual fixture; groups: the fixture
+   *  teams). null when they have no pick. */
+  myPredHomeCode?: string | null;
+  myPredAwayCode?: string | null;
+  myPredHomeName?: string | null;
+  myPredAwayName?: string | null;
   mostCommonScore?: string | null;
   mostCommonScoreCount?: number;
   mostCommonResult?: "HOME" | "DRAW" | "AWAY" | null;

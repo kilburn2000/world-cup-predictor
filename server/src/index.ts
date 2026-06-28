@@ -1079,6 +1079,13 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       myPick: mine?.pick ?? null,
       myPoints: mine?.points ?? null,
       myTier: mine?.tier ?? null,
+      // The teams they predicted: for a knockout slot that's their bracket matchup
+      // (can differ from the actual/projected fixture); for a group game it's just
+      // the fixture teams (you only predict the score there).
+      myPredHomeCode: mine ? (m.slot ? mine.predHome : m.home_code ?? null) : null,
+      myPredAwayCode: mine ? (m.slot ? mine.predAway : m.away_code ?? null) : null,
+      myPredHomeName: mine ? (m.slot ? mine.predHomeName : m.home ?? null) : null,
+      myPredAwayName: mine ? (m.slot ? mine.predAwayName : m.away ?? null) : null,
       home: m.home ?? projBySlot.get(m.slot)?.home ?? "TBD",
       away: m.away ?? projBySlot.get(m.slot)?.away ?? "TBD",
       homeCode: m.home_code ?? "",
