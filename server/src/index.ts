@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, resolveBracket } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -1469,6 +1469,16 @@ try {
   }
 } catch (e) {
   console.error("startup migration failed", e);
+}
+
+// Resolve the knockout bracket on boot so any third-placed teams confirmed by
+// already-played group results get written into their fixtures (state 2), even
+// if no result has changed since. On-result-change resolution still happens via
+// the poller's recomputeAll; this just backfills on startup.
+try {
+  await resolveBracket();
+} catch (e) {
+  console.error("startup bracket resolve failed", e);
 }
 
 await app.listen({ port: PORT, host: "0.0.0.0" });
