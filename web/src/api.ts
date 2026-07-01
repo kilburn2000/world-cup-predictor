@@ -275,7 +275,8 @@ export interface Wallchart {
     actualHome: string | null; actualAway: string | null;
     actualHomeCode: string | null; actualAwayCode: string | null;
     actualHomeScore: number | null; actualAwayScore: number | null;
-    homeCorrect: boolean; awayCorrect: boolean; scoreCorrect: boolean;
+    homeCorrect: boolean; awayCorrect: boolean;
+    homeGoalsCorrect: boolean; awayGoalsCorrect: boolean; scoreCorrect: boolean;
     status: string | null; points: number | null;
   }[];
   /** the entrant's predicted final group tables (same shape as /api/wc-groups). */

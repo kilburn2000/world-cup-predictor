@@ -64,10 +64,9 @@ export async function recomputeAll(): Promise<number> {
 
   // --- KNOCKOUTS: per-entrant positional scoring ---
   // Per tie:
-  //   +1 for each team in the correct position (home pick == actual home team,
-  //      and/or away pick == actual away team) - lands once the tie is drawn.
-  //   +5 for the exact scoreline (positional home/away goals), even if the teams
-  //      are wrong - lands once the tie finishes.
+  //   +1 for each team in the correct position (home/away pick == actual team).
+  //   +1 for each side's goal tally guessed right (positional) - but getting BOTH
+  //      right is the exact score, worth 5 (not 2).
   // Max 7 a tie. Each prediction is tied to its fixture PER ENTRANT (entrantSlotMap),
   // because the slot labels don't line up with the fixtures and two entrants can put
   // different-seeded ties under the same label.
@@ -95,10 +94,13 @@ export async function recomputeAll(): Promise<number> {
       const resolved = m.status === "FINISHED" && m.home_goals != null && m.away_goals != null;
       const homeTeam = p.ph === m.home_team_id;
       const awayTeam = p.pa === m.away_team_id;
-      const scoreRight = resolved && p.phg === m.home_goals && p.pag === m.away_goals;
-      const points = (homeTeam ? 1 : 0) + (awayTeam ? 1 : 0) + (scoreRight ? 5 : 0);
+      const homeGoals = resolved && p.phg === m.home_goals;
+      const awayGoals = resolved && p.pag === m.away_goals;
+      const exact = homeGoals && awayGoals;
+      const scoreline = exact ? 5 : (homeGoals ? 1 : 0) + (awayGoals ? 1 : 0);
+      const points = (homeTeam ? 1 : 0) + (awayTeam ? 1 : 0) + scoreline;
       const prev = best.get(matchNo);
-      if (!prev || points > prev.points) best.set(matchNo, { points, breakdown: { homeTeam, awayTeam, scoreline: scoreRight ? 5 : 0 } });
+      if (!prev || points > prev.points) best.set(matchNo, { points, breakdown: { homeTeam, awayTeam, homeGoals, awayGoals, exact } });
     }
     for (const [matchNo, b] of best) {
       await upsertScore(eid, "KNOCKOUT", `match:${matchNo}`, b.points, b.breakdown);

@@ -822,9 +822,12 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
         actualHome: fx?.home ?? null, actualAway: fx?.away ?? null,
         actualHomeCode: fx?.hcode ?? null, actualAwayCode: fx?.acode ?? null,
         actualHomeScore: live ? fx.hg : null, actualAwayScore: live ? fx.ag : null,
-        // whether the entrant got each team in the right position + the exact score.
+        // whether the entrant got each team in the right position, each side's goal
+        // tally, and the exact score.
         homeCorrect: !!(drawn && r.home === fx.home),
         awayCorrect: !!(drawn && r.away === fx.away),
+        homeGoalsCorrect: !!(live && r.phg === fx.hg),
+        awayGoalsCorrect: !!(live && r.pag === fx.ag),
         scoreCorrect: !!(live && r.phg === fx.hg && r.pag === fx.ag),
         status: fx?.status ?? null,
         points: sc ? sc.points : null,
