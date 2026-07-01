@@ -1,7 +1,7 @@
 import { useWallchart, useWcGroups, type WallchartMatch, type WcStanding } from "../api.js";
 import { flagFor } from "../flags.js";
 import ScoredChips from "./ScoredChips.js";
-import PointsPill from "./PointsPill.js";
+import PointsPill, { toneFor } from "./PointsPill.js";
 
 const MATCH_COLS = "grid grid-cols-[1fr_46px_1fr] items-center gap-1.5";
 const STANDING_COLS = "grid grid-cols-[18px_1fr_20px_20px_20px_20px_28px_30px] items-center gap-1 px-4 text-[11.5px]";
@@ -68,8 +68,8 @@ function tierOf(ph: number, pa: number, hs: number, as: number): "exact" | "resu
 //   "RSA 1" (if that team was placed right) or "(H) 1" (if not);  the exact score
 //   collapses both goal tallies into a single "Exact". Elements are "+"-joined,
 //   grouped by side; a red "N/A" when nothing scored. The points pill sits after.
-function KoOutcomeChip({ homeCode, awayCode, homeScore, awayScore, homeCorrect, awayCorrect, homeGoalsCorrect, awayGoalsCorrect }: {
-  homeCode: string | null; awayCode: string | null; homeScore: number | null; awayScore: number | null;
+function KoOutcomeChip({ points, homeCode, awayCode, homeScore, awayScore, homeCorrect, awayCorrect, homeGoalsCorrect, awayGoalsCorrect }: {
+  points: number; homeCode: string | null; awayCode: string | null; homeScore: number | null; awayScore: number | null;
   homeCorrect: boolean; awayCorrect: boolean; homeGoalsCorrect: boolean; awayGoalsCorrect: boolean;
 }) {
   const exact = homeGoalsCorrect && awayGoalsCorrect;
@@ -79,13 +79,10 @@ function KoOutcomeChip({ homeCode, awayCode, homeScore, awayScore, homeCorrect, 
   if (awayCorrect) parts.push(`${awayCode} ✓`);
   if (!exact && awayGoalsCorrect) parts.push(`${awayCorrect ? awayCode : "(A)"} ${awayScore}`);
   if (exact) parts.push("Exact");
-  const miss = parts.length === 0;
-  const style = miss
-    ? { background: "rgba(217,83,79,0.16)", color: "#e08a84" }
-    : { background: "rgba(107,191,134,0.16)", color: "#6bbf86" };
+  // Same colour as the points pill next to it (points determine it).
   return (
-    <span className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={style}>
-      {miss ? "N/A" : parts.join(" + ")}
+    <span className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={toneFor(points)}>
+      {parts.length === 0 ? "N/A" : parts.join(" + ")}
     </span>
   );
 }
@@ -211,6 +208,7 @@ export default function WallchartPredictions({ id, view = "all" }: { id: string 
                       {played && (
                         <>
                           <KoOutcomeChip
+                            points={k.points ?? 0}
                             homeCode={k.actualHomeCode} awayCode={k.actualAwayCode}
                             homeScore={k.actualHomeScore} awayScore={k.actualAwayScore}
                             homeCorrect={k.homeCorrect} awayCorrect={k.awayCorrect}

@@ -15,8 +15,9 @@ const TONE: Record<LiveTier, { bg: string; fg: string }> = {
 export const pillFg = (tier?: LiveTier | null) => (tier ? TONE[tier].fg : "#9db8e6");
 
 // Chip colour purely by points scored: 0 red, 1-4 yellow, 5+ green
-// (5 = a perfect group game, 6-7 = a perfect knockout tie).
-function toneFor(points: number) {
+// (5 = a perfect group game, 6-7 = a perfect knockout tie). Exported so a scoring
+// chip shown next to a points pill can take the exact same colour.
+export function toneFor(points: number) {
   if (points >= 5) return { bg: "rgba(107,191,134,0.16)", fg: "#6bbf86" }; // green
   if (points >= 1) return { bg: "rgba(227,197,88,0.16)", fg: "#e3c558" };  // yellow
   return { bg: "rgba(217,83,79,0.16)", fg: "#e08a84" };                    // red (0)
