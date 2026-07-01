@@ -59,16 +59,28 @@ export async function syncFromEspn(): Promise<number> {
       continue;
     }
     const [dbm] = await sql`
-      select id, home_team_id, away_team_id, home_goals, away_goals, status, result_overridden
+      select id, stage, home_team_id, away_team_id, home_goals, away_goals, status, winner_team_id, result_overridden
       from matches
       where (home_team_id = ${homeId} and away_team_id = ${awayId})
          or (home_team_id = ${awayId} and away_team_id = ${homeId})
       limit 1
     `;
-    // Lock a match once it's done WITH a recorded score - the result won't
+    if (!dbm || dbm.result_overridden) continue;
+    const locked = dbm.status === "FINISHED" && dbm.home_goals !== null;
+    // A finished knockout tie that's level can still gain a shootout winner after
+    // its score has locked - keep capturing that even when otherwise locked.
+    const needsWinner = locked && dbm.stage !== "GROUP" && dbm.home_goals === dbm.away_goals && dbm.winner_team_id == null;
+    if (needsWinner) {
+      if (m.winner) {
+        await sql`update matches set winner_team_id = ${m.winner === "home" ? homeId : awayId} where id = ${dbm.id}`;
+        changed++;
+      }
+      continue;
+    }
+    // Otherwise lock a match once it's done WITH a recorded score - the result won't
     // change. A FINISHED row with null goals is bad data (e.g. clobbered), so we
-    // still allow ESPN to correct it. Admin override always wins.
-    if (!dbm || dbm.result_overridden || (dbm.status === "FINISHED" && dbm.home_goals !== null)) continue;
+    // still allow ESPN to correct it.
+    if (locked) continue;
 
     const status = m.completed || m.state === "post" ? "FINISHED" : m.state === "in" ? "IN_PLAY" : "SCHEDULED";
     const playing = status === "IN_PLAY" || status === "FINISHED";
