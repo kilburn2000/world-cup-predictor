@@ -34,6 +34,18 @@ export async function recomputeAll(): Promise<number> {
   // ties as group + knockout results land) so the scoring below sees fresh teams.
   await resolveBracket();
 
+  // Derive the after-90-minutes score for finished knockout ties: the final score
+  // minus any goals scored in extra time (minute > 90). Knockouts are scored on the
+  // 90-minute result; the stored home_goals/away_goals remain the final score.
+  await sql`
+    update matches m set
+      home_goals_90 = m.home_goals - coalesce((select count(*) from match_events e
+        where e.match_id = m.id and e.type = 'goal' and e.team = 'home' and e.minute > 90), 0),
+      away_goals_90 = m.away_goals - coalesce((select count(*) from match_events e
+        where e.match_id = m.id and e.type = 'goal' and e.team = 'away' and e.minute > 90), 0)
+    where m.stage <> 'GROUP' and m.status = 'FINISHED' and m.home_goals is not null
+  `;
+
   // Full recompute: clear all scores first so stale rows (e.g. a result that was
   // reverted) don't linger.
   await sql`delete from scores`;
@@ -70,8 +82,12 @@ export async function recomputeAll(): Promise<number> {
   // Max 7 a tie. Each prediction is tied to its fixture PER ENTRANT (entrantSlotMap),
   // because the slot labels don't line up with the fixtures and two entrants can put
   // different-seeded ties under the same label.
+  // Score on the 90-minute result (coalesce to the final score for ties that never
+  // went to extra time, where the two are the same).
   const koFixtures = await sql`
-    select id, home_team_id, away_team_id, home_goals, away_goals, status
+    select id, home_team_id, away_team_id,
+           coalesce(home_goals_90, home_goals) home_goals,
+           coalesce(away_goals_90, away_goals) away_goals, status
     from matches where stage <> 'GROUP'
   `;
   const fixByMatch = new Map<number, any>((koFixtures as any[]).map((f) => [f.id, f]));

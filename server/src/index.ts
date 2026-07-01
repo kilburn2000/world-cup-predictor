@@ -794,7 +794,8 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
   // entrant's knockout points, so each predicted tie can show the real fixture,
   // score and what it scored.
   const koFixtures = await sql`
-    select m.id, m.status, m.home_goals hg, m.away_goals ag,
+    select m.id, m.status,
+           coalesce(m.home_goals_90, m.home_goals) hg, coalesce(m.away_goals_90, m.away_goals) ag,
            ht.name home, ht.tla hcode, at.name away, at.tla acode
     from matches m
     left join teams ht on ht.id = m.home_team_id
@@ -1463,6 +1464,10 @@ try {
   await sql`update teams set name = 'Bosnia' where name = 'Bosnia-Herzegovina'`;
   await sql`alter table match_events add column if not exists own boolean not null default false`;
   await sql`alter table match_events add column if not exists penalty boolean not null default false`;
+  // Knockout ties store the FINAL score (home_goals/away_goals, incl. extra time)
+  // for display; these hold the AFTER-90-MINUTES score, which is what scoring uses.
+  await sql`alter table matches add column if not exists home_goals_90 integer`;
+  await sql`alter table matches add column if not exists away_goals_90 integer`;
   // One-time: drop finished-match key events so the poller's backfill re-captures
   // them with the latest flags (own goal, penalty). Guarded so it runs only once.
   await sql`create table if not exists app_meta (key text primary key)`;
