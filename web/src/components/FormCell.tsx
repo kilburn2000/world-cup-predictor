@@ -35,6 +35,11 @@ export default function FormCell({ games, className = "hidden items-center justi
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
                 LIVE · {tip.g.hs}-{tip.g.as}
               </span>
+            ) : tip.g.predHomeCode ? (
+              // Knockout: show the teams the entrant predicted (flags + codes) too.
+              <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px] text-muted">
+                Pred <span>{flagFor(tip.g.predHomeTeam)}</span> {tip.g.predHomeCode} {tip.g.predHome}-{tip.g.predAway} {tip.g.predAwayCode} <span>{flagFor(tip.g.predAwayTeam)}</span> · Final {tip.g.hs}-{tip.g.as}
+              </span>
             ) : (
               <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway} · Final {tip.g.hs}-{tip.g.as}</span>
             )}

@@ -197,7 +197,7 @@ app.get("/api/leaderboard", async () => {
   // Carries enough to render a per-game tooltip: the fixture, their pick, the
   // actual score and what it scored on.
   const recent = (await sql`
-    select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko, m.stage, m.matchday,
+    select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko, m.stage, m.matchday, m.bracket_slot slot,
            ht.tla hcode, at.tla acode, ht.name hname, at.name aname, m.home_goals hg, m.away_goals ag,
            p.pred_home_goals phg, p.pred_away_goals pag
     from scores s
@@ -206,15 +206,36 @@ app.get("/api/leaderboard", async () => {
     join teams at on at.id = m.away_team_id
     left join predictions p on p.entrant_id = s.entrant_id and p.match_id = m.id and p.scope = 'MATCH'
   `) as any[];
+  // Knockout predictions are scope='SLOT' (not by match id), and their slot label
+  // differs from the fixture's, so index each entrant's SLOT picks - teams + score -
+  // to render the form tooltip for finished knockout games.
+  const slotPreds = (await sql`
+    select p.entrant_id eid, p.bracket_slot slot, ht.tla hcode, at.tla acode, ht.name hname, at.name aname,
+           p.pred_home_goals phg, p.pred_away_goals pag
+    from predictions p
+    join teams ht on ht.id = p.pred_home_team_id
+    join teams at on at.id = p.pred_away_team_id
+    where p.scope = 'SLOT'
+  `) as any[];
+  const slotByEntrant = new Map<number, Map<string, any>>();
+  for (const p of slotPreds) {
+    if (!slotByEntrant.has(p.eid)) slotByEntrant.set(p.eid, new Map());
+    slotByEntrant.get(p.eid)!.set(p.slot, p);
+  }
   const mkGame = (x: any) => {
     const bd = x.bd ?? {};
     const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
+    // Knockout: pull the entrant's own predicted teams + score for this tie via the
+    // slot mapping, so the form tooltip shows what they actually predicted.
+    const ko = x.stage !== "GROUP" ? slotByEntrant.get(x.eid)?.get(FIXTURE_SLOT_TO_PRED_SLOT[x.slot] ?? x.slot) : null;
     return {
       points: x.pts, tier,
       home: x.hcode, away: x.acode,
       homeName: x.hname, awayName: x.aname,
       hs: x.hg, as: x.ag,
-      predHome: x.phg, predAway: x.pag,
+      predHome: ko ? ko.phg : x.phg, predAway: ko ? ko.pag : x.pag,
+      predHomeCode: ko ? ko.hcode : null, predAwayCode: ko ? ko.acode : null,
+      predHomeTeam: ko ? ko.hname : null, predAwayTeam: ko ? ko.aname : null,
     };
   };
   // Which standings phase a finished game belongs to (mirrors the week/r32/r16 tabs).

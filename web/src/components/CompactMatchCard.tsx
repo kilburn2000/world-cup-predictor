@@ -188,7 +188,12 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-line px-4 py-2 text-[12.5px]">
           <span className="text-[9px] uppercase tracking-wide text-muted">Your prediction</span>
           {mine?.predHome ? (
-            koPick(mine)
+            <>
+              {koPick(mine)}
+              {(m.status === "FINISHED" || m.status === "IN_PLAY") && m.myPoints != null && (
+                <PointsPill points={m.myPoints} tier={m.myTier} />
+              )}
+            </>
           ) : (
             <>
               <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>

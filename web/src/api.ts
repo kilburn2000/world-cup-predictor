@@ -19,6 +19,11 @@ export interface FormGame {
   as: number;
   predHome: number;
   predAway: number;
+  /** knockout only: the teams the entrant predicted for this tie (code + name). */
+  predHomeCode?: string | null;
+  predAwayCode?: string | null;
+  predHomeTeam?: string | null;
+  predAwayTeam?: string | null;
   /** true when this is the match currently in play (provisional points so far) */
   live?: boolean;
 }
