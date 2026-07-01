@@ -479,7 +479,7 @@ function EntrantGroups() {
 
 // One player in a knockout tie: name + their points for that round, greened +
 // ticked when they won the tie (once the round is decided), muted when they lost.
-function TiePlayer({ p, winnerId, decided, myId }: { p: EntrantKoTie["a"]; winnerId: number | null; decided: boolean; myId?: number | null }) {
+function TiePlayer({ p, winnerId, decided, started, myId }: { p: EntrantKoTie["a"]; winnerId: number | null; decided: boolean; started: boolean; myId?: number | null }) {
   const won = decided && p != null && winnerId === p.id;
   const lost = decided && p != null && winnerId != null && winnerId !== p.id;
   return (
@@ -491,7 +491,8 @@ function TiePlayer({ p, winnerId, decided, myId }: { p: EntrantKoTie["a"]; winne
         {won && <span className="shrink-0 text-gold" title="Through to the next round">▶</span>}
         {p && p.id === myId && <YouBadge />}
       </span>
-      {p && <span className="shrink-0 font-mono text-[12px]">{p.points}</span>}
+      {/* no score shown until the round has actually kicked off */}
+      {p && <span className="shrink-0 font-mono text-[12px]">{started ? p.points : "–"}</span>}
     </div>
   );
 }
@@ -514,8 +515,8 @@ function EntrantBracket() {
           <div className="px-4 py-1">
             {r.ties.map((t, i) => (
               <div key={i} className="border-t border-line py-1.5 first:border-t-0">
-                <TiePlayer p={t.a} winnerId={t.winnerId} decided={t.decided} myId={me?.entrantId} />
-                <TiePlayer p={t.b} winnerId={t.winnerId} decided={t.decided} myId={me?.entrantId} />
+                <TiePlayer p={t.a} winnerId={t.winnerId} decided={t.decided} started={r.started} myId={me?.entrantId} />
+                <TiePlayer p={t.b} winnerId={t.winnerId} decided={t.decided} started={r.started} myId={me?.entrantId} />
               </div>
             ))}
           </div>

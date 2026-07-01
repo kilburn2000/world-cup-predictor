@@ -107,8 +107,11 @@ export async function recomputeAll(): Promise<number> {
       const m = fixByMatch.get(matchNo);
       if (!m || m.home_team_id == null || m.away_team_id == null) continue; // tie not drawn yet
       const resolved = m.status === "FINISHED" && m.home_goals != null && m.away_goals != null;
-      const homeTeam = p.ph === m.home_team_id;
-      const awayTeam = p.pa === m.away_team_id;
+      // Only score once the tie is actually being played - a drawn-but-not-kicked-off
+      // knockout tie must NOT hand out team-position points (no phantom pre-match lead).
+      const playing = m.status === "IN_PLAY" || m.status === "FINISHED";
+      const homeTeam = playing && p.ph === m.home_team_id;
+      const awayTeam = playing && p.pa === m.away_team_id;
       const sl = resolved ? scoreGroupMatch(p.phg, p.pag, m.home_goals, m.away_goals, cfg) : null;
       const points = (homeTeam ? cfg.knockoutTeam : 0) + (awayTeam ? cfg.knockoutTeam : 0) + (sl ? sl.points : 0);
       const prev = best.get(matchNo);

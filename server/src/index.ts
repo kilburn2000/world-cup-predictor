@@ -577,6 +577,21 @@ app.get("/api/stats", async () => {
 });
 
 // Knockout competition group tables: each entrant is scored ONLY on their own
+// Entrant-group ties that were settled arbitrarily on the day (a nominated match's
+// scores), which the usual overall-total tiebreak can't reproduce. Hardcoded winner
+// beats loser whenever they're level on group points. [winnerName, loserName].
+const GROUP_TIEBREAK: [string, string][] = [
+  ["[redacted]", "[redacted]"],
+  ["[redacted]", "[redacted]"],
+];
+const groupTieOverride = (aName: string, bName: string): number => {
+  for (const [w, l] of GROUP_TIEBREAK) {
+    if (aName === w && bName === l) return -1;
+    if (aName === l && bName === w) return 1;
+  }
+  return 0;
+};
+
 // World Cup group's fixtures (entrant Group A ⇒ WC Group A games, etc.), split by
 // matchday (Week 1/2/3) + total. Ranked by total; top 2 qualify.
 app.get("/api/groups", async () => {
@@ -691,7 +706,7 @@ app.get("/api/groups", async () => {
     .map((group) => {
       const entrants = byGroup
         .get(group)!
-        .sort((a, b) => knockoutGroupKey(b.total, b.overallTotal) - knockoutGroupKey(a.total, a.overallTotal) || a.name.localeCompare(b.name))
+        .sort((a, b) => (b.total - a.total) || groupTieOverride(a.name, b.name) || knockoutGroupKey(b.total, b.overallTotal) - knockoutGroupKey(a.total, a.overallTotal) || a.name.localeCompare(b.name))
         .map((e, i) => ({ ...e, rank: i + 1, qualifying: i < 2 }));
       return { group, entrants };
     });
@@ -745,7 +760,7 @@ app.get("/api/entrant-knockout", async () => {
   for (const r of rows) { if (!byGroup.has(r.grp)) byGroup.set(r.grp, []); byGroup.get(r.grp)!.push(r); }
   const seed = new Map<string, any>();
   for (const [g, arr] of byGroup) {
-    arr.sort((a, b) => b.grp_pts - a.grp_pts || b.overall - a.overall || a.name.localeCompare(b.name));
+    arr.sort((a, b) => b.grp_pts - a.grp_pts || groupTieOverride(a.name, b.name) || b.overall - a.overall || a.name.localeCompare(b.name));
     if (arr[0]) seed.set(`W-${g}`, arr[0]);
     if (arr[1]) seed.set(`RU-${g}`, arr[1]);
   }
