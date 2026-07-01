@@ -158,8 +158,8 @@ app.get("/api/leaderboard", async () => {
            coalesce(sum(case when m.stage = 'GROUP' and m.matchday = 3 then s.points end), 0)::int as week3,
            coalesce(sum(case when m.stage = 'LAST_32' then s.points end), 0)::int as r32,
            coalesce(sum(case when m.stage = 'LAST_16' then s.points end), 0)::int as r16,
-           coalesce(sum(case when m.stage = 'GROUP' and coalesce((s.breakdown->>'exact')::boolean, false) then 1 else 0 end), 0)::int as "exactCount",
-           coalesce(sum(case when coalesce((s.breakdown->>'outcome')::boolean, false) then 1 else 0 end), 0)::int as "resultCount",
+           coalesce(sum(case when coalesce((s.breakdown->>'exact')::boolean, false) or coalesce((s.breakdown->'scoreline'->>'exact')::boolean, false) then 1 else 0 end), 0)::int as "exactCount",
+           coalesce(sum(case when coalesce((s.breakdown->>'outcome')::boolean, false) or coalesce((s.breakdown->'scoreline'->>'outcome')::boolean, false) then 1 else 0 end), 0)::int as "resultCount",
            coalesce(sum(s.points), 0)::int as total
     from entrants e
     left join scores s on s.entrant_id = e.id
@@ -272,8 +272,10 @@ app.get("/api/leaderboard", async () => {
       (byPhase[ph] = byPhase[ph] ?? []).push(x);
       const st = (statsByPhase[ph] = statsByPhase[ph] ?? { exact: 0, result: 0 });
       const bd = x.bd ?? {};
-      if (bd.exact) st.exact++;
-      if (bd.outcome) st.result++;
+      // group games flag exact/outcome at the top level; knockout games nest them
+      // under scoreline (the correct SCORE regardless of the teams) - count both.
+      if (bd.exact || bd.scoreline?.exact) st.exact++;
+      if (bd.outcome || bd.scoreline?.outcome) st.result++;
     }
     r.formByPhase = Object.fromEntries(Object.entries(byPhase).map(([k, v]) => [k, v.slice(-5).map(mkGame)]));
     // Live game also belongs to its week's form column (week1/2/3).
