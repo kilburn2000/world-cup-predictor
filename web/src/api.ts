@@ -162,6 +162,10 @@ export interface PhasesStarted {
   week3Done: boolean;
   r32Done: boolean;
   r16Done: boolean;
+  /** raw "a game in this round has kicked off" (unlike r32/r16 which also count the
+   *  previous round finishing) - so a round prize stays empty until it's played. */
+  r32Started: boolean;
+  r16Started: boolean;
   done: boolean;
   /** The current "football day" (YYYY-MM-DD, host/Pacific date) - rolls over when
    *  the day's last game ends, not at midnight. Anchors Yesterday/Today/Tomorrow. */

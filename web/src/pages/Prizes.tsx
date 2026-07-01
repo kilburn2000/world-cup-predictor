@@ -185,7 +185,11 @@ export default function Prizes() {
       <div className="grid gap-3 sm:grid-cols-2">
         {PHASE_PRIZES.map((p) => {
           const won = !!phases?.[DONE_FLAG[p.field]];
-          const leaders = p.field === "knockout" ? [] : weeklyLeaders(p.field);
+          // A knockout round can accrue team-position points once its ties are drawn
+          // (before the round is played), so gate its prize on the round actually
+          // having kicked off - not just the previous round finishing.
+          const startedRaw = p.field === "r32" ? !!phases?.r32Started : p.field === "r16" ? !!phases?.r16Started : true;
+          const leaders = p.field === "knockout" || !startedRaw ? [] : weeklyLeaders(p.field);
           const share = leaders.length ? p.amount / leaders.length : p.amount;
           const holder =
             p.field === "knockout" ? "Not decided yet" : leaders.length ? holderText(leaders) : "Not played yet";

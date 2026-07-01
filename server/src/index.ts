@@ -323,6 +323,8 @@ app.get("/api/phases", async () => {
       w3_done as "week3Done",
       r32_done as "r32Done",
       r16_done as "r16Done",
+      r32_started as "r32Started",
+      r16_started as "r16Started",
       all_done as done,
       to_char(${CURRENT_DAY}, 'YYYY-MM-DD') as "currentDay"
     from p
