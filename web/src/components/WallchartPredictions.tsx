@@ -68,17 +68,26 @@ function tierOf(ph: number, pa: number, hs: number, as: number): "exact" | "resu
 //   "RSA 1" (if that team was placed right) or "(H) 1" (if not);  the exact score
 //   collapses both goal tallies into a single "Exact". Elements are "+"-joined,
 //   grouped by side; a red "N/A" when nothing scored. The points pill sits after.
-function KoOutcomeChip({ points, homeCode, awayCode, homeScore, awayScore, homeCorrect, awayCorrect, homeGoalsCorrect, awayGoalsCorrect }: {
-  points: number; homeCode: string | null; awayCode: string | null; homeScore: number | null; awayScore: number | null;
-  homeCorrect: boolean; awayCorrect: boolean; homeGoalsCorrect: boolean; awayGoalsCorrect: boolean;
+function KoOutcomeChip({ points, homeCode, awayCode, predHome, predAway, actualHome, actualAway, homeCorrect, awayCorrect }: {
+  points: number; homeCode: string | null; awayCode: string | null;
+  predHome: number; predAway: number; actualHome: number | null; actualAway: number | null;
+  homeCorrect: boolean; awayCorrect: boolean;
 }) {
-  const exact = homeGoalsCorrect && awayGoalsCorrect;
   const parts: string[] = [];
   if (homeCorrect) parts.push(`${homeCode} ✓`);
-  if (!exact && homeGoalsCorrect) parts.push(`${homeCorrect ? homeCode : "(H)"} ${homeScore}`);
   if (awayCorrect) parts.push(`${awayCode} ✓`);
-  if (!exact && awayGoalsCorrect) parts.push(`${awayCorrect ? awayCode : "(A)"} ${awayScore}`);
-  if (exact) parts.push("Exact");
+  if (actualHome != null && actualAway != null) {
+    const hgOk = predHome === actualHome, agOk = predAway === actualAway;
+    if (hgOk && agOk) {
+      parts.push("Exact");
+    } else {
+      // RES (correct result), or RES (D) when it's a correctly-called draw.
+      if (Math.sign(predHome - predAway) === Math.sign(actualHome - actualAway)) parts.push(actualHome === actualAway ? "RES (D)" : "RES");
+      // a side's goal tally: the team's FIFA code if they placed it right, else the side.
+      if (hgOk) parts.push(`${homeCorrect ? homeCode : "(H)"} ${actualHome}`);
+      if (agOk) parts.push(`${awayCorrect ? awayCode : "(A)"} ${actualAway}`);
+    }
+  }
   // Same colour as the points pill next to it (points determine it).
   const t = toneFor(points);
   return (
@@ -211,9 +220,9 @@ export default function WallchartPredictions({ id, view = "all" }: { id: string 
                           <KoOutcomeChip
                             points={k.points ?? 0}
                             homeCode={k.actualHomeCode} awayCode={k.actualAwayCode}
-                            homeScore={k.actualHomeScore} awayScore={k.actualAwayScore}
+                            predHome={k.predHome} predAway={k.predAway}
+                            actualHome={k.actualHomeScore} actualAway={k.actualAwayScore}
                             homeCorrect={k.homeCorrect} awayCorrect={k.awayCorrect}
-                            homeGoalsCorrect={k.homeGoalsCorrect} awayGoalsCorrect={k.awayGoalsCorrect}
                           />
                           {k.points != null && <PointsPill points={k.points} />}
                         </>

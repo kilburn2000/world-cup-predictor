@@ -75,13 +75,12 @@ export async function recomputeAll(): Promise<number> {
   }
 
   // --- KNOCKOUTS: per-entrant positional scoring ---
-  // Per tie:
-  //   +1 for each team in the correct position (home/away pick == actual team).
-  //   +1 for each side's goal tally guessed right (positional) - but getting BOTH
-  //      right is the exact score, worth 5 (not 2).
-  // Max 7 a tie. Each prediction is tied to its fixture PER ENTRANT (entrantSlotMap),
-  // because the slot labels don't line up with the fixtures and two entrants can put
-  // different-seeded ties under the same label.
+  // Per tie (on the 90-minute result):
+  //   +knockoutTeam for each team in the correct position (home/away pick == actual).
+  //   + the scoreline points from scoreGroupMatch (RES / RES(D) for a called draw /
+  //     each team's goal tally / exact bonus), applied whatever the teams were.
+  // Max 7 a tie (2 positions + 5 scoreline). Each prediction is tied to its fixture
+  // PER ENTRANT (entrantSlotMap), since slot labels don't line up with the fixtures.
   // Score on the 90-minute result (coalesce to the final score for ties that never
   // went to extra time, where the two are the same).
   const koFixtures = await sql`
@@ -110,13 +109,10 @@ export async function recomputeAll(): Promise<number> {
       const resolved = m.status === "FINISHED" && m.home_goals != null && m.away_goals != null;
       const homeTeam = p.ph === m.home_team_id;
       const awayTeam = p.pa === m.away_team_id;
-      const homeGoals = resolved && p.phg === m.home_goals;
-      const awayGoals = resolved && p.pag === m.away_goals;
-      const exact = homeGoals && awayGoals;
-      const scoreline = exact ? 5 : (homeGoals ? 1 : 0) + (awayGoals ? 1 : 0);
-      const points = (homeTeam ? 1 : 0) + (awayTeam ? 1 : 0) + scoreline;
+      const sl = resolved ? scoreGroupMatch(p.phg, p.pag, m.home_goals, m.away_goals, cfg) : null;
+      const points = (homeTeam ? cfg.knockoutTeam : 0) + (awayTeam ? cfg.knockoutTeam : 0) + (sl ? sl.points : 0);
       const prev = best.get(matchNo);
-      if (!prev || points > prev.points) best.set(matchNo, { points, breakdown: { homeTeam, awayTeam, homeGoals, awayGoals, exact } });
+      if (!prev || points > prev.points) best.set(matchNo, { points, breakdown: { homeTeam, awayTeam, scoreline: sl } });
     }
     for (const [matchNo, b] of best) {
       await upsertScore(eid, "KNOCKOUT", `match:${matchNo}`, b.points, b.breakdown);
