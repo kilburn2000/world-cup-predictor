@@ -1,7 +1,8 @@
 import { useWallchart, useWcGroups, type WallchartMatch, type WcStanding } from "../api.js";
 import { flagFor } from "../flags.js";
 import ScoredChips from "./ScoredChips.js";
-import PointsPill, { toneFor } from "./PointsPill.js";
+import PointsPill from "./PointsPill.js";
+import KoOutcomeChip from "./KoOutcomeChip.js";
 
 const MATCH_COLS = "grid grid-cols-[1fr_46px_1fr] items-center gap-1.5";
 const STANDING_COLS = "grid grid-cols-[18px_1fr_20px_20px_20px_20px_28px_30px] items-center gap-1 px-4 text-[11.5px]";
@@ -61,40 +62,6 @@ function tierOf(ph: number, pa: number, hs: number, as: number): "exact" | "resu
   if (Math.sign(ph - pa) === Math.sign(hs - as)) return "result";
   if (ph === hs || pa === as) return "diff";
   return "miss";
-}
-
-// Knockout outcome chip, built from what the prediction scored (90-min result):
-//   team in the right position -> "RSA ✓";  a side's goal tally right ->
-//   "RSA 1" (if that team was placed right) or "(H) 1" (if not);  the exact score
-//   collapses both goal tallies into a single "Exact". Elements are "+"-joined,
-//   grouped by side; a red "N/A" when nothing scored. The points pill sits after.
-function KoOutcomeChip({ points, homeCode, awayCode, predHome, predAway, actualHome, actualAway, homeCorrect, awayCorrect }: {
-  points: number; homeCode: string | null; awayCode: string | null;
-  predHome: number; predAway: number; actualHome: number | null; actualAway: number | null;
-  homeCorrect: boolean; awayCorrect: boolean;
-}) {
-  const parts: string[] = [];
-  if (homeCorrect) parts.push(`${homeCode} ✓`);
-  if (awayCorrect) parts.push(`${awayCode} ✓`);
-  if (actualHome != null && actualAway != null) {
-    const hgOk = predHome === actualHome, agOk = predAway === actualAway;
-    if (hgOk && agOk) {
-      parts.push("Exact");
-    } else {
-      // RES (correct result), or RES (D) when it's a correctly-called draw.
-      if (Math.sign(predHome - predAway) === Math.sign(actualHome - actualAway)) parts.push(actualHome === actualAway ? "RES (D)" : "RES");
-      // a side's goal tally: the team's FIFA code if they placed it right, else the side.
-      if (hgOk) parts.push(`${homeCorrect ? homeCode : "(H)"} ${actualHome}`);
-      if (agOk) parts.push(`${awayCorrect ? awayCode : "(A)"} ${actualAway}`);
-    }
-  }
-  // Same colour as the points pill next to it (points determine it).
-  const t = toneFor(points);
-  return (
-    <span className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={{ background: t.bg, color: t.fg }}>
-      {parts.length === 0 ? "N/A" : parts.join(" + ")}
-    </span>
-  );
 }
 
 function MatchRow({ m }: { m: WallchartMatch }) {

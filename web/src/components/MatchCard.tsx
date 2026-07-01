@@ -4,6 +4,7 @@ import { flagFor } from "../flags.js";
 import { venueMeta } from "../venues.js";
 import { useMe } from "../auth.js";
 import ScoredChips from "./ScoredChips.js";
+import KoOutcomeChip from "./KoOutcomeChip.js";
 import PointsPill from "./PointsPill.js";
 
 const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold">You</span>;
@@ -239,7 +240,12 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
               {koPick(mine)}
               {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
                 <>
-                  <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+                  <KoOutcomeChip
+                    points={m.myPoints ?? 0} homeCode={m.homeCode} awayCode={m.awayCode}
+                    predHome={Number(m.myPick.split("-")[0])} predAway={Number(m.myPick.split("-")[1])}
+                    actualHome={m.homeScore} actualAway={m.awayScore}
+                    homeCorrect={mine.predHomeName === m.home} awayCorrect={mine.predAwayName === m.away}
+                  />
                   {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
                 </>
               )}
@@ -338,7 +344,20 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
                       gap-1 between items, with a wider score->chip gap (mr-1.5). */}
                   <div className="flex items-center justify-end gap-1 whitespace-nowrap font-mono text-[13px] text-cream">
                     {b.predHome ? (
-                      koPick(b)
+                      <>
+                        {koPick(b)}
+                        {b.points != null && (
+                          <>
+                            <KoOutcomeChip
+                              points={b.points} homeCode={m.homeCode} awayCode={m.awayCode}
+                              predHome={Number(b.pick.split("-")[0])} predAway={Number(b.pick.split("-")[1])}
+                              actualHome={m.homeScore} actualAway={m.awayScore}
+                              homeCorrect={b.predHomeName === m.home} awayCorrect={b.predAwayName === m.away}
+                            />
+                            <PointsPill points={b.points} tier={b.tier} />
+                          </>
+                        )}
+                      </>
                     ) : (
                       <>
                     <span className={b.points != null ? "mr-1.5" : ""}>{b.pick.replace("-", "–")}</span>

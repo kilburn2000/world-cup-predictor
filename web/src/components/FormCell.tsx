@@ -4,6 +4,7 @@ import { type FormGame } from "../api.js";
 import { flagFor } from "../flags.js";
 import PointsPill, { pillFg } from "./PointsPill.js";
 import ScoredChips from "./ScoredChips.js";
+import KoOutcomeChip from "./KoOutcomeChip.js";
 
 // A row of colour-coded points chips for an entrant's recent games (one per game,
 // oldest first). Hovering a chip pops a tooltip (portal'd to body so a card's
@@ -43,7 +44,19 @@ export default function FormCell({ games, className = "hidden items-center justi
             ) : (
               <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway} · Final {tip.g.hs}-{tip.g.as}</span>
             )}
-            <ScoredChips pick={`${tip.g.predHome}-${tip.g.predAway}`} hs={tip.g.hs} as={tip.g.as} homeCode={tip.g.home} awayCode={tip.g.away} />
+            <span className="flex items-center gap-1">
+              {tip.g.predHomeCode ? (
+                <KoOutcomeChip
+                  points={tip.g.points} homeCode={tip.g.home} awayCode={tip.g.away}
+                  predHome={tip.g.predHome} predAway={tip.g.predAway}
+                  actualHome={tip.g.hs} actualAway={tip.g.as}
+                  homeCorrect={tip.g.predHomeTeam === tip.g.homeName} awayCorrect={tip.g.predAwayTeam === tip.g.awayName}
+                />
+              ) : (
+                <ScoredChips pick={`${tip.g.predHome}-${tip.g.predAway}`} hs={tip.g.hs} as={tip.g.as} homeCode={tip.g.home} awayCode={tip.g.away} />
+              )}
+              <PointsPill points={tip.g.points} tier={tip.g.tier} />
+            </span>
           </div>
         </div>,
         document.body,

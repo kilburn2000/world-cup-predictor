@@ -1032,6 +1032,11 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       join teams at on at.id = p.pred_away_team_id
       where p.scope = 'SLOT'
     `;
+    // Stored knockout scores (the one source of truth for points) keyed by
+    // matchNo:entrantId, so every board reads the same points, not a fresh calc.
+    const koScoreRows = await sql`select entrant_id eid, ref, points from scores where kind = 'KNOCKOUT'`;
+    const koPoints = new Map<string, number>();
+    for (const s of koScoreRows as any[]) koPoints.set(`${s.ref.split(":")[1]}:${s.eid}`, s.points);
     // Each entrant's bracket, so a drawn tie can show who they advanced (on pens):
     // the team that reappears in the slot this one feeds into.
     const bySlotByEntrant = new Map<number, Map<string, any>>();
@@ -1066,7 +1071,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       p.matchNo = slotMaps.get(p.eid)?.get(p.slot);
       if (p.matchNo == null) continue;
       const arr = koBoardByMatch.get(p.matchNo) ?? [];
-      arr.push({ entrantId: p.eid, name: p.name, pick: `${p.phg}-${p.pag}`, predHome: p.phome, predAway: p.paway, predHomeName: p.phomename, predAwayName: p.pawayname, penSide, points: null, tier: null });
+      arr.push({ entrantId: p.eid, name: p.name, pick: `${p.phg}-${p.pag}`, predHome: p.phome, predAway: p.paway, predHomeName: p.phomename, predAwayName: p.pawayname, penSide, points: koPoints.get(`${p.matchNo}:${p.eid}`) ?? null, tier: null });
       koBoardByMatch.set(p.matchNo, arr);
     }
     for (const arr of koBoardByMatch.values()) arr.sort((a, b) => a.name.localeCompare(b.name));

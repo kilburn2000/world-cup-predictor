@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, useFixtures, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame, type LiveMatch } from "../api.js";
+import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, useFixtures, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame, type LiveMatch, type LiveBoardRow } from "../api.js";
 import { standingKey, knockoutGroupKey } from "@wc/shared";
 import TabSelect from "../components/TabSelect.js";
 import ScoredChips from "../components/ScoredChips.js";
 import PointsPill from "../components/PointsPill.js";
+import KoOutcomeChip from "../components/KoOutcomeChip.js";
 import FormCell from "../components/FormCell.js";
 import TrendModal from "../components/TrendModal.js";
 import { flagFor } from "../flags.js";
@@ -73,7 +74,16 @@ function LiveLine({ g }: { g: LiveGame }) {
       ) : (
         <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
       )}
-      <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
+      {ko ? (
+        <KoOutcomeChip
+          points={g.points} homeCode={g.homeCode} awayCode={g.awayCode}
+          predHome={Number(g.pick.split("-")[0])} predAway={Number(g.pick.split("-")[1])}
+          actualHome={g.hs} actualAway={g.as}
+          homeCorrect={g.predHomeName === g.home} awayCorrect={g.predAwayName === g.away}
+        />
+      ) : (
+        <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
+      )}
       <PointsPill points={g.points} tier={g.tier} />
     </span>
   );
@@ -100,7 +110,19 @@ function LiveTip({ tip }: { tip: { g: LiveGame; x: number; y: number } }) {
         ) : (
           <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {g.pick.replace("-", "–")}</span>
         )}
-        <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
+        <span className="flex items-center gap-1">
+          {g.stage !== "GROUP" && g.predHome ? (
+            <KoOutcomeChip
+              points={g.points} homeCode={g.homeCode} awayCode={g.awayCode}
+              predHome={Number(g.pick.split("-")[0])} predAway={Number(g.pick.split("-")[1])}
+              actualHome={g.hs} actualAway={g.as}
+              homeCorrect={g.predHomeName === g.home} awayCorrect={g.predAwayName === g.away}
+            />
+          ) : (
+            <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
+          )}
+          <PointsPill points={g.points} tier={g.tier} />
+        </span>
       </div>
     </div>,
     document.body,
@@ -207,7 +229,7 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
   );
 }
 
-function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextPick, onOpenTrend }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextPick?: string; onOpenTrend: () => void }) {
+function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, nextStage, onOpenTrend }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextRow?: LiveBoardRow; nextStage?: string; onOpenTrend: () => void }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
@@ -219,7 +241,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextPick,
         {e.entrantId === myId && <YouBadge />}
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
       </div>
-      {showPred && (anyLive ? <LiveCell games={liveGames} /> : <NextPredCell pick={nextPick} />)}
+      {showPred && (anyLive ? <LiveCell games={liveGames} /> : <NextPredCell row={nextRow} stage={nextStage} />)}
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
       <FormCell games={e.last5 ?? []} className="hidden items-center justify-center gap-0.5 sm:flex" />
@@ -247,19 +269,32 @@ const SUB_ROW = "col-span-full grid grid-cols-subgrid items-center gap-x-5 px-4"
 // The next not-yet-started fixture matching a scope (earliest kickoff) + each
 // entrant's predicted score for it, for the "Next Prediction" column shown when
 // nothing's live. Picks come straight off the fixture's board.
-function nextPredFor(fixtures: LiveMatch[] | undefined, scope: (m: LiveMatch) => boolean): { game: LiveMatch; picks: Map<number, string> } | null {
+function nextPredFor(fixtures: LiveMatch[] | undefined, scope: (m: LiveMatch) => boolean): { game: LiveMatch; picks: Map<number, LiveBoardRow> } | null {
   const game = (fixtures ?? [])
     .filter((m) => m.status === "SCHEDULED" && m.kickoff && scope(m))
     .sort((a, b) => ((a.kickoff ?? "") < (b.kickoff ?? "") ? -1 : 1))[0];
   if (!game) return null;
-  const picks = new Map<number, string>();
-  for (const b of game.board ?? []) picks.set(b.entrantId, b.pick);
+  const picks = new Map<number, LiveBoardRow>();
+  for (const b of game.board ?? []) picks.set(b.entrantId, b);
   return { game, picks };
 }
 
-// One entrant's predicted score for the next game.
-function NextPredCell({ pick }: { pick?: string }) {
-  return <div className="text-center font-mono text-[12px] text-cream">{pick ? pick.replace("-", "–") : <span className="text-muted">–</span>}</div>;
+// One entrant's prediction for the next game: their score, and for a knockout tie
+// the teams they predicted too (flags + FIFA codes), since the matchup can differ.
+function NextPredCell({ row, stage }: { row?: LiveBoardRow; stage?: string }) {
+  if (!row) return <div className="text-center"><span className="text-muted">–</span></div>;
+  if (stage && stage !== "GROUP" && row.predHome) {
+    return (
+      <div className="flex items-center justify-center gap-1 font-mono text-[10px]">
+        <span>{flagFor(row.predHomeName)}</span>
+        <span className="text-muted">{row.predHome}{row.penSide === "home" ? "(p)" : ""}</span>
+        <span className="text-cream">{row.pick.replace("-", "–")}</span>
+        <span className="text-muted">{row.predAway}{row.penSide === "away" ? "(p)" : ""}</span>
+        <span>{flagFor(row.predAwayName)}</span>
+      </div>
+    );
+  }
+  return <div className="text-center font-mono text-[12px] text-cream">{row.pick.replace("-", "–")}</div>;
 }
 
 // A strip above a standings table flagging that a game is currently being scored,
@@ -368,7 +403,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
-              {showPred && (anyLive ? <LiveCell games={liveGames} /> : <NextPredCell pick={next!.picks.get(e.entrantId)} />)}
+              {showPred && (anyLive ? <LiveCell games={liveGames} /> : <NextPredCell row={next!.picks.get(e.entrantId)} stage={next!.game.stage} />)}
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
               <FormCell games={e.last5 ?? []} />
@@ -424,7 +459,7 @@ function Knockout() {
               </div>
               {g.entrants.map((e, i) => (
                 <Fragment key={e.entrantId}>
-                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextPick={next?.picks.get(e.entrantId)} onOpenTrend={() => setTrendFor({ id: e.entrantId, name: e.name, group: g.group })} />
+                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextRow={next?.picks.get(e.entrantId)} nextStage={next?.game.stage} onOpenTrend={() => setTrendFor({ id: e.entrantId, name: e.name, group: g.group })} />
                   {i === 1 && <div className="col-span-full border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
                 </Fragment>
               ))}
@@ -508,7 +543,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
             </div>
-            {showPred && (anyLive ? <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} /> : <NextPredCell pick={next!.picks.get(e.entrantId)} />)}
+            {showPred && (anyLive ? <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} /> : <NextPredCell row={next!.picks.get(e.entrantId)} stage={next!.game.stage} />)}
             <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.exact ?? 0}</div>
             <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.result ?? 0}</div>
             <FormCell games={e.formByPhase?.[phase] ?? []} />
