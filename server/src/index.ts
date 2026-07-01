@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, FIXTURE_SLOT_TO_PRED_SLOT, entrantSlotMap, predictedGroupStandings } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, FIXTURE_SLOT_TO_PRED_SLOT, entrantSlotMap, allEntrantSlotMaps, predictedGroupStandings } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -197,7 +197,7 @@ app.get("/api/leaderboard", async () => {
   // Carries enough to render a per-game tooltip: the fixture, their pick, the
   // actual score and what it scored on.
   const recent = (await sql`
-    select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko, m.stage, m.matchday, m.bracket_slot slot,
+    select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko, m.stage, m.matchday, m.bracket_slot slot, m.id "matchId",
            ht.tla hcode, at.tla acode, ht.name hname, at.name aname, m.home_goals hg, m.away_goals ag,
            p.pred_home_goals phg, p.pred_away_goals pag
     from scores s
@@ -217,17 +217,23 @@ app.get("/api/leaderboard", async () => {
     join teams at on at.id = p.pred_away_team_id
     where p.scope = 'SLOT'
   `) as any[];
-  const slotByEntrant = new Map<number, Map<string, any>>();
+  // Index each entrant's SLOT picks by the FIXTURE (FIFA match number) they map to,
+  // using the SAME per-entrant mapping the bracket uses - so the form tooltip and the
+  // predicted-bracket tab are one source of truth.
+  const slotMaps = await allEntrantSlotMaps();
+  const koByEntrant = new Map<number, Map<number, any>>();
   for (const p of slotPreds) {
-    if (!slotByEntrant.has(p.eid)) slotByEntrant.set(p.eid, new Map());
-    slotByEntrant.get(p.eid)!.set(p.slot, p);
+    const matchNo = slotMaps.get(p.eid)?.get(p.slot);
+    if (matchNo == null) continue;
+    if (!koByEntrant.has(p.eid)) koByEntrant.set(p.eid, new Map());
+    koByEntrant.get(p.eid)!.set(matchNo, p);
   }
   const mkGame = (x: any) => {
     const bd = x.bd ?? {};
     const tier = bd.exact ? "exact" : bd.outcome ? "result" : bd.homeGoals || bd.awayGoals ? "diff" : "miss";
-    // Knockout: pull the entrant's own predicted teams + score for this tie via the
-    // slot mapping, so the form tooltip shows what they actually predicted.
-    const ko = x.stage !== "GROUP" ? slotByEntrant.get(x.eid)?.get(FIXTURE_SLOT_TO_PRED_SLOT[x.slot] ?? x.slot) : null;
+    // Knockout: the entrant's own predicted teams + score for THIS fixture, matched
+    // by the per-entrant slot->fixture mapping (not the raw slot label).
+    const ko = x.stage !== "GROUP" ? koByEntrant.get(x.eid)?.get(x.matchId) : null;
     return {
       points: x.pts, tier,
       home: x.hcode, away: x.acode,

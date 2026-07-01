@@ -329,29 +329,14 @@ for (const m of LATER) {
 const FEED_PARENT: Record<number, number> = {};
 for (const [parent, [a, b]] of Object.entries(MATCH_FEED)) { FEED_PARENT[a] = +parent; FEED_PARENT[b] = +parent; }
 
-// Per-entrant map from their knockout slot labels to the actual FIFA match number
-// each tie corresponds to. The slot LABELS don't line up with the fixtures, AND
-// two entrants can put different-seeded ties under the same label - so this must be
-// per-entrant. Each R32 tie is pinned by the group-winner/runner-up seeds of the
-// teams they placed there; later rounds propagate by which slots feed which.
-export async function entrantSlotMap(entrantId: number, teams?: TeamRow[]): Promise<Map<string, number>> {
-  const standings = await predictedGroupStandings(entrantId, teams);
-  const seed = new Map<number, string>();
-  for (const g of standings) {
-    if (g.table[0]) seed.set(g.table[0].teamId, `W-${g.group}`);
-    if (g.table[1]) seed.set(g.table[1].teamId, `RU-${g.group}`);
-  }
-  const sp = (await sql`
-    select bracket_slot slot, pred_home_team_id ph, pred_away_team_id pa
-    from predictions where scope = 'SLOT' and entrant_id = ${entrantId}
-  `) as any[];
-  const teamsBySlot = new Map<string, [number, number]>();
-  for (const r of sp) teamsBySlot.set(r.slot, [r.ph, r.pa]);
-
+// The pure core (no DB): given an entrant's team seeds and the teams they placed in
+// each slot, map every slot label to the actual FIFA match number. Shared so the
+// single-entrant and batched forms - and every caller - use ONE source of truth.
+//   - Each R32 tie is pinned by a single group-winner/runner-up seed of the teams
+//     placed (each seed is in exactly one fixture); prefer a winner (the home side).
+//   - Later rounds propagate: trace one team of the tie back to its fixture's feed.
+function slotMapCore(seed: Map<number, string>, teamsBySlot: Map<string, [number, number]>): Map<string, number> {
   const out = new Map<string, number>();
-  // R32: pin each tie to a fixture from the seeds of the teams the entrant placed.
-  // A single winner/runner-up seed is enough (each is in exactly one fixture); prefer
-  // a group winner, who is the home side of their fixture, to keep home/away orientation.
   for (const [slot, [ph, pa]] of teamsBySlot) {
     if (!slot.startsWith("R32")) continue;
     const seeds = [seed.get(ph), seed.get(pa)].filter(Boolean) as string[];
@@ -359,8 +344,6 @@ export async function entrantSlotMap(entrantId: number, teams?: TeamRow[]): Prom
     const match = chosen ? SEED_TO_MATCH[chosen] : undefined;
     if (match !== undefined) out.set(slot, match);
   }
-  // R16 -> Final: each of a tie's teams is the winner of an earlier tie; trace ONE
-  // of them back to its fixture and that fixture's feed pins this tie's fixture.
   for (const [parentPre, childPre] of [["R16", "R32"], ["QF", "R16"], ["SF", "QF"], ["FINAL", "SF"]] as const) {
     const parents = [...teamsBySlot.keys()].filter((s) => (parentPre === "FINAL" ? s === "FINAL" : s.startsWith(parentPre)));
     const children = [...teamsBySlot.keys()].filter((s) => s.startsWith(childPre));
@@ -374,6 +357,48 @@ export async function entrantSlotMap(entrantId: number, teams?: TeamRow[]): Prom
     }
   }
   if (teamsBySlot.has("THIRD")) out.set("THIRD", 103);
+  return out;
+}
+
+const seedsFromStandings = (standings: GroupTable[]): Map<number, string> => {
+  const seed = new Map<number, string>();
+  for (const g of standings) {
+    if (g.table[0]) seed.set(g.table[0].teamId, `W-${g.group}`);
+    if (g.table[1]) seed.set(g.table[1].teamId, `RU-${g.group}`);
+  }
+  return seed;
+};
+
+// One entrant's slot-label -> FIFA match number map.
+export async function entrantSlotMap(entrantId: number, teams?: TeamRow[]): Promise<Map<string, number>> {
+  const seed = seedsFromStandings(await predictedGroupStandings(entrantId, teams));
+  const sp = (await sql`
+    select bracket_slot slot, pred_home_team_id ph, pred_away_team_id pa
+    from predictions where scope = 'SLOT' and entrant_id = ${entrantId}
+  `) as any[];
+  const teamsBySlot = new Map<string, [number, number]>(sp.map((r) => [r.slot, [r.ph, r.pa]]));
+  return slotMapCore(seed, teamsBySlot);
+}
+
+// Every entrant's slot map, computed from 3 bulk queries (not 2 per entrant) - for
+// endpoints that need the mapping for everyone at once (e.g. the form column).
+export async function allEntrantSlotMaps(): Promise<Map<number, Map<string, number>>> {
+  const teams = await teamsByGroup();
+  const mp = (await sql`
+    select p.entrant_id eid, p.pred_home_team_id h, p.pred_away_team_id a, p.pred_home_goals hg, p.pred_away_goals ag
+    from predictions p join matches m on m.id = p.match_id
+    where p.scope = 'MATCH' and m.stage = 'GROUP' and p.pred_home_team_id is not null and p.pred_away_team_id is not null
+  `) as any[];
+  const sp = (await sql`select entrant_id eid, bracket_slot slot, pred_home_team_id ph, pred_away_team_id pa from predictions where scope = 'SLOT'`) as any[];
+  const results = new Map<number, ResultRow[]>();
+  for (const r of mp) (results.get(r.eid) ?? results.set(r.eid, []).get(r.eid)!).push({ h: r.h, a: r.a, hg: r.hg, ag: r.ag });
+  const slots = new Map<number, Map<string, [number, number]>>();
+  for (const r of sp) (slots.get(r.eid) ?? slots.set(r.eid, new Map()).get(r.eid)!).set(r.slot, [r.ph, r.pa]);
+  const out = new Map<number, Map<string, number>>();
+  for (const [eid, teamsBySlot] of slots) {
+    const seed = seedsFromStandings(rankGroups(teams, results.get(eid) ?? []));
+    out.set(eid, slotMapCore(seed, teamsBySlot));
+  }
   return out;
 }
 
