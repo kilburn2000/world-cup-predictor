@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, useFixtures, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame, type LiveMatch, type LiveBoardRow } from "../api.js";
+import { useGroups, useLeaderboard, useStats, useConsensus, usePhasesStarted, useTopScorer, useLiveMatches, useFixtures, useEntrantKnockout, type GroupEntrant, type StatLeader, type Consensus, type LiveTier, type FormGame, type LiveMatch, type LiveBoardRow, type EntrantKoTie } from "../api.js";
 import { standingKey, knockoutGroupKey } from "@wc/shared";
 import TabSelect from "../components/TabSelect.js";
 import ScoredChips from "../components/ScoredChips.js";
@@ -420,7 +420,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   );
 }
 
-function Knockout() {
+function EntrantGroups() {
   const { data, isLoading, error } = useGroups();
   const { data: me } = useMe();
   const { data: fixtures } = useFixtures();
@@ -473,6 +473,77 @@ function Knockout() {
         })}
       </div>
       {trendFor && <TrendModal entrantId={trendFor.id} entrantName={trendFor.name} scope="knockout" scopeLabel={`Knockout · Group ${trendFor.group}`} onClose={() => setTrendFor(null)} />}
+    </>
+  );
+}
+
+// One player in a knockout tie: name + their points for that round, greened +
+// ticked when they won the tie (once the round is decided), muted when they lost.
+function TiePlayer({ p, winnerId, decided, myId }: { p: EntrantKoTie["a"]; winnerId: number | null; decided: boolean; myId?: number | null }) {
+  const won = decided && p != null && winnerId === p.id;
+  const lost = decided && p != null && winnerId != null && winnerId !== p.id;
+  return (
+    <div className={"flex items-center justify-between gap-2 py-0.5 text-[13px] " + (won ? "text-gold" : lost ? "text-muted" : "text-cream")}>
+      <span className="flex min-w-0 items-center gap-1.5">
+        {p ? (
+          <Link to={`/entrant/${p.id}`} className={"truncate hover:underline " + (won ? "font-medium" : "")}>{p.name}</Link>
+        ) : <span className="text-muted">TBD</span>}
+        {won && <span className="shrink-0 text-gold" title="Through to the next round">▶</span>}
+        {p && p.id === myId && <YouBadge />}
+      </span>
+      {p && <span className="shrink-0 font-mono text-[12px]">{p.points}</span>}
+    </div>
+  );
+}
+
+function EntrantBracket() {
+  const { data, isLoading } = useEntrantKnockout();
+  const { data: me } = useMe();
+  if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
+  if (!data?.qualified) return <p className="text-[13px] text-muted">The knockout bracket is seeded once the group stage finishes - the top two of each entrant group go through.</p>;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {data.rounds.map((r) => (
+        <div key={r.round} className="fl-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+            <span className="font-display text-sm text-cream">{r.label}</span>
+            {r.decided ? <span className="text-[9px] uppercase tracking-wide text-gold">Decided</span>
+              : r.started ? <span className="text-[9px] uppercase tracking-wide text-[#d9534f]">In progress</span>
+              : <span className="text-[9px] uppercase tracking-wide text-muted">Not started</span>}
+          </div>
+          <div className="px-4 py-1">
+            {r.ties.map((t, i) => (
+              <div key={i} className="border-t border-line py-1.5 first:border-t-0">
+                <TiePlayer p={t.a} winnerId={t.winnerId} decided={t.decided} myId={me?.entrantId} />
+                <TiePlayer p={t.b} winnerId={t.winnerId} decided={t.decided} myId={me?.entrantId} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// The Knockout competition: the entrant group stage, then (once the groups finish)
+// the player-vs-player bracket. A sub-toggle switches between the two phases.
+function Knockout() {
+  const { data: ko } = useEntrantKnockout();
+  const [phase, setPhase] = useState<"group" | "bracket" | null>(null);
+  const qualified = !!ko?.qualified;
+  const bracketBegun = !!ko?.rounds?.[0]?.started; // WC Round of 16 has kicked off
+  const eff = phase ?? (qualified && bracketBegun ? "bracket" : "group");
+  const pill = (active: boolean) =>
+    "rounded-lg px-3.5 py-1.5 text-sm transition-colors " + (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
+  return (
+    <>
+      {qualified && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          <button className={pill(eff === "group")} onClick={() => setPhase("group")}>Group Stage</button>
+          <button className={pill(eff === "bracket")} onClick={() => setPhase("bracket")}>Knockout Bracket</button>
+        </div>
+      )}
+      {eff === "bracket" ? <EntrantBracket /> : <EntrantGroups />}
     </>
   );
 }

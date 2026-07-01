@@ -697,6 +697,85 @@ app.get("/api/groups", async () => {
     });
 });
 
+// The ENTRANT knockout bracket: the top 2 of each of the 8 entrant groups (16
+// qualifiers) play a player-vs-player bracket alongside the real WC knockout rounds.
+// Each tie is won by whoever scores the most in THAT WC round (tie-break: higher
+// overall total). Computed on the fly - no persisted bracket.
+const KO_ROUNDS = [
+  { round: "R16", stage: "LAST_16", label: "Round of 16" },
+  { round: "QF", stage: "QF", label: "Quarter-finals" },
+  { round: "SF", stage: "SF", label: "Semi-finals" },
+  { round: "FINAL", stage: "FINAL", label: "Final" },
+] as const;
+// R16 seeding by group seed: winner of A v runner-up of B, runner-up of A v winner of B, ...
+const KO_R16_SEEDS: [string, string][] = [
+  ["W-A", "RU-B"], ["RU-A", "W-B"], ["W-C", "RU-D"], ["RU-C", "W-D"],
+  ["W-E", "RU-F"], ["RU-E", "W-F"], ["W-G", "RU-H"], ["RU-G", "W-H"],
+];
+
+app.get("/api/entrant-knockout", async () => {
+  const rows = (await sql`
+    select e.id eid, e.name, e.entrant_group grp,
+      coalesce(sum(case when m.stage = 'GROUP' and m.group_name = e.entrant_group then s.points end), 0)::int as grp_pts,
+      coalesce(sum(s.points), 0)::int as overall
+    from entrants e
+    left join scores s on s.entrant_id = e.id
+    left join matches m on m.id = split_part(s.ref, ':', 2)::int
+    where e.entrant_group is not null
+    group by e.id, e.name, e.entrant_group
+  `) as any[];
+  const stageRows = (await sql`
+    select s.entrant_id eid, m.stage, coalesce(sum(s.points), 0)::int pts
+    from scores s join matches m on m.id = split_part(s.ref, ':', 2)::int
+    where m.stage in ('LAST_16', 'QF', 'SF', 'FINAL')
+    group by s.entrant_id, m.stage
+  `) as any[];
+  const stagePts = new Map<string, number>();
+  for (const r of stageRows) stagePts.set(`${r.eid}:${r.stage}`, r.pts);
+  const stageStatus = (await sql`
+    select stage, coalesce(bool_and(status = 'FINISHED'), false) done, coalesce(bool_or(status <> 'SCHEDULED'), false) started
+    from matches where stage in ('LAST_16', 'QF', 'SF', 'FINAL') group by stage
+  `) as any[];
+  const doneOf = new Map<string, boolean>(), startedOf = new Map<string, boolean>();
+  for (const r of stageStatus) { doneOf.set(r.stage, r.done); startedOf.set(r.stage, r.started); }
+  const [{ d: groupsDecided } = { d: false }] = (await sql`select coalesce(bool_and(status = 'FINISHED'), false) d from matches where stage = 'GROUP'`) as any[];
+
+  // Group winner / runner-up (WC-group-games points, then overall, then name).
+  const byGroup = new Map<string, any[]>();
+  for (const r of rows) { if (!byGroup.has(r.grp)) byGroup.set(r.grp, []); byGroup.get(r.grp)!.push(r); }
+  const seed = new Map<string, any>();
+  for (const [g, arr] of byGroup) {
+    arr.sort((a, b) => b.grp_pts - a.grp_pts || b.overall - a.overall || a.name.localeCompare(b.name));
+    if (arr[0]) seed.set(`W-${g}`, arr[0]);
+    if (arr[1]) seed.set(`RU-${g}`, arr[1]);
+  }
+
+  const player = (r: any, stage: string) => (r ? { id: r.eid, name: r.name, points: stagePts.get(`${r.eid}:${stage}`) ?? 0 } : null);
+  const winnerRow = (aRow: any, bRow: any, stage: string, decided: boolean): any => {
+    if (!aRow || !bRow || !decided) return null;
+    const ap = stagePts.get(`${aRow.eid}:${stage}`) ?? 0, bp = stagePts.get(`${bRow.eid}:${stage}`) ?? 0;
+    if (ap !== bp) return ap > bp ? aRow : bRow;
+    return aRow.overall >= bRow.overall ? aRow : bRow; // tie-break: higher overall total
+  };
+
+  let prev: any[] = [];
+  const roundsOut: any[] = [];
+  for (let ri = 0; ri < KO_ROUNDS.length; ri++) {
+    const { round, stage, label } = KO_ROUNDS[ri];
+    const decided = !!doneOf.get(stage);
+    const pairs: [any, any][] = ri === 0
+      ? KO_R16_SEEDS.map(([h, aw]) => [seed.get(h), seed.get(aw)])
+      : prev.reduce((acc: [any, any][], _, i) => (i % 2 === 0 ? [...acc, [prev[i], prev[i + 1]]] : acc), []);
+    const ties = pairs.map(([aRow, bRow]) => {
+      const w = winnerRow(aRow, bRow, stage, decided);
+      return { a: player(aRow, stage), b: player(bRow, stage), winnerId: w ? w.eid : null, decided };
+    });
+    prev = pairs.map(([aRow, bRow]) => winnerRow(aRow, bRow, stage, decided));
+    roundsOut.push({ round, label, stage, started: !!startedOf.get(stage), decided, ties });
+  }
+  return { qualified: groupsDecided, rounds: roundsOut };
+});
+
 // One entrant's predictions + per-ref points.
 app.get("/api/entrants/:id", async (req: any) => {
   const id = Number(req.params.id);

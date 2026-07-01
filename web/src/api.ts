@@ -138,6 +138,14 @@ export const useGroups = () => {
   return demo ? ({ ...q, data: demo, isLoading: false, isError: false, error: null } as typeof q) : q;
 };
 
+// The entrant player-vs-player knockout bracket (16 group qualifiers).
+export interface EntrantKoPlayer { id: number; name: string; points: number }
+export interface EntrantKoTie { a: EntrantKoPlayer | null; b: EntrantKoPlayer | null; winnerId: number | null; decided: boolean }
+export interface EntrantKoRound { round: string; label: string; stage: string; started: boolean; decided: boolean; ties: EntrantKoTie[] }
+export interface EntrantKnockout { qualified: boolean; rounds: EntrantKoRound[] }
+export const useEntrantKnockout = () =>
+  useQuery({ queryKey: ["entrant-knockout"], queryFn: () => get<EntrantKnockout>("/api/entrant-knockout"), refetchInterval: 30_000 });
+
 export interface Consensus {
   name: string;
   week1: number;
