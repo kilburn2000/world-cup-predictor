@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, resolveBracket } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, resolveBracket, FIXTURE_SLOT_TO_PRED_SLOT } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -1052,8 +1052,9 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       if (scored) board.sort((a, b) => (b.points ?? 0) - (a.points ?? 0) || a.name.localeCompare(b.name));
       else board.sort((a, b) => a.name.localeCompare(b.name));
     } else if (m.slot) {
-      // knockout: everyone's bracket pick for this slot (predicted teams + score)
-      board = koBoardBySlot.get(m.slot) ?? [];
+      // knockout: everyone's bracket pick for this slot (predicted teams + score).
+      // Predictions use a different slot numbering than fixtures, so map first.
+      board = koBoardBySlot.get(FIXTURE_SLOT_TO_PRED_SLOT[m.slot] ?? m.slot) ?? [];
     }
 
     // attach ESPN minute/events, aligning event side to our home/away
@@ -1071,7 +1072,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       period = liveNow ? enrich.espn.period : null;
     }
 
-    const koMc = koMcBySlot.get(m.slot);
+    const koMc = koMcBySlot.get(FIXTURE_SLOT_TO_PRED_SLOT[m.slot] ?? m.slot);
     const mc = m.stage === "GROUP"
       ? mostCommon(predsByMatch.get(m.id) ?? [], m.mh)
       : { score: koMc?.score ?? null, scoreCount: koMc?.count ?? 0, result: null as "HOME" | "DRAW" | "AWAY" | null, resultCount: 0, total: koMc?.total ?? 0 };

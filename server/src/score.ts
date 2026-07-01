@@ -4,7 +4,7 @@ import {
   scoreGroupMatch,
   type ScoringConfig,
 } from "@wc/shared";
-import { resolveBracket } from "./wc.js";
+import { resolveBracket, FIXTURE_SLOT_TO_PRED_SLOT } from "./wc.js";
 
 export async function loadConfig(): Promise<ScoringConfig> {
   try {
@@ -86,9 +86,12 @@ export async function recomputeAll(): Promise<number> {
   `;
   for (const m of koFixtures as any[]) {
     const resolved = m.status === "FINISHED" && m.home_goals != null && m.away_goals != null;
+    // Predictions were labelled with a different slot numbering than the fixtures,
+    // so match them to this game via the mapping, not the raw slot label.
+    const predSlot = FIXTURE_SLOT_TO_PRED_SLOT[m.bracket_slot] ?? m.bracket_slot;
     const preds = await sql`
       select entrant_id, pred_home_team_id, pred_away_team_id, pred_home_goals, pred_away_goals
-      from predictions where scope = 'SLOT' and bracket_slot = ${m.bracket_slot}
+      from predictions where scope = 'SLOT' and bracket_slot = ${predSlot}
     `;
     for (const p of preds as any[]) {
       const homeTeam = p.pred_home_team_id === m.home_team_id;

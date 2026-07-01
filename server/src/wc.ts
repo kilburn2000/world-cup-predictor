@@ -18,18 +18,20 @@ export interface StandingRow {
   qualified: boolean;
 }
 
-export async function computeGroupStandings(): Promise<{ group: string; decided: boolean; table: StandingRow[] }[]> {
-  const teams = await sql`select id, name, tla, group_name grp from teams where group_name is not null`;
-  const matches = await sql`
-    select home_team_id h, away_team_id a, home_goals hg, away_goals ag
-    from matches
-    where stage = 'GROUP' and status = 'FINISHED' and home_goals is not null and away_goals is not null
-  `;
+// One played result, in whatever home/away orientation: just two teams + goals.
+export interface ResultRow { h: number; a: number; hg: number; ag: number }
+export interface TeamRow { id: number; name: string; tla: string | null; grp: string }
+export type GroupTable = { group: string; decided: boolean; table: StandingRow[] };
+
+// Build sorted group tables from a set of results, marking the teams that qualify
+// for the knockouts: top two of every group, plus the 8 best third-placed teams.
+// Pure (no DB) so it serves both the actual results and an entrant's predictions.
+export function rankGroups(teams: TeamRow[], results: ResultRow[]): GroupTable[] {
   const stat = new Map<number, StandingRow & { grp: string }>();
-  for (const t of teams as any[])
+  for (const t of teams)
     stat.set(t.id, { teamId: t.id, name: t.name, tla: t.tla, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0, qualified: false, grp: t.grp });
 
-  for (const m of matches as any[]) {
+  for (const m of results) {
     const H = stat.get(m.h);
     const A = stat.get(m.a);
     if (!H || !A) continue;
@@ -68,6 +70,35 @@ export async function computeGroupStandings(): Promise<{ group: string; decided:
     decided: g.rows.every((r) => r.played >= 3),
     table: g.rows.map(({ grp, ...r }) => r),
   }));
+}
+
+export async function teamsByGroup(): Promise<TeamRow[]> {
+  return (await sql`select id, name, tla, group_name grp from teams where group_name is not null`) as any[];
+}
+
+// Actual group standings, from our own finished group matches.
+export async function computeGroupStandings(): Promise<GroupTable[]> {
+  const teams = await teamsByGroup();
+  const matches = await sql`
+    select home_team_id h, away_team_id a, home_goals hg, away_goals ag
+    from matches
+    where stage = 'GROUP' and status = 'FINISHED' and home_goals is not null and away_goals is not null
+  `;
+  return rankGroups(teams, matches as any[]);
+}
+
+// One entrant's PREDICTED group standings, from their group-stage MATCH picks.
+// (They predict every group game, so their tables are always fully decided.)
+export async function predictedGroupStandings(entrantId: number, teams?: TeamRow[]): Promise<GroupTable[]> {
+  const t = teams ?? (await teamsByGroup());
+  const preds = await sql`
+    select p.pred_home_team_id h, p.pred_away_team_id a, p.pred_home_goals hg, p.pred_away_goals ag
+    from predictions p
+    join matches m on m.id = p.match_id
+    where p.scope = 'MATCH' and m.stage = 'GROUP'
+      and p.entrant_id = ${entrantId} and p.pred_home_team_id is not null and p.pred_away_team_id is not null
+  `;
+  return rankGroups(t, preds as any[]);
 }
 
 // --- Knockout bracket skeleton (2026 format, from Wikipedia) ---
@@ -219,6 +250,27 @@ function slotForMatch(id: number): string | null {
   if (id === 104) return "FINAL";
   return null;
 }
+
+// Entrants' knockout predictions were imported with slot labels that DON'T line up
+// with the actual fixtures' slot numbering (slotForMatch): e.g. an entrant's
+// "R32-2" is really the fixture at match 76 ("R32-4"). Matching a prediction to a
+// game by equal slot label therefore scored it against the wrong fixture. This map
+// (entrant prediction slot -> the real FIFA match number it refers to) was recovered
+// from the bracket's group-seed structure + feed graph and verified across every
+// entrant. Use it - not the raw label - to tie predictions to fixtures.
+export const PRED_SLOT_TO_MATCH: Record<string, number> = {
+  "R32-1": 73, "R32-2": 76, "R32-3": 74, "R32-4": 75, "R32-5": 78, "R32-6": 77, "R32-7": 79, "R32-8": 80,
+  "R32-9": 82, "R32-10": 81, "R32-11": 84, "R32-12": 83, "R32-13": 85, "R32-14": 88, "R32-15": 86, "R32-16": 87,
+  "R16-1": 90, "R16-2": 89, "R16-3": 91, "R16-4": 92, "R16-5": 93, "R16-6": 94, "R16-7": 95, "R16-8": 96,
+  "QF-1": 97, "QF-2": 98, "QF-3": 99, "QF-4": 100, "SF-1": 101, "SF-2": 102, "THIRD": 103, "FINAL": 104,
+};
+
+// Inverse: an actual fixture's bracket_slot -> the prediction slot label that means
+// it. Built once from PRED_SLOT_TO_MATCH so scoring/display can look up the right
+// predictions for a given fixture.
+export const FIXTURE_SLOT_TO_PRED_SLOT: Record<string, string> = Object.fromEntries(
+  Object.entries(PRED_SLOT_TO_MATCH).map(([pred, match]) => [slotForMatch(match)!, pred]),
+);
 
 const ALL_KO: { match: number; a: Src; b: Src }[] = [
   ...R32,
