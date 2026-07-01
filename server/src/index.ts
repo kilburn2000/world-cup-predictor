@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, resolveBracket, FIXTURE_SLOT_TO_PRED_SLOT } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, FIXTURE_SLOT_TO_PRED_SLOT } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -1472,14 +1472,14 @@ try {
   console.error("startup migration failed", e);
 }
 
-// Resolve the knockout bracket on boot so any third-placed teams confirmed by
-// already-played group results get written into their fixtures (state 2), even
-// if no result has changed since. On-result-change resolution still happens via
-// the poller's recomputeAll; this just backfills on startup.
+// Recompute all scores on boot (this also resolves the knockout bracket first),
+// so a deploy that changes scoring logic - or third-placed teams confirmed by
+// already-played results - is applied immediately, not only on the next result
+// change. Deterministic and safe to run every startup.
 try {
-  await resolveBracket();
+  await recomputeAll();
 } catch (e) {
-  console.error("startup bracket resolve failed", e);
+  console.error("startup recompute failed", e);
 }
 
 await app.listen({ port: PORT, host: "0.0.0.0" });
