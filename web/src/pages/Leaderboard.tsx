@@ -229,7 +229,7 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
   );
 }
 
-function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, nextStage, onOpenTrend }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextRow?: LiveBoardRow; nextStage?: string; onOpenTrend: () => void }) {
+function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, nextStage, qualified, onOpenTrend }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextRow?: LiveBoardRow; nextStage?: string; qualified?: boolean; onOpenTrend: () => void }) {
   return (
     <Link
       to={`/entrant/${e.entrantId}`}
@@ -238,6 +238,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, 
       <RankCell label={label} top3={!!e.qualifying} onOpen={onOpenTrend} />
       <div className="flex min-w-0 items-center gap-1.5">
         <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
+        {qualified && <span className="shrink-0 rounded bg-gold/20 px-1 py-px text-[8px] font-semibold uppercase tracking-wide text-gold" title="Qualified for the knockout bracket">Q</span>}
         {e.entrantId === myId && <YouBadge />}
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
       </div>
@@ -423,7 +424,11 @@ function Knockout() {
   const { data, isLoading, error } = useGroups();
   const { data: me } = useMe();
   const { data: fixtures } = useFixtures();
+  const { data: phases } = usePhasesStarted();
   const live = useLivePoints();
+  // Once the WC group stage is done, the top two of each entrant group have
+  // qualified for the knockout bracket - mark them with a Q.
+  const groupStageDone = !!phases?.week3Done;
   const [trendFor, setTrendFor] = useState<{ id: number; name: string; group: string } | null>(null);
   if (isLoading) return <p className="font-mono text-sm uppercase tracking-widest text-muted">Loading…</p>;
   if (error) return <p className="text-down">Couldn’t load the groups.</p>;
@@ -459,7 +464,7 @@ function Knockout() {
               </div>
               {g.entrants.map((e, i) => (
                 <Fragment key={e.entrantId}>
-                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextRow={next?.picks.get(e.entrantId)} nextStage={next?.game.stage} onOpenTrend={() => setTrendFor({ id: e.entrantId, name: e.name, group: g.group })} />
+                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextRow={next?.picks.get(e.entrantId)} nextStage={next?.game.stage} qualified={groupStageDone && !!e.qualifying} onOpenTrend={() => setTrendFor({ id: e.entrantId, name: e.name, group: g.group })} />
                   {i === 1 && <div className="col-span-full border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
                 </Fragment>
               ))}
