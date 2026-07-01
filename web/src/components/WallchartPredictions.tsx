@@ -128,7 +128,7 @@ export default function WallchartPredictions({ id, view = "all" }: { id: string 
       {showBracket && (
         <>
       {headings && <h3 className="mb-3 font-display text-base text-cream">Predicted bracket</h3>}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {[...byRound.entries()].map(([label, matches]) => (
           <div key={label} className="fl-card overflow-hidden">
             <h4 className="border-b border-line px-4 py-2.5 font-display text-sm text-cream">{label}</h4>
