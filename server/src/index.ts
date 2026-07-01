@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, FIXTURE_SLOT_TO_PRED_SLOT, entrantSlotMap, allEntrantSlotMaps, predictedGroupStandings } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, entrantSlotMap, allEntrantSlotMaps, predictedGroupStandings } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -1002,9 +1002,12 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
   // predicted teams + score for that bracket slot).
   const hasKo = (rows as any[]).some((m) => m.stage !== "GROUP" && m.slot);
   const projBySlot = new Map<string, { home: string; away: string; homeCode: string; awayCode: string }>();
-  const koBoardBySlot = new Map<string, any[]>();
-  const koMcBySlot = new Map<string, { score: string; count: number; total: number; home: string; away: string; homeName: string; awayName: string; penSide: "home" | "away" | null }>();
+  // Boards keyed by the actual FIFA match number (= the knockout fixture id), each
+  // entrant's SLOT pick placed at the fixture IT maps to via the per-entrant mapping.
+  const koBoardByMatch = new Map<number, any[]>();
+  const koMcByMatch = new Map<number, { score: string; count: number; total: number; home: string; away: string; homeName: string; awayName: string; penSide: "home" | "away" | null }>();
   if (hasKo) {
+    const slotMaps = await allEntrantSlotMaps();
     try {
       const ko = await buildKnockout();
       const ROUND_PREFIX: Record<string, string> = { "Round of 32": "R32", "Round of 16": "R16", "Quarter-finals": "QF", "Semi-finals": "SF", "Third-place play-off": "THIRD", "Final": "FINAL" };
@@ -1060,17 +1063,20 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
         }
       }
       p.penSide = penSide;
-      const arr = koBoardBySlot.get(p.slot) ?? [];
+      p.matchNo = slotMaps.get(p.eid)?.get(p.slot);
+      if (p.matchNo == null) continue;
+      const arr = koBoardByMatch.get(p.matchNo) ?? [];
       arr.push({ entrantId: p.eid, name: p.name, pick: `${p.phg}-${p.pag}`, predHome: p.phome, predAway: p.paway, predHomeName: p.phomename, predAwayName: p.pawayname, penSide, points: null, tier: null });
-      koBoardBySlot.set(p.slot, arr);
+      koBoardByMatch.set(p.matchNo, arr);
     }
-    for (const arr of koBoardBySlot.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
+    for (const arr of koBoardByMatch.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
 
-    // single most-predicted full pick per knockout slot (teams + score combined)
-    const koAgg = new Map<string, { full: Map<string, { count: number; home: string; away: string; homeName: string; awayName: string; score: string; penHome: number; penAway: number }>; total: number }>();
+    // single most-predicted full pick per knockout FIXTURE (teams + score combined)
+    const koAgg = new Map<number, { full: Map<string, { count: number; home: string; away: string; homeName: string; awayName: string; score: string; penHome: number; penAway: number }>; total: number }>();
     for (const p of slotPreds as any[]) {
-      let a = koAgg.get(p.slot);
-      if (!a) { a = { full: new Map(), total: 0 }; koAgg.set(p.slot, a); }
+      if (p.matchNo == null) continue;
+      let a = koAgg.get(p.matchNo);
+      if (!a) { a = { full: new Map(), total: 0 }; koAgg.set(p.matchNo, a); }
       a.total++;
       const key = `${p.phid}-${p.paid}-${p.phg}-${p.pag}`;
       const f = a.full.get(key) ?? { count: 0, home: p.phome, away: p.paway, homeName: p.phomename, awayName: p.pawayname, score: `${p.phg}-${p.pag}`, penHome: 0, penAway: 0 };
@@ -1078,12 +1084,12 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       if (p.penSide === "home") f.penHome++; else if (p.penSide === "away") f.penAway++;
       a.full.set(key, f);
     }
-    for (const [slot, a] of koAgg) {
+    for (const [matchNo, a] of koAgg) {
       let top: any = null, tc = 0;
       for (const f of a.full.values()) if (f.count > tc) { top = f; tc = f.count; }
       if (top) {
         const penSide = top.penHome > top.penAway ? "home" : top.penAway > top.penHome ? "away" : null;
-        koMcBySlot.set(slot, { score: top.score, count: tc, total: a.total, home: top.home, away: top.away, homeName: top.homeName, awayName: top.awayName, penSide });
+        koMcByMatch.set(matchNo, { score: top.score, count: tc, total: a.total, home: top.home, away: top.away, homeName: top.homeName, awayName: top.awayName, penSide });
       }
     }
   }
@@ -1122,7 +1128,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
     } else if (m.slot) {
       // knockout: everyone's bracket pick for this slot (predicted teams + score).
       // Predictions use a different slot numbering than fixtures, so map first.
-      board = koBoardBySlot.get(FIXTURE_SLOT_TO_PRED_SLOT[m.slot] ?? m.slot) ?? [];
+      board = koBoardByMatch.get(m.id) ?? [];
     }
 
     // attach ESPN minute/events, aligning event side to our home/away
@@ -1140,7 +1146,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       period = liveNow ? enrich.espn.period : null;
     }
 
-    const koMc = koMcBySlot.get(FIXTURE_SLOT_TO_PRED_SLOT[m.slot] ?? m.slot);
+    const koMc = koMcByMatch.get(m.id);
     const mc = m.stage === "GROUP"
       ? mostCommon(predsByMatch.get(m.id) ?? [], m.mh)
       : { score: koMc?.score ?? null, scoreCount: koMc?.count ?? 0, result: null as "HOME" | "DRAW" | "AWAY" | null, resultCount: 0, total: koMc?.total ?? 0 };
