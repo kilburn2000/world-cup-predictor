@@ -309,6 +309,74 @@ export function thirdSlotTeams(
   return out;
 }
 
+// Each group-winner/runner-up seed appears in exactly ONE R32 fixture, so a single
+// identifiable seed pins down which fixture a tie is (whatever the actual teams).
+const SEED_TO_MATCH: Record<string, number> = {};
+for (const { match, a, b } of R32) for (const s of [a, b]) {
+  if (s.type === "w") SEED_TO_MATCH[`W-${s.g}`] = match;
+  else if (s.type === "ru") SEED_TO_MATCH[`RU-${s.g}`] = match;
+}
+// FIFA match -> the two matches whose winners feed it (R16 onward). Derived from LATER.
+const MATCH_FEED: Record<number, [number, number]> = {};
+for (const m of LATER) {
+  const f: number[] = [];
+  if (m.a.type === "mw") f.push(m.a.m);
+  if (m.b.type === "mw") f.push(m.b.m);
+  if (f.length === 2) MATCH_FEED[m.match] = [f[0], f[1]];
+}
+// Reverse: each match's winner feeds exactly ONE later match, so a single feeder
+// pins the parent (a tie needs only one of its two teams traced back to a fixture).
+const FEED_PARENT: Record<number, number> = {};
+for (const [parent, [a, b]] of Object.entries(MATCH_FEED)) { FEED_PARENT[a] = +parent; FEED_PARENT[b] = +parent; }
+
+// Per-entrant map from their knockout slot labels to the actual FIFA match number
+// each tie corresponds to. The slot LABELS don't line up with the fixtures, AND
+// two entrants can put different-seeded ties under the same label - so this must be
+// per-entrant. Each R32 tie is pinned by the group-winner/runner-up seeds of the
+// teams they placed there; later rounds propagate by which slots feed which.
+export async function entrantSlotMap(entrantId: number, teams?: TeamRow[]): Promise<Map<string, number>> {
+  const standings = await predictedGroupStandings(entrantId, teams);
+  const seed = new Map<number, string>();
+  for (const g of standings) {
+    if (g.table[0]) seed.set(g.table[0].teamId, `W-${g.group}`);
+    if (g.table[1]) seed.set(g.table[1].teamId, `RU-${g.group}`);
+  }
+  const sp = (await sql`
+    select bracket_slot slot, pred_home_team_id ph, pred_away_team_id pa
+    from predictions where scope = 'SLOT' and entrant_id = ${entrantId}
+  `) as any[];
+  const teamsBySlot = new Map<string, [number, number]>();
+  for (const r of sp) teamsBySlot.set(r.slot, [r.ph, r.pa]);
+
+  const out = new Map<string, number>();
+  // R32: pin each tie to a fixture from the seeds of the teams the entrant placed.
+  // A single winner/runner-up seed is enough (each is in exactly one fixture); prefer
+  // a group winner, who is the home side of their fixture, to keep home/away orientation.
+  for (const [slot, [ph, pa]] of teamsBySlot) {
+    if (!slot.startsWith("R32")) continue;
+    const seeds = [seed.get(ph), seed.get(pa)].filter(Boolean) as string[];
+    const chosen = seeds.find((s) => s.startsWith("W-")) ?? seeds.find((s) => s.startsWith("RU-"));
+    const match = chosen ? SEED_TO_MATCH[chosen] : undefined;
+    if (match !== undefined) out.set(slot, match);
+  }
+  // R16 -> Final: each of a tie's teams is the winner of an earlier tie; trace ONE
+  // of them back to its fixture and that fixture's feed pins this tie's fixture.
+  for (const [parentPre, childPre] of [["R16", "R32"], ["QF", "R16"], ["SF", "QF"], ["FINAL", "SF"]] as const) {
+    const parents = [...teamsBySlot.keys()].filter((s) => (parentPre === "FINAL" ? s === "FINAL" : s.startsWith(parentPre)));
+    const children = [...teamsBySlot.keys()].filter((s) => s.startsWith(childPre));
+    for (const ps of parents) {
+      const pt = teamsBySlot.get(ps)!;
+      for (const cs of children) {
+        if (!out.has(cs) || !teamsBySlot.get(cs)!.some((t) => pt.includes(t))) continue;
+        const parentMatch = FEED_PARENT[out.get(cs)!];
+        if (parentMatch !== undefined) { out.set(ps, parentMatch); break; }
+      }
+    }
+  }
+  if (teamsBySlot.has("THIRD")) out.set("THIRD", 103);
+  return out;
+}
+
 // Assign bracket slots and resolve actual teams into the knockout fixtures as
 // results come in. Deterministic + idempotent; safe to run on every recompute.
 //  - winner/runner-up sides resolve from our own group standings once a group is

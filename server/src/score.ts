@@ -4,7 +4,7 @@ import {
   scoreGroupMatch,
   type ScoringConfig,
 } from "@wc/shared";
-import { resolveBracket, FIXTURE_SLOT_TO_PRED_SLOT } from "./wc.js";
+import { resolveBracket, entrantSlotMap, teamsByGroup } from "./wc.js";
 
 export async function loadConfig(): Promise<ScoringConfig> {
   try {
@@ -62,49 +62,46 @@ export async function recomputeAll(): Promise<number> {
     written++;
   }
 
-  // --- KNOCKOUTS: slot-positional scoring ---
-  // A knockout prediction only scores when the entrant put the right team in the
-  // right bracket slot AND on the right side of it. Per tie:
-  //   +knockoutTeam   for each correctly-positioned team (home pick == actual
-  //                   home team, and/or away pick == actual away team)
-  //   +scoreline      ONLY when BOTH teams are correctly positioned (an exact
-  //                   matchup in the right slot) - then the goals/result/exact
-  //                   bonus apply, aligned by side, up to +5.
-  // So the max is 7 a tie. If group placings swap a team into a different slot,
-  // it earns nothing here even if the same two teams meet via another route -
-  // the slot (and side) is what's being predicted, not just the fixture.
-  //
-  // Team-in-position points land as soon as the tie is drawn (teams resolved);
-  // the scoreline is added once the tie finishes. The actual fixture's home/away
-  // ordering must follow the same bracket template the entrants predicted against
-  // (winner-side vs runner-up-side), which is how the import + draw are built.
+  // --- KNOCKOUTS: per-entrant positional scoring ---
+  // Per tie:
+  //   +1 for each team in the correct position (home pick == actual home team,
+  //      and/or away pick == actual away team) - lands once the tie is drawn.
+  //   +5 for the exact scoreline (positional home/away goals), even if the teams
+  //      are wrong - lands once the tie finishes.
+  // Max 7 a tie. Each prediction is tied to its fixture PER ENTRANT (entrantSlotMap),
+  // because the slot labels don't line up with the fixtures and two entrants can put
+  // different-seeded ties under the same label.
   const koFixtures = await sql`
-    select id, bracket_slot, home_team_id, away_team_id, home_goals, away_goals, status
-    from matches
-    where stage <> 'GROUP' and bracket_slot is not null
-      and home_team_id is not null and away_team_id is not null
+    select id, home_team_id, away_team_id, home_goals, away_goals, status
+    from matches where stage <> 'GROUP'
   `;
-  for (const m of koFixtures as any[]) {
-    const resolved = m.status === "FINISHED" && m.home_goals != null && m.away_goals != null;
-    // Predictions were labelled with a different slot numbering than the fixtures,
-    // so match them to this game via the mapping, not the raw slot label.
-    const predSlot = FIXTURE_SLOT_TO_PRED_SLOT[m.bracket_slot] ?? m.bracket_slot;
+  const fixByMatch = new Map<number, any>((koFixtures as any[]).map((f) => [f.id, f]));
+  const teams = await teamsByGroup();
+  const koEntrants = await sql`select distinct entrant_id eid from predictions where scope = 'SLOT'`;
+  for (const { eid } of koEntrants as any[]) {
+    const slotMap = await entrantSlotMap(eid, teams);
     const preds = await sql`
-      select entrant_id, pred_home_team_id, pred_away_team_id, pred_home_goals, pred_away_goals
-      from predictions where scope = 'SLOT' and bracket_slot = ${predSlot}
+      select bracket_slot slot, pred_home_team_id ph, pred_away_team_id pa, pred_home_goals phg, pred_away_goals pag
+      from predictions where scope = 'SLOT' and entrant_id = ${eid}
     `;
+    // Best score per fixture: an inconsistent bracket can point two ties at one
+    // fixture (a collision); keep the higher-scoring one rather than double-count.
+    const best = new Map<number, { points: number; breakdown: any }>();
     for (const p of preds as any[]) {
-      const homeTeam = p.pred_home_team_id === m.home_team_id;
-      const awayTeam = p.pred_away_team_id === m.away_team_id;
-      let points = (homeTeam ? cfg.knockoutTeam : 0) + (awayTeam ? cfg.knockoutTeam : 0);
-      const breakdown: any = { homeTeam, awayTeam, scoreline: null };
-      // Scoreline only when the exact matchup is correctly positioned.
-      if (homeTeam && awayTeam && resolved) {
-        const b = scoreGroupMatch(p.pred_home_goals, p.pred_away_goals, m.home_goals, m.away_goals, cfg);
-        points += b.points;
-        breakdown.scoreline = b;
-      }
-      await upsertScore(p.entrant_id, "KNOCKOUT", `match:${m.id}`, points, breakdown);
+      const matchNo = slotMap.get(p.slot);
+      if (matchNo == null) continue;
+      const m = fixByMatch.get(matchNo);
+      if (!m || m.home_team_id == null || m.away_team_id == null) continue; // tie not drawn yet
+      const resolved = m.status === "FINISHED" && m.home_goals != null && m.away_goals != null;
+      const homeTeam = p.ph === m.home_team_id;
+      const awayTeam = p.pa === m.away_team_id;
+      const scoreRight = resolved && p.phg === m.home_goals && p.pag === m.away_goals;
+      const points = (homeTeam ? 1 : 0) + (awayTeam ? 1 : 0) + (scoreRight ? 5 : 0);
+      const prev = best.get(matchNo);
+      if (!prev || points > prev.points) best.set(matchNo, { points, breakdown: { homeTeam, awayTeam, scoreline: scoreRight ? 5 : 0 } });
+    }
+    for (const [matchNo, b] of best) {
+      await upsertScore(eid, "KNOCKOUT", `match:${matchNo}`, b.points, b.breakdown);
       written++;
     }
   }

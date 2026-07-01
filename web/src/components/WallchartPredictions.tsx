@@ -170,21 +170,18 @@ export default function WallchartPredictions({ id, view = "all" }: { id: string 
                       <span className="truncate">{k.away}</span>
                     </span>
                   </div>
-                  {/* the actual fixture (or score, once played) + what the prediction scored */}
+                  {/* the actual result, then the scoring + points chips after it */}
                   {k.actualHome && (
                     <div className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10.5px]">
                       <span className="uppercase tracking-wide text-muted">Actual</span>
-                      <span className="flex items-center gap-1 font-mono text-muted">
-                        <span>{flagFor(k.actualHome)}</span>{k.actualHomeCode}
+                      <span className="flex items-center gap-1 whitespace-nowrap font-mono">
+                        <span>{flagFor(k.actualHome)}</span>
+                        <span className="text-cream">{k.actualHomeCode}</span>
                         <span className={played ? "text-cream" : "text-muted"}>{played ? `${k.actualHomeScore}–${k.actualAwayScore}` : "v"}</span>
-                        {k.actualAwayCode}<span>{flagFor(k.actualAway)}</span>
+                        <span className="text-cream">{k.actualAwayCode}</span>
+                        <span>{flagFor(k.actualAway)}</span>
                       </span>
-                      {played && (
-                        <>
-                          <ScoredChips pick={`${k.predHome}-${k.predAway}`} hs={k.actualHomeScore ?? 0} as={k.actualAwayScore ?? 0} homeCode={k.actualHomeCode ?? ""} awayCode={k.actualAwayCode ?? ""} />
-                          {k.points != null && <PointsPill points={k.points} />}
-                        </>
-                      )}
+                      {played && k.points != null && <PointsPill points={k.points} />}
                     </div>
                   )}
                 </div>

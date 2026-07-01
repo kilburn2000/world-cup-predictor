@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, FIXTURE_SLOT_TO_PRED_SLOT, PRED_SLOT_TO_MATCH, predictedGroupStandings } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, FIXTURE_SLOT_TO_PRED_SLOT, entrantSlotMap, predictedGroupStandings } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -804,21 +804,28 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
   const fixById = new Map<number, any>((koFixtures as any[]).map((f) => [f.id, f]));
   const koScoreRows = await sql`select ref, points, breakdown from scores where entrant_id = ${id} and kind = 'KNOCKOUT'`;
   const koScoreByRef = new Map<string, any>((koScoreRows as any[]).map((s) => [s.ref, s]));
+  // This entrant's own slot -> fixture mapping (per-entrant, from their seeds).
+  const koSlotMap = await entrantSlotMap(id);
   const knockout = (koRows as any[])
     .map((r) => {
       const prefix = r.slot.split("-")[0];
       const meta = ROUND_OF[prefix] ?? { round: prefix, label: prefix, order: 9 };
       const idx = Number(r.slot.split("-")[1] ?? 0);
-      const matchNo = PRED_SLOT_TO_MATCH[r.slot];
+      const matchNo = koSlotMap.get(r.slot);
       const fx = matchNo ? fixById.get(matchNo) : null;
       const sc = matchNo ? koScoreByRef.get(`match:${matchNo}`) : null;
       const live = fx && (fx.status === "FINISHED" || fx.status === "IN_PLAY");
+      const drawn = fx && fx.home != null && fx.away != null;
       return {
         round: meta.round, label: meta.label, order: meta.order, idx, slot: r.slot,
         home: r.home, away: r.away, predHome: r.phg, predAway: r.pag,
         actualHome: fx?.home ?? null, actualAway: fx?.away ?? null,
         actualHomeCode: fx?.hcode ?? null, actualAwayCode: fx?.acode ?? null,
         actualHomeScore: live ? fx.hg : null, actualAwayScore: live ? fx.ag : null,
+        // whether the entrant got each team in the right position + the exact score.
+        homeCorrect: !!(drawn && r.home === fx.home),
+        awayCorrect: !!(drawn && r.away === fx.away),
+        scoreCorrect: !!(live && r.phg === fx.hg && r.pag === fx.ag),
         status: fx?.status ?? null,
         points: sc ? sc.points : null,
       };
