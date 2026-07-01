@@ -33,7 +33,7 @@ function RankCell({ label, top3, onOpen }: { label: string; top3: boolean; onOpe
 // Per-entrant provisional points from matches in play right now: the points each
 // would win if every live game ended at its current score, plus what they're
 // scoring on (for the chips). Built from each live match's precomputed board.
-type LiveGame = { pick: string; hs: number; as: number; home: string; away: string; homeCode: string; awayCode: string; minute: number | null; tier: LiveTier | null; points: number; group: string | null; stage: string; matchday: number | null };
+type LiveGame = { pick: string; hs: number; as: number; home: string; away: string; homeCode: string; awayCode: string; minute: number | null; tier: LiveTier | null; points: number; group: string | null; stage: string; matchday: number | null; predHome?: string | null; predAway?: string | null; predHomeName?: string | null; predAwayName?: string | null; penSide?: "home" | "away" | null };
 type LiveAgg = Map<number, LiveGame[]>;
 function useLivePoints(): LiveAgg {
   const { data } = useLiveMatches(0);
@@ -44,7 +44,7 @@ function useLivePoints(): LiveAgg {
       for (const b of mt.board) {
         if (b.points == null) continue;
         const arr = m.get(b.entrantId) ?? [];
-        arr.push({ pick: b.pick, hs: mt.homeScore, as: mt.awayScore, home: mt.home, away: mt.away, homeCode: mt.homeCode, awayCode: mt.awayCode, minute: mt.minute ?? null, tier: b.tier, points: b.points, group: mt.group ?? null, stage: mt.stage, matchday: mt.matchday ?? null });
+        arr.push({ pick: b.pick, hs: mt.homeScore, as: mt.awayScore, home: mt.home, away: mt.away, homeCode: mt.homeCode, awayCode: mt.awayCode, minute: mt.minute ?? null, tier: b.tier, points: b.points, group: mt.group ?? null, stage: mt.stage, matchday: mt.matchday ?? null, predHome: b.predHome, predAway: b.predAway, predHomeName: b.predHomeName, predAwayName: b.predAwayName, penSide: b.penSide });
         m.set(b.entrantId, arr);
       }
     }
@@ -57,9 +57,22 @@ function useLivePoints(): LiveAgg {
 // Overall, Knockout and per-phase standings tables.
 // One live game's row: the entrant's pick, scored chips and points so far.
 function LiveLine({ g }: { g: LiveGame }) {
+  const ko = g.stage !== "GROUP" && g.predHome;
   return (
     <span className="flex items-center gap-1 whitespace-nowrap">
-      <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
+      {ko ? (
+        // Knockout: show the teams the entrant predicted (flags + FIFA codes) around
+        // their score, since their matchup can differ from the actual fixture.
+        <span className="mr-1.5 flex items-center gap-1 font-mono text-[10px]">
+          <span>{flagFor(g.predHomeName)}</span>
+          <span className="text-muted">{g.predHome}{g.penSide === "home" ? "(p)" : ""}</span>
+          <span className="text-cream/90">{g.pick.replace("-", "–")}</span>
+          <span className="text-muted">{g.predAway}{g.penSide === "away" ? "(p)" : ""}</span>
+          <span>{flagFor(g.predAwayName)}</span>
+        </span>
+      ) : (
+        <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
+      )}
       <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
       <PointsPill points={g.points} tier={g.tier} />
     </span>
@@ -78,7 +91,15 @@ function LiveTip({ tip }: { tip: { g: LiveGame; x: number; y: number } }) {
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
           LIVE · {g.hs}-{g.as}{g.minute != null ? ` · ${g.minute}'` : ""}
         </span>
-        <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {g.pick.replace("-", "–")}</span>
+        {g.stage !== "GROUP" && g.predHome ? (
+          <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px] text-muted">
+            Pred <span>{flagFor(g.predHomeName)}</span> {g.predHome}{g.penSide === "home" ? "(p)" : ""}
+            <span className="text-cream">{g.pick.replace("-", "–")}</span>
+            {g.predAway}{g.penSide === "away" ? "(p)" : ""} <span>{flagFor(g.predAwayName)}</span>
+          </span>
+        ) : (
+          <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {g.pick.replace("-", "–")}</span>
+        )}
         <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
       </div>
     </div>,
