@@ -152,24 +152,44 @@ export default function WallchartPredictions({ id, view = "all" }: { id: string 
           <div key={label} className="fl-card overflow-hidden">
             <h4 className="border-b border-line px-4 py-2.5 font-display text-sm text-cream">{label}</h4>
             <div className="px-4 py-1">
-              {matches.map((k) => (
-                <div
-                  key={k.slot}
-                  className="flex items-center gap-2 border-t border-line py-1.5 text-[13px] first:border-t-0"
-                >
-                  <span className="flex flex-1 items-center justify-end gap-1.5 truncate text-right text-cream">
-                    <span className="truncate">{k.home}</span>
-                    <span className="shrink-0">{flagFor(k.home)}</span>
-                  </span>
-                  <span className="w-11 text-center font-mono text-gold">
-                    {k.predHome}–{k.predAway}
-                  </span>
-                  <span className="flex flex-1 items-center gap-1.5 truncate text-cream">
-                    <span className="shrink-0">{flagFor(k.away)}</span>
-                    <span className="truncate">{k.away}</span>
-                  </span>
+              {matches.map((k) => {
+                const played = k.status === "FINISHED" || k.status === "IN_PLAY";
+                return (
+                <div key={k.slot} className="border-t border-line py-1.5 first:border-t-0">
+                  {/* the entrant's predicted matchup + score */}
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <span className="flex flex-1 items-center justify-end gap-1.5 truncate text-right text-cream">
+                      <span className="truncate">{k.home}</span>
+                      <span className="shrink-0">{flagFor(k.home)}</span>
+                    </span>
+                    <span className="w-11 text-center font-mono text-gold">
+                      {k.predHome}–{k.predAway}
+                    </span>
+                    <span className="flex flex-1 items-center gap-1.5 truncate text-cream">
+                      <span className="shrink-0">{flagFor(k.away)}</span>
+                      <span className="truncate">{k.away}</span>
+                    </span>
+                  </div>
+                  {/* the actual fixture (or score, once played) + what the prediction scored */}
+                  {k.actualHome && (
+                    <div className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10.5px]">
+                      <span className="uppercase tracking-wide text-muted">Actual</span>
+                      <span className="flex items-center gap-1 font-mono text-muted">
+                        <span>{flagFor(k.actualHome)}</span>{k.actualHomeCode}
+                        <span className={played ? "text-cream" : "text-muted"}>{played ? `${k.actualHomeScore}–${k.actualAwayScore}` : "v"}</span>
+                        {k.actualAwayCode}<span>{flagFor(k.actualAway)}</span>
+                      </span>
+                      {played && (
+                        <>
+                          <ScoredChips pick={`${k.predHome}-${k.predAway}`} hs={k.actualHomeScore ?? 0} as={k.actualAwayScore ?? 0} homeCode={k.actualHomeCode ?? ""} awayCode={k.actualAwayCode ?? ""} />
+                          {k.points != null && <PointsPill points={k.points} />}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

@@ -269,7 +269,14 @@ export interface Wallchart {
   entrant: { id: number; name: string };
   totals: { total: number; MATCH: number; PROGRESSION: number; FINALTHIRD: number };
   groups: { group: string; matches: WallchartMatch[] }[];
-  knockout: { round: string; label: string; slot: string; home: string; away: string; predHome: number; predAway: number }[];
+  knockout: {
+    round: string; label: string; slot: string;
+    home: string; away: string; predHome: number; predAway: number;
+    actualHome: string | null; actualAway: string | null;
+    actualHomeCode: string | null; actualAwayCode: string | null;
+    actualHomeScore: number | null; actualAwayScore: number | null;
+    status: string | null; points: number | null;
+  }[];
   /** the entrant's predicted final group tables (same shape as /api/wc-groups). */
   predictedStandings: WcGroup[];
 }
