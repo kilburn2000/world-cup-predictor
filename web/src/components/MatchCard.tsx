@@ -229,8 +229,11 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
           {mine?.predHome ? (
             <>
               {koPick(mine)}
-              {(m.status === "FINISHED" || m.status === "IN_PLAY") && m.myPoints != null && (
-                <PointsPill points={m.myPoints} tier={m.myTier} />
+              {(m.status === "FINISHED" || m.status === "IN_PLAY") && (
+                <>
+                  <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+                  {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
+                </>
               )}
             </>
           ) : (
