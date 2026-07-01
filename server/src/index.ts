@@ -1167,6 +1167,11 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       period,
       homeScore: hg,
       awayScore: ag,
+      // A knockout tie level after 90 mins is settled on penalties; flag which side
+      // went through (and the shootout score if we have it) for the match card.
+      penWinner: m.status === "FINISHED" && hg === ag && m.winner ? (m.winner === m.mh ? "home" : "away") : null,
+      homePens: m.hpen ?? null,
+      awayPens: m.apen ?? null,
       mostCommonScore: mc.score,
       mostCommonScoreCount: mc.scoreCount,
       mostCommonResult: mc.result,
@@ -1186,7 +1191,7 @@ app.get("/api/live", async (req: any) => {
   const day = Math.max(-1, Math.min(1, Math.trunc(Number(req.query?.day) || 0))); // -1 yesterday, 0 today, +1 tomorrow
   const rows = await sql`
     select m.id, m.api_match_id api_id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc, m.bracket_slot slot,
-           m.home_team_id mh, m.away_team_id ma,
+           m.home_team_id mh, m.away_team_id ma, m.winner_team_id winner, m.home_penalties hpen, m.away_penalties apen,
            ht.name home, ht.tla home_code, at.name away, at.tla away_code
     from matches m
     join teams ht on ht.id = m.home_team_id
@@ -1211,7 +1216,7 @@ app.get("/api/fixtures", async (req: any) => {
   const myId = req.user?.entrantId ?? null;
   const rows = await sql`
     select m.id, m.api_match_id api_id, m.stage, m.group_name grp, m.matchday, m.status, m.home_goals hg, m.away_goals ag, m.kickoff_utc, m.bracket_slot slot,
-           m.home_team_id mh, m.away_team_id ma,
+           m.home_team_id mh, m.away_team_id ma, m.winner_team_id winner, m.home_penalties hpen, m.away_penalties apen,
            ht.name home, ht.tla home_code, at.name away, at.tla away_code
     from matches m
     left join teams ht on ht.id = m.home_team_id

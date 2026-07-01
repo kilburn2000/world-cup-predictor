@@ -493,6 +493,10 @@ export interface LiveMatch {
   period?: number | null;
   homeScore: number;
   awayScore: number;
+  /** knockout tie level after 90 mins: which side won the shootout, + pens score. */
+  penWinner?: "home" | "away" | null;
+  homePens?: number | null;
+  awayPens?: number | null;
   /** the logged-in entrant's own pick/points/tier for this match (null if not). */
   myPick?: string | null;
   myPoints?: number | null;

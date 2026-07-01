@@ -151,15 +151,23 @@ export default function MatchCard({ m }: { m: LiveMatch }) {
             </div>
             <div className="mt-0.5 font-mono text-[11px] text-muted">{m.homeCode}</div>
           </div>
-          <div className="flex items-center gap-3.5 font-mono text-[34px] tracking-wide sm:text-[38px]">
-            {m.status === "SCHEDULED" ? (
-              <span className="text-xl text-muted">v</span>
-            ) : (
-              <>
-                <span>{m.homeScore}</span>
-                <span className="text-2xl text-muted">–</span>
-                <span>{m.awayScore}</span>
-              </>
+          <div className="flex flex-col items-center">
+            <div className="flex items-center gap-3.5 font-mono text-[34px] tracking-wide sm:text-[38px]">
+              {m.status === "SCHEDULED" ? (
+                <span className="text-xl text-muted">v</span>
+              ) : (
+                <>
+                  <span>{m.homeScore}</span>
+                  <span className="text-2xl text-muted">–</span>
+                  <span>{m.awayScore}</span>
+                </>
+              )}
+            </div>
+            {m.penWinner && (
+              <div className="mt-1 whitespace-nowrap text-[9px] uppercase tracking-wide text-gold">
+                {(m.penWinner === "home" ? m.homeCode : m.awayCode)} won on pens
+                {m.homePens != null && m.awayPens != null ? ` ${m.homePens}-${m.awayPens}` : ""}
+              </div>
             )}
           </div>
           <div className="text-left">

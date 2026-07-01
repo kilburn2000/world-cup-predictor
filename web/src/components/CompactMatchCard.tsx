@@ -103,15 +103,23 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
             </div>
             {m.homeCode && <div className="mt-0.5 font-mono text-[10px] text-muted">{m.homeCode}</div>}
           </div>
-          <div className="shrink-0 text-center font-mono text-[19px] tabular-nums text-cream">
-            {scheduled ? (
-              <span className="text-base text-muted">v</span>
-            ) : (
-              <>
-                {m.homeScore}
-                <span className="mx-1 text-base text-muted">–</span>
-                {m.awayScore}
-              </>
+          <div className="flex shrink-0 flex-col items-center">
+            <div className="text-center font-mono text-[19px] tabular-nums text-cream">
+              {scheduled ? (
+                <span className="text-base text-muted">v</span>
+              ) : (
+                <>
+                  {m.homeScore}
+                  <span className="mx-1 text-base text-muted">–</span>
+                  {m.awayScore}
+                </>
+              )}
+            </div>
+            {m.penWinner && (
+              <div className="whitespace-nowrap text-[8px] uppercase tracking-wide text-gold">
+                {(m.penWinner === "home" ? m.homeCode : m.awayCode)} won on pens
+                {m.homePens != null && m.awayPens != null ? ` ${m.homePens}-${m.awayPens}` : ""}
+              </div>
             )}
           </div>
           <div className="min-w-0 text-left">
