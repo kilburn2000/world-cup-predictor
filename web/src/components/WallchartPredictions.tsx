@@ -1,4 +1,4 @@
-import { useWallchart, type WallchartMatch, type WcStanding } from "../api.js";
+import { useWallchart, useWcGroups, type WallchartMatch, type WcStanding } from "../api.js";
 import { flagFor } from "../flags.js";
 import ScoredChips from "./ScoredChips.js";
 import PointsPill from "./PointsPill.js";
@@ -7,8 +7,10 @@ const MATCH_COLS = "grid grid-cols-[1fr_46px_1fr] items-center gap-1.5";
 const STANDING_COLS = "grid grid-cols-[18px_1fr_20px_20px_20px_20px_28px_30px] items-center gap-1 px-4 text-[11.5px]";
 
 // The entrant's predicted final table for one group: same columns as the real
-// Groups page, top-2 (and best-thirds) highlighted as qualifying.
-function PredictedTable({ table }: { table: WcStanding[] }) {
+// Groups page, top-2 (and best-thirds) highlighted as qualifying. When the real
+// group has finished, a team whose predicted finishing position matches its actual
+// one gets a green check (they called that position correctly).
+function PredictedTable({ table, actualPos }: { table: WcStanding[]; actualPos: Map<number, { pos: number; decided: boolean }> }) {
   return (
     <div className="border-b border-line pb-1">
       <div className={STANDING_COLS + " py-1.5 text-[8.5px] uppercase tracking-wide text-muted"}>
@@ -21,12 +23,16 @@ function PredictedTable({ table }: { table: WcStanding[] }) {
         <div className="text-center">GD</div>
         <div className="text-right">Pts</div>
       </div>
-      {table.map((t, i) => (
+      {table.map((t, i) => {
+        const a = actualPos.get(t.teamId);
+        const correct = a?.decided && a.pos === i + 1;
+        return (
         <div key={t.teamId} className={STANDING_COLS + " border-t border-line py-1 " + (t.qualified ? "bg-gold/10" : "")}>
           <div className="font-mono text-[10px] text-muted">{i + 1}</div>
           <div className="flex min-w-0 items-center gap-1.5">
             <span>{flagFor(t.name)}</span>
             <span className={"truncate " + (t.qualified ? "text-cream" : "text-muted")}>{t.name}</span>
+            {correct && <span className="shrink-0 text-[10px] text-[#6bbf86]" title="Correct finishing position">✓</span>}
           </div>
           <div className="text-center font-mono text-[10px] text-muted">{t.played}</div>
           <div className="text-center font-mono text-[10px] text-muted">{t.won}</div>
@@ -35,7 +41,8 @@ function PredictedTable({ table }: { table: WcStanding[] }) {
           <div className="text-center font-mono text-[10px] text-muted">{t.gd > 0 ? `+${t.gd}` : t.gd}</div>
           <div className="text-right font-mono text-[12px] font-semibold text-cream">{t.points}</div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -87,6 +94,11 @@ function MatchRow({ m }: { m: WallchartMatch }) {
 // (view "all") and the tabbed "My Predictions" page (a single section).
 export default function WallchartPredictions({ id, view = "all" }: { id: string | number; view?: "groups" | "bracket" | "all" }) {
   const { data } = useWallchart(id);
+  const { data: actualGroups } = useWcGroups();
+  // Each team's actual finishing position (+ whether its group has finished), to
+  // mark predicted positions the entrant got right.
+  const actualPos = new Map<number, { pos: number; decided: boolean }>();
+  for (const g of actualGroups ?? []) g.table.forEach((t, i) => actualPos.set(t.teamId, { pos: i + 1, decided: g.decided }));
   if (!data) return null;
 
   const byRound = new Map<string, typeof data.knockout>();
@@ -112,7 +124,7 @@ export default function WallchartPredictions({ id, view = "all" }: { id: string 
             <h4 className="border-b border-line px-4 py-2.5 font-display text-sm text-cream">
               Group {g.group}
             </h4>
-            {standings && <PredictedTable table={standings.table} />}
+            {standings && <PredictedTable table={standings.table} actualPos={actualPos} />}
             <div className="px-4 py-1">
               {g.matches.map((m, i) => (
                 <MatchRow key={i} m={m} />
