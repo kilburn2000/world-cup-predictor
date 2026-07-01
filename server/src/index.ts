@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, FIXTURE_SLOT_TO_PRED_SLOT } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, FIXTURE_SLOT_TO_PRED_SLOT, predictedGroupStandings } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -807,7 +807,11 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
     totals.total += t.s;
   }
 
-  return { entrant, totals, groups, knockout };
+  // The entrant's PREDICTED group tables (from their group-score picks), same shape
+  // as /api/wc-groups, to sit above the per-game results on the entrant page.
+  const predictedStandings = await predictedGroupStandings(id);
+
+  return { entrant, totals, groups, knockout, predictedStandings };
 });
 
 // Live actual group tables, proxied from football-data standings.

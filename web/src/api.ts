@@ -270,6 +270,8 @@ export interface Wallchart {
   totals: { total: number; MATCH: number; PROGRESSION: number; FINALTHIRD: number };
   groups: { group: string; matches: WallchartMatch[] }[];
   knockout: { round: string; label: string; slot: string; home: string; away: string; predHome: number; predAway: number }[];
+  /** the entrant's predicted final group tables (same shape as /api/wc-groups). */
+  predictedStandings: WcGroup[];
 }
 
 export const useWallchart = (id: string | number) =>

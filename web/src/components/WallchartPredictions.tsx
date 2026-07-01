@@ -1,9 +1,44 @@
-import { useWallchart, type WallchartMatch } from "../api.js";
+import { useWallchart, type WallchartMatch, type WcStanding } from "../api.js";
 import { flagFor } from "../flags.js";
 import ScoredChips from "./ScoredChips.js";
 import PointsPill from "./PointsPill.js";
 
 const MATCH_COLS = "grid grid-cols-[1fr_46px_1fr] items-center gap-1.5";
+const STANDING_COLS = "grid grid-cols-[18px_1fr_20px_20px_20px_20px_28px_30px] items-center gap-1 px-4 text-[11.5px]";
+
+// The entrant's predicted final table for one group: same columns as the real
+// Groups page, top-2 (and best-thirds) highlighted as qualifying.
+function PredictedTable({ table }: { table: WcStanding[] }) {
+  return (
+    <div className="border-b border-line pb-1">
+      <div className={STANDING_COLS + " py-1.5 text-[8.5px] uppercase tracking-wide text-muted"}>
+        <div />
+        <div>Team</div>
+        <div className="text-center">P</div>
+        <div className="text-center">W</div>
+        <div className="text-center">D</div>
+        <div className="text-center">L</div>
+        <div className="text-center">GD</div>
+        <div className="text-right">Pts</div>
+      </div>
+      {table.map((t, i) => (
+        <div key={t.teamId} className={STANDING_COLS + " border-t border-line py-1 " + (t.qualified ? "bg-gold/10" : "")}>
+          <div className="font-mono text-[10px] text-muted">{i + 1}</div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span>{flagFor(t.name)}</span>
+            <span className={"truncate " + (t.qualified ? "text-cream" : "text-muted")}>{t.name}</span>
+          </div>
+          <div className="text-center font-mono text-[10px] text-muted">{t.played}</div>
+          <div className="text-center font-mono text-[10px] text-muted">{t.won}</div>
+          <div className="text-center font-mono text-[10px] text-muted">{t.drawn}</div>
+          <div className="text-center font-mono text-[10px] text-muted">{t.lost}</div>
+          <div className="text-center font-mono text-[10px] text-muted">{t.gd > 0 ? `+${t.gd}` : t.gd}</div>
+          <div className="text-right font-mono text-[12px] font-semibold text-cream">{t.points}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // What a prediction scored, so the points pill takes the matching colour
 // (green exact / yellow partial / red miss) instead of the neutral fallback.
@@ -70,18 +105,22 @@ export default function WallchartPredictions({ id, view = "all" }: { id: string 
         <>
       {headings && <h3 className="mb-3 font-display text-base text-cream">Group stage</h3>}
       <div className={"grid gap-4 sm:grid-cols-2" + (showBracket ? " mb-8" : "")}>
-        {data.groups.map((g) => (
+        {data.groups.map((g) => {
+          const standings = data.predictedStandings?.find((s) => s.group === g.group);
+          return (
           <div key={g.group} className="fl-card overflow-hidden">
             <h4 className="border-b border-line px-4 py-2.5 font-display text-sm text-cream">
               Group {g.group}
             </h4>
+            {standings && <PredictedTable table={standings.table} />}
             <div className="px-4 py-1">
               {g.matches.map((m, i) => (
                 <MatchRow key={i} m={m} />
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
         </>
       )}
