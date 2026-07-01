@@ -80,8 +80,9 @@ function KoOutcomeChip({ points, homeCode, awayCode, homeScore, awayScore, homeC
   if (!exact && awayGoalsCorrect) parts.push(`${awayCorrect ? awayCode : "(A)"} ${awayScore}`);
   if (exact) parts.push("Exact");
   // Same colour as the points pill next to it (points determine it).
+  const t = toneFor(points);
   return (
-    <span className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={toneFor(points)}>
+    <span className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={{ background: t.bg, color: t.fg }}>
       {parts.length === 0 ? "N/A" : parts.join(" + ")}
     </span>
   );
