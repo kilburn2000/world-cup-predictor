@@ -86,7 +86,7 @@ export interface LeaderboardRow {
   /** the in-play provisional portion of total/week/exact (already folded into
    * those fields). Lets the client re-derive the tally from the live feed so it
    * tracks the chips in real time. Absent when the entrant has no live game. */
-  live?: { total: number; week1: number; week2: number; week3: number; exact: number };
+  live?: { total: number; week1: number; week2: number; week3: number; r32: number; r16: number; exact: number };
   /** each of the entrant's last (up to) 5 finished games, oldest first, with
    * enough to render a per-game form tooltip. */
   last5?: FormGame[];

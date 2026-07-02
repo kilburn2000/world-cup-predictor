@@ -148,6 +148,44 @@ const liveFormGame = (x: LiveFormGame) => ({
   hs: x.hs, as: x.as, predHome: x.predHome, predAway: x.predAway, live: true,
 });
 
+// In-play KNOCKOUT ties, per entrant, for the live form chip + total. Unlike the
+// group path, knockout points are already written to the scores table for IN_PLAY
+// ties (the live column reads them), so we surface the STORED points here as a
+// live delta - the caller records them in `live` (so the client can strip them and
+// re-add the fresh feed figure) but does NOT re-add them to the base total. Carries
+// the actual teams + live score; the caller enriches with the entrant's own picks.
+async function inPlayKnockout() {
+  const rows = (await sql`
+    select m.id, m.stage, m.matchday, m.home_goals hg, m.away_goals ag,
+           ht.tla hcode, at.tla acode, ht.name hname, at.name aname
+    from matches m
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    where m.stage <> 'GROUP' and m.status = 'IN_PLAY' and m.home_goals is not null and m.away_goals is not null
+  `) as any[];
+  const map = new Map<number, any[]>();
+  if (!rows.length) return map;
+  const byMatch = new Map<number, any>(rows.map((m) => [m.id, m]));
+  const ids = rows.map((m) => m.id);
+  const scoreRows = (await sql`
+    select entrant_id eid, ref, points, breakdown bd from scores
+    where kind = 'KNOCKOUT' and split_part(ref, ':', 2)::int in ${sql(ids)}
+  `) as any[];
+  for (const s of scoreRows) {
+    const m = byMatch.get(Number(s.ref.split(":")[1]));
+    if (!m) continue;
+    const sl = (s.bd ?? {}).scoreline ?? {};
+    const tier = sl.exact ? "exact" : sl.outcome ? "result" : sl.homeGoals || sl.awayGoals ? "diff" : "miss";
+    const arr = map.get(s.eid) ?? [];
+    arr.push({
+      matchNo: m.id, stage: m.stage, matchday: m.matchday, points: s.points, tier,
+      home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname, hs: m.hg, as: m.ag,
+    });
+    map.set(s.eid, arr);
+  }
+  return map;
+}
+
 // Live leaderboard for the (single) default league. Includes in-play provisional
 // points so the overall standings (and everything built on them) move mid-game.
 app.get("/api/leaderboard", async () => {
@@ -168,14 +206,16 @@ app.get("/api/leaderboard", async () => {
   `) as any[];
 
   const live = await inPlayProvisional();
-  if (live.size) {
+  const liveKo = await inPlayKnockout();
+  if (live.size || liveKo.size) {
     for (const r of rows) {
       const games = live.get(r.entrantId) ?? [];
-      if (!games.length) continue;
+      const koGames = liveKo.get(r.entrantId) ?? [];
+      if (!games.length && !koGames.length) continue;
       // Also expose the live delta on its own so the client can recompute the
       // tally from the (faster, ESPN-fresh) /api/live feed and keep the points
       // column in lockstep with the live chips.
-      const lv = { total: 0, week1: 0, week2: 0, week3: 0, exact: 0, result: 0 };
+      const lv = { total: 0, week1: 0, week2: 0, week3: 0, r32: 0, r16: 0, exact: 0, result: 0 };
       for (const g of games) {
         lv.total += g.points;
         if (g.exact) lv.exact += 1;
@@ -184,12 +224,21 @@ app.get("/api/leaderboard", async () => {
         else if (g.matchday === 2) lv.week2 += g.points;
         else if (g.matchday === 3) lv.week3 += g.points;
       }
+      // Group in-play points aren't in the stored base, so fold them into the tally.
       r.total += lv.total;
       r.exactCount += lv.exact;
       r.resultCount += lv.result;
       r.week1 += lv.week1;
       r.week2 += lv.week2;
       r.week3 += lv.week3;
+      // Knockout in-play points ARE already in the stored base (total + r32/r16),
+      // so DON'T re-add them - only record them in the live delta so the client
+      // strips the server figure and re-adds the fresh live-feed one (no double count).
+      for (const g of koGames) {
+        lv.total += g.points;
+        if (g.stage === "LAST_32") lv.r32 += g.points;
+        else if (g.stage === "LAST_16") lv.r16 += g.points;
+      }
       r.live = lv;
     }
   }
@@ -260,7 +309,21 @@ app.get("/api/leaderboard", async () => {
     // Append any in-play game(s) as the most recent form entries, so the form
     // column moves live alongside the points - flagged so the chip reads as live.
     const liveGames = (live.get(r.entrantId) ?? []).map(liveFormGame);
-    r.last5 = [...list.slice(-5).map(mkGame), ...liveGames].slice(-5);
+    // Live knockout ties, enriched with THIS entrant's predicted teams (from the
+    // same per-entrant slot->fixture mapping) so the tooltip's KoOutcomeChip shows
+    // which teams they placed right - one source of truth with the bracket.
+    const liveKoGames = (liveKo.get(r.entrantId) ?? []).map((x) => {
+      const ko = koByEntrant.get(r.entrantId)?.get(x.matchNo);
+      return {
+        stage: x.stage, points: x.points, tier: x.tier,
+        home: x.home, away: x.away, homeName: x.homeName, awayName: x.awayName, hs: x.hs, as: x.as,
+        predHome: ko?.phg ?? 0, predAway: ko?.pag ?? 0,
+        predHomeCode: ko?.hcode ?? null, predAwayCode: ko?.acode ?? null,
+        predHomeTeam: ko?.hname ?? null, predAwayTeam: ko?.aname ?? null,
+        live: true,
+      };
+    });
+    r.last5 = [...list.slice(-5).map(mkGame), ...liveGames, ...liveKoGames].slice(-5);
     // Per-phase form + tiebreak stats: each entrant's last up-to-5 finished games
     // within each week/round (for the form column) and that phase's exact/result
     // counts (so the week-by-week tables can break ties the same way Overall does).
@@ -283,6 +346,14 @@ app.get("/api/leaderboard", async () => {
       const ph = `week${lg.matchday}`;
       const arr = (r.formByPhase[ph] = r.formByPhase[ph] ?? []);
       arr.push(liveFormGame(lg));
+      if (arr.length > 5) arr.splice(0, arr.length - 5);
+    }
+    // Live knockout tie also belongs to its round's form column (r32/r16).
+    for (const g of liveKoGames) {
+      const ph = g.stage === "LAST_32" ? "r32" : g.stage === "LAST_16" ? "r16" : null;
+      if (!ph) continue;
+      const arr = (r.formByPhase[ph] = r.formByPhase[ph] ?? []);
+      arr.push(g);
       if (arr.length > 5) arr.splice(0, arr.length - 5);
     }
     r.statsByPhase = statsByPhase;

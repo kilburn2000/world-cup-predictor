@@ -255,7 +255,7 @@ const subTab = (active: boolean) =>
   "rounded-lg px-3.5 py-1.5 text-sm transition-colors " +
   (active ? "border border-gold bg-gold-soft text-cream" : "border border-transparent text-muted hover:text-cream");
 
-type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; resultCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; exact: number }; last5?: FormGame[]; formByPhase?: Partial<Record<Phase, FormGame[]>>; statsByPhase?: Partial<Record<Phase, { exact: number; result: number }>> };
+type Row = { entrantId: number; name: string; week1: number; week2: number; week3: number; r32: number; r16: number; total: number; exactCount?: number; resultCount?: number; nameIncomplete?: boolean; consensus?: boolean; live?: { total: number; week1: number; week2: number; week3: number; r32: number; r16: number; exact: number }; last5?: FormGame[]; formByPhase?: Partial<Record<Phase, FormGame[]>>; statsByPhase?: Partial<Record<Phase, { exact: number; result: number }>> };
 const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week1: c.week1, week2: c.week2, week3: c.week3, r32: c.r32, r16: c.r16, total: c.total, consensus: true });
 
 // Standings tables are a CSS subgrid: the card is the grid (its columns set by a
@@ -579,10 +579,10 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   const parentCols = showPred
     ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
     : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
-  // Live-derive the phase total from the live feed (see Overall). Only the group
-  // weeks have a server live delta to strip; r32/r16 have none yet.
-  const liveKey = phase === "week1" || phase === "week2" || phase === "week3" ? phase : null;
-  const dispPhase = (e: Row) => e[phase] - (liveKey ? e.live?.[liveKey] ?? 0 : 0) + phaseGames(live.get(e.entrantId) ?? [], phase).reduce((s, g) => s + g.points, 0);
+  // Live-derive the phase total from the live feed (see Overall): strip the server's
+  // live delta for this phase, then add the fresh live-feed figure. Every phase
+  // (weeks + r32/r16) now carries a live delta, so the key is just the phase.
+  const dispPhase = (e: Row) => e[phase] - (e.live?.[phase] ?? 0) + phaseGames(live.get(e.entrantId) ?? [], phase).reduce((s, g) => s + g.points, 0);
   // Tiebreak scoped to THIS phase's games: phase points, then phase exacts, then
   // phase results (see standingKey).
   const st = (e: Row) => e.statsByPhase?.[phase];
