@@ -1271,6 +1271,10 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
       away: m.away ?? projBySlot.get(m.slot)?.away ?? "TBD",
       homeCode: m.home_code ?? projBySlot.get(m.slot)?.homeCode ?? "",
       awayCode: m.away_code ?? projBySlot.get(m.slot)?.awayCode ?? "",
+      // Whether the actual fixture teams are confirmed (drawn) vs still projected -
+      // so the UI only ticks a correct knockout team pick once the tie is really set.
+      homeKnown: m.mh != null,
+      awayKnown: m.ma != null,
       stage: m.stage,
       group: m.grp,
       matchday: m.matchday,

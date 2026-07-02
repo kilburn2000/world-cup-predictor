@@ -282,15 +282,20 @@ function nextPredFor(fixtures: LiveMatch[] | undefined, scope: (m: LiveMatch) =>
 
 // One entrant's prediction for the next game: their score, and for a knockout tie
 // the teams they predicted too (flags + FIFA codes), since the matchup can differ.
-function NextPredCell({ row, stage }: { row?: LiveBoardRow; stage?: string }) {
+function NextPredCell({ row, stage, game }: { row?: LiveBoardRow; stage?: string; game?: LiveMatch }) {
   if (!row) return <div className="text-center"><span className="text-muted">–</span></div>;
-  if (stage && stage !== "GROUP" && row.predHome) {
+  const st = stage ?? game?.stage;
+  if (st && st !== "GROUP" && row.predHome) {
+    // Tick a predicted team once the tie is actually drawn and the entrant put that
+    // team in the matching position (home/away) - a correctly-placed knockout pick.
+    const homeOk = !!game?.homeKnown && !!row.predHomeName && row.predHomeName === game.home;
+    const awayOk = !!game?.awayKnown && !!row.predAwayName && row.predAwayName === game.away;
     return (
       <div className="flex items-center justify-center gap-1 font-mono text-[10px]">
         <span>{flagFor(row.predHomeName)}</span>
-        <span className="text-muted">{row.predHome}{row.penSide === "home" ? "(p)" : ""}</span>
+        <span className="text-muted">{row.predHome}{row.penSide === "home" ? "(p)" : ""}{homeOk && <span className="text-[#6bbf86]"> ✓</span>}</span>
         <span className="text-cream">{row.pick.replace("-", "–")}</span>
-        <span className="text-muted">{row.predAway}{row.penSide === "away" ? "(p)" : ""}</span>
+        <span className="text-muted">{row.predAway}{row.penSide === "away" ? "(p)" : ""}{awayOk && <span className="text-[#6bbf86]"> ✓</span>}</span>
         <span>{flagFor(row.predAwayName)}</span>
       </div>
     );
@@ -404,7 +409,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
               </div>
-              {showPred && (anyLive ? <LiveCell games={liveGames} /> : <NextPredCell row={next!.picks.get(e.entrantId)} stage={next!.game.stage} />)}
+              {showPred && (anyLive ? <LiveCell games={liveGames} /> : <NextPredCell row={next!.picks.get(e.entrantId)} game={next!.game} />)}
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.exactCount ?? 0}</div>
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
               <FormCell games={e.last5 ?? []} />
@@ -620,7 +625,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
             </div>
-            {showPred && (anyLive ? <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} /> : <NextPredCell row={next!.picks.get(e.entrantId)} stage={next!.game.stage} />)}
+            {showPred && (anyLive ? <LiveCell games={phaseGames(live.get(e.entrantId) ?? [], phase)} /> : <NextPredCell row={next!.picks.get(e.entrantId)} game={next!.game} />)}
             <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.exact ?? 0}</div>
             <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.result ?? 0}</div>
             <FormCell games={e.formByPhase?.[phase] ?? []} />

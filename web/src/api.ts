@@ -491,6 +491,9 @@ export interface LiveMatch {
   away: string;
   homeCode: string;
   awayCode: string;
+  /** knockout: whether the actual teams are confirmed (drawn) vs still projected. */
+  homeKnown?: boolean;
+  awayKnown?: boolean;
   stage: string;
   group?: string | null;
   matchday?: number | null;
