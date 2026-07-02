@@ -53,10 +53,9 @@ function useLivePoints(): LiveAgg {
   }, [data]);
 }
 
-// One entrant's live predictions for a given context (already filtered), rendered
-// as: predicted score + scoring chip + points pill, one line each. Shared by the
+// One live game's prediction: the entrant's predicted score + scoring chip (the
+// points pill lives in its own adjacent column - see LiveCell). Shared by the
 // Overall, Knockout and per-phase standings tables.
-// One live game's row: the entrant's pick, scored chips and points so far.
 function LiveLine({ g }: { g: LiveGame }) {
   const ko = g.stage !== "GROUP" && g.predHome;
   return (
@@ -84,7 +83,6 @@ function LiveLine({ g }: { g: LiveGame }) {
       ) : (
         <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
       )}
-      <PointsPill points={g.points} tier={g.tier} />
     </span>
   );
 }
@@ -129,10 +127,12 @@ function LiveTip({ tip }: { tip: { g: LiveGame; x: number; y: number } }) {
   );
 }
 
-// When several games are live, the cell becomes a slider rotating through them
-// every 5s (synced across rows via the wall clock) rather than stacking; a single
-// live game shows statically. Hovering a line shows its game tooltip and freezes
-// the rotation so it doesn't slide out from under the cursor.
+// Renders TWO grid cells: the live prediction, then its points pill in the next
+// column. When several games are live the prediction cell becomes a slider
+// rotating through them every 5s (synced across rows via the wall clock) rather
+// than stacking; a single live game shows statically. Hovering a line shows its
+// game tooltip and freezes the rotation so it doesn't slide out from under the
+// cursor - the pill cell tracks the same (frozen) game.
 const ROTATE_MS = 5000;
 function LiveCell({ games }: { games: LiveGame[] }) {
   const rotate = games.length > 1;
@@ -144,31 +144,29 @@ function LiveCell({ games }: { games: LiveGame[] }) {
     const id = setInterval(() => force((t) => t + 1), ROTATE_MS);
     return () => clearInterval(id);
   }, [rotate]);
-  if (!games.length) return <div />;
+  if (!games.length) return <><div /><div /></>;
   const enter = (g: LiveGame, ev: ReactMouseEvent) => {
     const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
     setTip({ g, x: r.left + r.width / 2, y: r.top });
   };
-  if (!rotate) {
-    return (
-      <div className="flex min-w-0 items-center overflow-hidden">
-        <span className="inline-flex" onMouseEnter={(e) => enter(games[0], e)} onMouseLeave={() => setTip(null)}><LiveLine g={games[0]} /></span>
+  if (rotate && !tip) idxRef.current = Math.floor(Date.now() / ROTATE_MS) % games.length; // freeze while hovering
+  const idx = rotate ? idxRef.current : 0;
+  const g = games[idx];
+  return (
+    <>
+      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+        <span key={idx} className={(rotate ? "fl-enter " : "") + "inline-flex"} onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><LiveLine g={g} /></span>
+        {rotate && (
+          <span className="flex shrink-0 items-center gap-0.5">
+            {games.map((_, i) => (
+              <span key={i} className={"h-1 w-1 rounded-full " + (i === idx ? "bg-gold" : "bg-muted/40")} />
+            ))}
+          </span>
+        )}
         {tip && <LiveTip tip={tip} />}
       </div>
-    );
-  }
-  if (!tip) idxRef.current = Math.floor(Date.now() / ROTATE_MS) % games.length; // freeze while hovering
-  const idx = idxRef.current;
-  return (
-    <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-      <span key={idx} className="fl-enter inline-flex" onMouseEnter={(e) => enter(games[idx], e)} onMouseLeave={() => setTip(null)}><LiveLine g={games[idx]} /></span>
-      <span className="flex shrink-0 items-center gap-0.5">
-        {games.map((_, i) => (
-          <span key={i} className={"h-1 w-1 rounded-full " + (i === idx ? "bg-gold" : "bg-muted/40")} />
-        ))}
-      </span>
-      {tip && <LiveTip tip={tip} />}
-    </div>
+      <div className="flex items-center justify-center"><PointsPill points={g.points} tier={g.tier} /></div>
+    </>
   );
 }
 
@@ -267,6 +265,15 @@ const consensusRow = (c: Consensus): Row => ({ entrantId: -1, name: c.name, week
 // column fills the slack so the stat columns group on the right.
 const SUB_ROW = "col-span-full grid grid-cols-subgrid items-center gap-x-5 px-4";
 
+// Grid template for a standings table. `showPred` adds the live/next-prediction
+// column; when a game is actually live that column splits into the prediction plus
+// its own points-pill column, so the live layout needs one extra track.
+function tableCols(showPred: boolean, anyLive: boolean): string {
+  if (!showPred) return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
+  if (anyLive) return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto_auto]";
+  return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]";
+}
+
 // The next not-yet-started fixture matching a scope (earliest kickoff) + each
 // entrant's predicted score for it, for the "Next Prediction" column shown when
 // nothing's live. Picks come straight off the fixture's board.
@@ -352,9 +359,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
   // Subgrid columns (see SUB_ROW): gutter, rank, name(1fr fills), [live/next pred],
   // exact, results, form, pts. All stat columns are `auto` so each is exactly as
   // wide as its widest header/cell. Exact/Results/Form hide on mobile.
-  const parentCols = showPred
-    ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
-    : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
+  const parentCols = tableCols(showPred, anyLive);
   // points first, then exacts, then results (see standingKey), then name.
   const keyOf = (e: Row) => standingKey(dispTotal(e), e.exactCount ?? 0, e.resultCount ?? 0);
   const list: Row[] = [...(data ?? []), ...(everyone ? [consensusRow(everyone)] : [])].sort(
@@ -376,7 +381,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       <div className={"fl-card overflow-hidden " + parentCols}>
         <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div className="text-center">#</div><div className="text-left">Entrant</div>
-          {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}
+          {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
           <div className="hidden text-center sm:block">Form</div>
@@ -391,7 +396,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
-              {showPred && <div />}
+              {showPred && <div />}{showPred && anyLive && <div />}
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.exactCount ?? "–"}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.resultCount ?? "–"}</div>
               <div className="hidden sm:block" />
@@ -454,14 +459,12 @@ function EntrantGroups() {
           const showPred = anyLive || !!next;
           // Subgrid columns (see SUB_ROW): gutter, rank, name(1fr), [live/next pred],
           // exact, results, form, pts, gutter.
-          const parentCols = showPred
-            ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
-            : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
+          const parentCols = tableCols(showPred, anyLive);
           return (
             <div key={g.group} className={"fl-card overflow-hidden " + parentCols}>
               <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
-                {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}
+                {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
                 <div className="hidden text-center sm:block">Form</div>
@@ -576,9 +579,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   const next = anyLive ? null : nextPredFor(fixtures, inPhase);
   const showPred = anyLive || !!next;
   // Subgrid columns (see SUB_ROW): rank, name(1fr), [live/next pred], exact, results, form, pts.
-  const parentCols = showPred
-    ? "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
-    : "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
+  const parentCols = tableCols(showPred, anyLive);
   // Live-derive the phase total from the live feed (see Overall): strip the server's
   // live delta for this phase, then add the fresh live-feed figure. Every phase
   // (weeks + r32/r16) now carries a live delta, so the key is just the phase.
@@ -599,7 +600,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
     <>
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
+        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
