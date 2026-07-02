@@ -295,8 +295,8 @@ function NextPredCell({ row, stage, game }: { row?: LiveBoardRow; stage?: string
         <span>{flagFor(row.predHomeName)}</span>
         <span className="text-muted">{row.predHome}{row.penSide === "home" ? "(p)" : ""}{homeOk && <span className="text-[#6bbf86]"> ✓</span>}</span>
         <span className="text-cream">{row.pick.replace("-", "–")}</span>
-        <span className="text-muted">{row.predAway}{row.penSide === "away" ? "(p)" : ""}{awayOk && <span className="text-[#6bbf86]"> ✓</span>}</span>
-        <span>{flagFor(row.predAwayName)}</span>
+        <span className="text-muted">{row.predAway}{row.penSide === "away" ? "(p)" : ""}</span>
+        <span>{flagFor(row.predAwayName)}{awayOk && <span className="text-[#6bbf86]"> ✓</span>}</span>
       </div>
     );
   }
