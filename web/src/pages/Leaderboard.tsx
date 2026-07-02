@@ -154,7 +154,7 @@ function LiveCell({ games }: { games: LiveGame[] }) {
   const g = games[idx];
   return (
     <>
-      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+      <div className="hidden min-w-0 items-center gap-2 overflow-hidden sm:flex">
         <span key={idx} className={(rotate ? "fl-enter " : "") + "inline-flex"} onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><LiveLine g={g} /></span>
         {rotate && (
           <span className="flex shrink-0 items-center gap-0.5">
@@ -267,10 +267,12 @@ const SUB_ROW = "col-span-full grid grid-cols-subgrid items-center gap-x-5 px-4"
 
 // Grid template for a standings table. `showPred` adds the live/next-prediction
 // column; when a game is actually live that column splits into the prediction plus
-// its own points-pill column, so the live layout needs one extra track.
+// its own points-pill column. On mobile the (wide) live prediction is hidden, so
+// only the pill shows there - the live layout has the same mobile track count as a
+// non-live table, and one extra track from sm: up.
 function tableCols(showPred: boolean, anyLive: boolean): string {
   if (!showPred) return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
-  if (anyLive) return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto_auto]";
+  if (anyLive) return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto_auto]";
   return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]";
 }
 
@@ -381,7 +383,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       <div className={"fl-card overflow-hidden " + parentCols}>
         <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
           <div className="text-center">#</div><div className="text-left">Entrant</div>
-          {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
+          {showPred && <div className={anyLive ? "hidden text-left sm:block" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
           <div className="hidden text-center sm:block">Form</div>
@@ -396,7 +398,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
-              {showPred && <div />}{showPred && anyLive && <div />}
+              {showPred && <div className={anyLive ? "hidden sm:block" : undefined} />}{showPred && anyLive && <div />}
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.exactCount ?? "–"}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.resultCount ?? "–"}</div>
               <div className="hidden sm:block" />
@@ -464,7 +466,7 @@ function EntrantGroups() {
             <div key={g.group} className={"fl-card overflow-hidden " + parentCols}>
               <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
-                {showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
+                {showPred && <div className={anyLive ? "hidden text-left sm:block" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
                 <div className="hidden text-center sm:block">Form</div>
@@ -600,7 +602,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
     <>
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
-        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "text-left" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
+        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "hidden text-left sm:block" : "whitespace-nowrap text-center"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
