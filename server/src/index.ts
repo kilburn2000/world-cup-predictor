@@ -1729,6 +1729,27 @@ try {
     await recomputeAll();
     console.log("reupload dave_lucy_reupload_v3 applied");
   }
+
+  // 2026-07-02: the two evening R32 kickoff times were swapped versus the real
+  // schedule. football-data has them right (Spain v Austria 19:00Z, played 3-0;
+  // Portugal v Croatia 23:00Z, still to come), but knockout fixtures don't sync
+  // kickoff by api_match_id, so the seeded/swapped times stuck - leaving the
+  // already-passed 19:00 Portugal tie jammed as the "current" game. Correct them
+  // by team, and clear result_overridden so the 23:00 Portugal score still
+  // auto-imports from ESPN (which skips overridden rows). Runs once.
+  const [koTimeFix] = await sql`select 1 from app_meta where key = 'r32_kickoff_fix_v1'`;
+  if (!koTimeFix) {
+    await sql`update matches m set kickoff_utc = '2026-07-02 23:00:00+00', result_overridden = false
+      from teams h, teams a
+      where m.home_team_id = h.id and m.away_team_id = a.id and m.stage = 'LAST_32'
+        and h.name = 'Portugal' and a.name = 'Croatia'`;
+    await sql`update matches m set kickoff_utc = '2026-07-02 19:00:00+00', result_overridden = false
+      from teams h, teams a
+      where m.home_team_id = h.id and m.away_team_id = a.id and m.stage = 'LAST_32'
+        and h.name = 'Spain' and a.name = 'Austria'`;
+    await sql`insert into app_meta (key) values ('r32_kickoff_fix_v1')`;
+    console.log("r32_kickoff_fix_v1 applied");
+  }
 } catch (e) {
   console.error("startup migration failed", e);
 }
