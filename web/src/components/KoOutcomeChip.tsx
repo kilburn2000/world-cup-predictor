@@ -31,9 +31,10 @@ export default function KoOutcomeChip({
     }
   }
   const t = toneFor(points);
-  return (
-    <span className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={{ background: t.bg, color: t.fg }}>
-      {parts.length === 0 ? "N/A" : parts.join(" + ")}
-    </span>
+  const chip = (label: string, key?: number) => (
+    <span key={key} className="whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px]" style={{ background: t.bg, color: t.fg }}>{label}</span>
   );
+  // one chip per thing scored (team ✓, RES, a goal tally, Exact), not a combined chip.
+  if (parts.length === 0) return chip("N/A");
+  return <span className="inline-flex items-center gap-0.5">{parts.map((p, i) => chip(p, i))}</span>;
 }

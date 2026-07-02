@@ -31,6 +31,10 @@ export default function ScoredChips({
   // Scored nothing → an explicit red "N/A" chip (rather than a blank), so a miss
   // reads the same way everywhere this component is used.
   if (!parts.length) return <Chip label="N/A" tone="miss" />;
-  // combine everything scored into a single chip (e.g. "Result + CZE 1")
-  return <Chip label={parts.join(" + ")} tone="partial" />;
+  // one chip per thing scored (e.g. "RES", "CZE 1"), rather than a combined chip.
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {parts.map((p, i) => <Chip key={i} label={p} tone="partial" />)}
+    </span>
+  );
 }
