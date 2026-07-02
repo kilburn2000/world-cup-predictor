@@ -163,9 +163,13 @@ function LiveCell({ games }: { games: LiveGame[] }) {
             ))}
           </span>
         )}
-        {tip && <LiveTip tip={tip} />}
       </div>
-      <div className="flex items-center justify-center"><PointsPill points={g.points} tier={g.tier} /></div>
+      {/* The pill carries the same live tooltip as the prediction (and the form
+          chips), so it's hoverable even below lg: where the prediction is hidden. */}
+      <div className="flex items-center justify-center">
+        <span className="inline-flex" onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><PointsPill points={g.points} tier={g.tier} /></span>
+      </div>
+      {tip && <LiveTip tip={tip} />}
     </>
   );
 }
