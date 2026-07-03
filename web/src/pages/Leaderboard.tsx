@@ -53,37 +53,24 @@ function useLivePoints(): LiveAgg {
   }, [data]);
 }
 
-// One live game's prediction: the entrant's predicted score + scoring chip (the
-// points pill lives in its own adjacent column - see LiveCell). Shared by the
-// Overall, Knockout and per-phase standings tables.
+// One live game's prediction: just the entrant's predicted matchup + score. The
+// scoring chip is deliberately NOT shown here - it lives in the points pill's hover
+// tooltip (see LiveTip) to keep the row uncluttered. Shared by the Overall,
+// Knockout and per-phase standings tables.
 function LiveLine({ g }: { g: LiveGame }) {
   const ko = g.stage !== "GROUP" && g.predHome;
-  return (
-    <span className="flex items-center gap-1 whitespace-nowrap">
-      {ko ? (
-        // Knockout: show the teams the entrant predicted (flags + FIFA codes) around
-        // their score, since their matchup can differ from the actual fixture.
-        <span className="mr-1.5 flex items-center gap-1 font-mono text-[10px]">
-          <span>{flagFor(g.predHomeName)}</span>
-          <span className="text-muted">{g.predHome}{g.penSide === "home" ? "(p)" : ""}</span>
-          <span className="text-cream/90">{g.pick.replace("-", "–")}</span>
-          <span className="text-muted">{g.predAway}{g.penSide === "away" ? "(p)" : ""}</span>
-          <span>{flagFor(g.predAwayName)}</span>
-        </span>
-      ) : (
-        <span className="mr-1.5 font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
-      )}
-      {ko ? (
-        <KoOutcomeChip
-          points={g.points} homeCode={g.homeCode} awayCode={g.awayCode}
-          predHome={Number(g.pick.split("-")[0])} predAway={Number(g.pick.split("-")[1])}
-          actualHome={g.hs} actualAway={g.as}
-          homeCorrect={g.predHomeName === g.home} awayCorrect={g.predAwayName === g.away}
-        />
-      ) : (
-        <ScoredChips pick={g.pick} hs={g.hs} as={g.as} homeCode={g.homeCode} awayCode={g.awayCode} />
-      )}
+  return ko ? (
+    // Knockout: the teams the entrant predicted (flags + FIFA codes) around their
+    // score, since their matchup can differ from the actual fixture.
+    <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px]">
+      <span>{flagFor(g.predHomeName)}</span>
+      <span className="text-muted">{g.predHome}{g.penSide === "home" ? "(p)" : ""}</span>
+      <span className="text-cream/90">{g.pick.replace("-", "–")}</span>
+      <span className="text-muted">{g.predAway}{g.penSide === "away" ? "(p)" : ""}</span>
+      <span>{flagFor(g.predAwayName)}</span>
     </span>
+  ) : (
+    <span className="whitespace-nowrap font-mono text-[10px] text-cream/90">{g.pick.replace("-", "–")}</span>
   );
 }
 

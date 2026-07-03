@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useLiveMatches, type LiveMatch } from "../api.js";
 import { useMe } from "../auth.js";
 import { flagFor } from "../flags.js";
-import ScoredChips from "./ScoredChips.js";
 import PointsPill from "./PointsPill.js";
 
 function initials(name: string) {
@@ -75,12 +74,7 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
               // Group games: predicted teams are the fixture teams, so just the score.
               <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
             )}
-            {live && (
-              <>
-                <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
-                {m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
-              </>
-            )}
+            {live && m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
           </span>
         )}
       </span>
