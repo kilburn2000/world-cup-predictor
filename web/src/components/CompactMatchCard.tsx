@@ -66,13 +66,18 @@ export default function CompactMatchCard({ m }: { m: LiveMatch }) {
 
   // A knockout pick: flag + code each side of the predicted score; "(p)" marks the
   // team the entrant has advancing on penalties when they predicted a draw.
-  const koPick = (g: { predHome?: string | null; predAway?: string | null; predHomeName?: string | null; predAwayName?: string | null; pick: string; penSide?: "home" | "away" | null }) => (
-    <span className="inline-flex items-center gap-1 font-mono text-cream">
-      <span>{flagFor(g.predHomeName)}</span>{g.predHome}{g.penSide === "home" ? "(p)" : ""}
-      <span className="mx-0.5">{g.pick.replace("-", "–")}</span>
-      {g.predAway}{g.penSide === "away" ? "(p)" : ""}<span>{flagFor(g.predAwayName)}</span>
-    </span>
-  );
+  const koPick = (g: { predHome?: string | null; predAway?: string | null; predHomeName?: string | null; predAwayName?: string | null; pick: string; penSide?: "home" | "away" | null }) => {
+    // Gold + bold the FIFA code of a team put in the correct position (once drawn).
+    const homeOk = !!m.homeKnown && !!g.predHomeName && g.predHomeName === m.home;
+    const awayOk = !!m.awayKnown && !!g.predAwayName && g.predAwayName === m.away;
+    return (
+      <span className="inline-flex items-center gap-1 font-mono text-cream">
+        <span>{flagFor(g.predHomeName)}</span><span className={homeOk ? "font-bold text-gold" : undefined}>{g.predHome}</span>{g.penSide === "home" ? "(p)" : ""}
+        <span className="mx-0.5">{g.pick.replace("-", "–")}</span>
+        <span className={awayOk ? "font-bold text-gold" : undefined}>{g.predAway}</span>{g.penSide === "away" ? "(p)" : ""}<span>{flagFor(g.predAwayName)}</span>
+      </span>
+    );
+  };
 
   return (
     <Link

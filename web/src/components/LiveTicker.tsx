@@ -66,9 +66,9 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
               // actual fixture), flags + FIFA codes either side of their score.
               <span className="flex items-center gap-1.5">
                 <span>{flagFor(m.myPredHomeName ?? m.home)}</span>
-                <span className="font-mono text-[11px] text-muted">{m.myPredHomeCode ?? m.homeCode}</span>
+                <span className={"font-mono text-[11px] " + (m.homeKnown && m.myPredHomeName === m.home ? "font-bold text-gold" : "text-muted")}>{m.myPredHomeCode ?? m.homeCode}</span>
                 <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
-                <span className="font-mono text-[11px] text-muted">{m.myPredAwayCode ?? m.awayCode}</span>
+                <span className={"font-mono text-[11px] " + (m.awayKnown && m.myPredAwayName === m.away ? "font-bold text-gold" : "text-muted")}>{m.myPredAwayCode ?? m.awayCode}</span>
                 <span>{flagFor(m.myPredAwayName ?? m.away)}</span>
               </span>
             ) : (
