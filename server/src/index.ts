@@ -15,7 +15,7 @@ import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
 import { dbNameMap, resolveEspn, liveEvents } from "./sync.js";
-import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, entrantSlotMap, allEntrantSlotMaps, predictedGroupStandings } from "./wc.js";
+import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, predictedGroupStandings, PRED_SLOT_TO_MATCH } from "./wc.js";
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
@@ -269,10 +269,9 @@ app.get("/api/leaderboard", async () => {
   // Index each entrant's SLOT picks by the FIXTURE (FIFA match number) they map to,
   // using the SAME per-entrant mapping the bracket uses - so the form tooltip and the
   // predicted-bracket tab are one source of truth.
-  const slotMaps = await allEntrantSlotMaps();
   const koByEntrant = new Map<number, Map<number, any>>();
   for (const p of slotPreds) {
-    const matchNo = slotMaps.get(p.eid)?.get(p.slot);
+    const matchNo = PRED_SLOT_TO_MATCH[p.slot] ?? null;
     if (matchNo == null) continue;
     if (!koByEntrant.has(p.eid)) koByEntrant.set(p.eid, new Map());
     koByEntrant.get(p.eid)!.set(matchNo, p);
@@ -980,14 +979,14 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
   const fixById = new Map<number, any>((koFixtures as any[]).map((f) => [f.id, f]));
   const koScoreRows = await sql`select ref, points, breakdown from scores where entrant_id = ${id} and kind = 'KNOCKOUT'`;
   const koScoreByRef = new Map<string, any>((koScoreRows as any[]).map((s) => [s.ref, s]));
-  // This entrant's own slot -> fixture mapping (per-entrant, from their seeds).
-  const koSlotMap = await entrantSlotMap(id);
+  // Global slot -> fixture mapping (fixed bracket positions), the same for every
+  // entrant - matches how the knockout is scored (positional, one source of truth).
   const knockout = (koRows as any[])
     .map((r) => {
       const prefix = r.slot.split("-")[0];
       const meta = ROUND_OF[prefix] ?? { round: prefix, label: prefix, order: 9 };
       const idx = Number(r.slot.split("-")[1] ?? 0);
-      const matchNo = koSlotMap.get(r.slot);
+      const matchNo = PRED_SLOT_TO_MATCH[r.slot] ?? null;
       const fx = matchNo ? fixById.get(matchNo) : null;
       const sc = matchNo ? koScoreByRef.get(`match:${matchNo}`) : null;
       const live = fx && (fx.status === "FINISHED" || fx.status === "IN_PLAY");
@@ -1176,7 +1175,6 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
   const koBoardByMatch = new Map<number, any[]>();
   const koMcByMatch = new Map<number, { score: string; count: number; total: number; home: string; away: string; homeName: string; awayName: string; penSide: "home" | "away" | null }>();
   if (hasKo) {
-    const slotMaps = await allEntrantSlotMaps();
     try {
       const ko = await buildKnockout();
       const ROUND_PREFIX: Record<string, string> = { "Round of 32": "R32", "Round of 16": "R16", "Quarter-finals": "QF", "Semi-finals": "SF", "Third-place play-off": "THIRD", "Final": "FINAL" };
@@ -1237,7 +1235,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
         }
       }
       p.penSide = penSide;
-      p.matchNo = slotMaps.get(p.eid)?.get(p.slot);
+      p.matchNo = PRED_SLOT_TO_MATCH[p.slot] ?? null;
       if (p.matchNo == null) continue;
       const arr = koBoardByMatch.get(p.matchNo) ?? [];
       arr.push({ entrantId: p.eid, name: p.name, pick: `${p.phg}-${p.pag}`, predHome: p.phome, predAway: p.paway, predHomeName: p.phomename, predAwayName: p.pawayname, penSide, points: koPoints.get(`${p.matchNo}:${p.eid}`) ?? null, tier: null });
@@ -1749,6 +1747,42 @@ try {
         and h.name = 'Spain' and a.name = 'Austria'`;
     await sql`insert into app_meta (key) values ('r32_kickoff_fix_v1')`;
     console.log("r32_kickoff_fix_v1 applied");
+  }
+
+  // 2026-07-03: knockout scoring now uses the fixed positional map
+  // (PRED_SLOT_TO_MATCH) - slot N scored against the actual game N, exactly how the
+  // paper sheets are scored. Two entrants also needed prediction data fixes the
+  // import got wrong: [redacted]'s R32 away column had slipped (Morocco dropped,
+  // Sweden duplicated); [redacted]'s re-typed sheet had its R32 + R16 rows in a
+  // scrambled slot order. Both corrected here from the original photos. Runs once.
+  const [koFix] = await sql`select 1 from app_meta where key = 'ko_positional_fix_v1'`;
+  if (!koFix) {
+    await sql`
+      update predictions p set pred_away_team_id = t.id
+      from entrants e, teams t, (values
+        ('R32-4','Morocco'),('R32-5','Norway'),('R32-6','Sweden'),('R32-7','Haiti'),
+        ('R32-8','Congo DR'),('R32-9','Senegal'),('R32-10','Qatar'),('R32-11','Austria'),
+        ('R32-12','England'),('R32-13','New Zealand'),('R32-14','Egypt')
+      ) as fix(slot, away)
+      where e.name = '[redacted]' and p.entrant_id = e.id and p.scope = 'SLOT'
+        and p.bracket_slot = fix.slot and t.name = fix.away`;
+    await sql`
+      update predictions p set pred_home_team_id = h.id, pred_away_team_id = a.id,
+        pred_home_goals = fix.hg, pred_away_goals = fix.ag
+      from entrants e, teams h, teams a, (values
+        ('R32-1','South Africa','Bosnia',2,0),('R32-2','Brazil','Japan',2,0),('R32-3','Germany','Scotland',2,0),
+        ('R32-4','Netherlands','Morocco',3,0),('R32-5','Ivory Coast','Senegal',2,1),('R32-6','France','United States',2,1),
+        ('R32-7','Mexico','Ecuador',1,0),('R32-8','England','Congo DR',1,0),('R32-9','Belgium','Czechia',3,1),
+        ('R32-10','Paraguay','Canada',2,1),('R32-11','Spain','Austria',2,0),('R32-12','Colombia','Croatia',1,0),
+        ('R32-13','Switzerland','New Zealand',1,0),('R32-14','Türkiye','Egypt',1,2),('R32-15','Argentina','Uruguay',1,1),
+        ('R32-16','Portugal','Norway',2,0),('R16-1','South Africa','Netherlands',2,0),('R16-2','Germany','France',1,2),
+        ('R16-3','Brazil','Ivory Coast',3,1),('R16-4','Mexico','England',2,2),('R16-5','Colombia','Spain',1,3),
+        ('R16-6','Paraguay','Belgium',2,0),('R16-7','Argentina','Egypt',2,0),('R16-8','Switzerland','Portugal',1,2)
+      ) as fix(slot, home, away, hg, ag)
+      where e.name = '[redacted]' and p.entrant_id = e.id and p.scope = 'SLOT'
+        and p.bracket_slot = fix.slot and h.name = fix.home and a.name = fix.away`;
+    await sql`insert into app_meta (key) values ('ko_positional_fix_v1')`;
+    console.log("ko_positional_fix_v1 applied");
   }
 } catch (e) {
   console.error("startup migration failed", e);

@@ -4,7 +4,7 @@ import {
   scoreGroupMatch,
   type ScoringConfig,
 } from "@wc/shared";
-import { resolveBracket, entrantSlotMap, teamsByGroup } from "./wc.js";
+import { resolveBracket, PRED_SLOT_TO_MATCH } from "./wc.js";
 
 export async function loadConfig(): Promise<ScoringConfig> {
   try {
@@ -80,7 +80,8 @@ export async function recomputeAll(): Promise<number> {
   //   + the scoreline points from scoreGroupMatch (RES / RES(D) for a called draw /
   //     each team's goal tally / exact bonus), applied whatever the teams were.
   // Max 7 a tie (2 positions + 5 scoreline). Each prediction is tied to its fixture
-  // PER ENTRANT (entrantSlotMap), since slot labels don't line up with the fixtures.
+  // by its bracket POSITION (PRED_SLOT_TO_MATCH, the same fixed map for everyone) -
+  // exactly how the paper sheets are scored, slot N against the actual game N.
   // Score on the 90-minute result (coalesce to the final score for ties that never
   // went to extra time, where the two are the same).
   const koFixtures = await sql`
@@ -90,10 +91,8 @@ export async function recomputeAll(): Promise<number> {
     from matches where stage <> 'GROUP'
   `;
   const fixByMatch = new Map<number, any>((koFixtures as any[]).map((f) => [f.id, f]));
-  const teams = await teamsByGroup();
   const koEntrants = await sql`select distinct entrant_id eid from predictions where scope = 'SLOT'`;
   for (const { eid } of koEntrants as any[]) {
-    const slotMap = await entrantSlotMap(eid, teams);
     const preds = await sql`
       select bracket_slot slot, pred_home_team_id ph, pred_away_team_id pa, pred_home_goals phg, pred_away_goals pag
       from predictions where scope = 'SLOT' and entrant_id = ${eid}
@@ -102,7 +101,7 @@ export async function recomputeAll(): Promise<number> {
     // fixture (a collision); keep the higher-scoring one rather than double-count.
     const best = new Map<number, { points: number; breakdown: any }>();
     for (const p of preds as any[]) {
-      const matchNo = slotMap.get(p.slot);
+      const matchNo = PRED_SLOT_TO_MATCH[p.slot] ?? null;
       if (matchNo == null) continue;
       const m = fixByMatch.get(matchNo);
       if (!m || m.home_team_id == null || m.away_team_id == null) continue; // tie not drawn yet
