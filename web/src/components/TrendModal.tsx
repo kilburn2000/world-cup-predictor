@@ -129,7 +129,7 @@ export default function TrendModal({ entrantId, entrantName, scope, scopeLabel, 
                   {pts.map((p, i) => (
                     <div
                       key={p.matchId}
-                      className="absolute -translate-x-1/2 -translate-y-1/2"
+                      className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                       style={{ left: x(i), top: y(p.rank) }}
                       onMouseEnter={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); setTip({ p, x: r.left + r.width / 2, y: r.top }); }}
                       onMouseLeave={() => setTip(null)}

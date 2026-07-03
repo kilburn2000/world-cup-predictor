@@ -145,7 +145,7 @@ function LiveCell({ games }: { games: LiveGame[] }) {
   return (
     <div className="flex items-center justify-center gap-1.5">
       <span className="hidden min-w-0 items-center gap-2 overflow-hidden lg:flex">
-        <span key={idx} className={(rotate ? "fl-enter " : "") + "inline-flex"} onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><LiveLine g={g} /></span>
+        <span key={idx} className={(rotate ? "fl-enter " : "") + "inline-flex cursor-pointer"} onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><LiveLine g={g} /></span>
         {rotate && (
           <span className="flex shrink-0 items-center gap-0.5">
             {games.map((_, i) => (
@@ -154,7 +154,7 @@ function LiveCell({ games }: { games: LiveGame[] }) {
           </span>
         )}
       </span>
-      <span className="inline-flex" onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><PointsPill points={g.points} tier={g.tier} /></span>
+      <span className="inline-flex cursor-pointer" onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><PointsPill points={g.points} tier={g.tier} /></span>
       {tip && <LiveTip tip={tip} />}
     </div>
   );

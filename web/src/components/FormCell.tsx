@@ -19,7 +19,7 @@ export default function FormCell({ games, className = "hidden items-center justi
           key={i}
           // Live game: a 1px outline in the chip's own text colour at 50% opacity
           // so it reads as in-play without shouting.
-          className="inline-flex rounded"
+          className="inline-flex cursor-pointer rounded"
           style={g.live ? { boxShadow: `0 0 0 1px ${pillFg(g.tier)}80` } : undefined}
           onMouseEnter={(ev) => { const r = (ev.currentTarget as HTMLElement).getBoundingClientRect(); setTip({ g, x: r.left + r.width / 2, y: r.top }); }}
           onMouseLeave={() => setTip(null)}
