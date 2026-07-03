@@ -615,7 +615,7 @@ app.get("/api/stats", async () => {
   `) as any[];
 
   // fold in IN-PLAY games so the stats move mid-game too
-  const live = await inPlayProvisional();
+  const live = await inPlayProvisional(await liveMinutes());
   for (const r of rows) {
     for (const g of live.get(r.eid) ?? []) {
       if (g.exact) r.exact_cnt++;
