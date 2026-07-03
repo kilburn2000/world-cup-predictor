@@ -98,38 +98,40 @@ const CURRENT_DAY = sql`(
   from matches where kickoff_utc is not null
 )`;
 
-// Provisional points from group matches IN PLAY right now - so everything moves
-// mid-game. Returns entrantId -> list of their in-play games with the breakdown.
-// Live minute per IN_PLAY match, from the ESPN feed (keyed by DB team-id pair) -
-// so the live form chips' tooltips can show the minute like the standings do.
-async function liveMinutes(): Promise<Map<number, number>> {
-  const out = new Map<number, number>();
+// Order-independent key for a fixture's two DB team ids - how the ESPN feed is
+// aligned to our fixtures across every live view.
+const pairKey = (a: number, b: number) => [a, b].sort((x, y) => x - y).join("-");
+
+// Live minute per fixture (keyed by team-id pair) from the ESPN feed, so the
+// live form chips' tooltips can show the minute like the standings do. One ESPN
+// pass, shared by both in-play builders; callers that don't need minutes pass an
+// empty map instead of paying for the fetch. dbNameMap is a DB read left outside
+// the try so a genuine DB failure surfaces - only the ESPN feed is optional.
+async function espnPairMinutes(): Promise<Map<string, number>> {
+  const byPair = new Map<string, number>();
+  const byNorm = await dbNameMap();
   try {
-    const byNorm = await dbNameMap();
-    const byPair = new Map<string, number>();
     for (const e of await getEspnMatches()) {
       const h = resolveEspn(e.home, byNorm);
       const a = resolveEspn(e.away, byNorm);
-      if (h && a && e.minute != null) byPair.set([h, a].sort((x, y) => x - y).join("-"), e.minute);
+      if (h && a && e.minute != null) byPair.set(pairKey(h, a), e.minute);
     }
-    for (const m of (await sql`select id, home_team_id mh, away_team_id ma from matches where status = 'IN_PLAY'`) as any[]) {
-      const min = byPair.get([m.mh, m.ma].sort((x: number, y: number) => x - y).join("-"));
-      if (min != null) out.set(m.id, min);
-    }
-  } catch { /* ESPN unavailable - no minute */ }
-  return out;
+  } catch { /* ESPN feed unavailable - no minutes */ }
+  return byPair;
 }
 
+// Provisional points from group matches IN PLAY right now - so everything moves
+// mid-game. Returns entrantId -> list of their in-play games with the breakdown.
 interface LiveFormGame {
   matchday: number; group: string; kickoff: any; points: number; exact: boolean; outcome: boolean;
   // enough to render a form chip + tooltip, like a finished game (FormGame shape)
   home: string; away: string; homeName: string; awayName: string;
   hs: number; as: number; predHome: number; predAway: number; tier: string; minute: number | null;
 }
-async function inPlayProvisional(minutes: Map<number, number>) {
+async function inPlayProvisional(minutes: Map<string, number>) {
   const cfg = await loadConfig();
   const liveMatches = (await sql`
-    select m.id, m.matchday, m.group_name grp, m.home_team_id mh, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
+    select m.id, m.matchday, m.group_name grp, m.home_team_id mh, m.away_team_id ma, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
            ht.tla hcode, at.tla acode, ht.name hname, at.name aname
     from matches m
     join teams ht on ht.id = m.home_team_id
@@ -155,7 +157,7 @@ async function inPlayProvisional(minutes: Map<number, number>) {
     arr.push({
       matchday: m.matchday, group: m.grp, kickoff: m.kickoff_utc, points: b.points, exact: b.exact, outcome: b.outcome,
       home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname,
-      hs: m.hg, as: m.ag, predHome: predH, predAway: predA, tier, minute: minutes.get(m.id) ?? null,
+      hs: m.hg, as: m.ag, predHome: predH, predAway: predA, tier, minute: minutes.get(pairKey(m.mh, m.ma)) ?? null,
     });
     map.set(p.entrant_id, arr);
   }
@@ -174,9 +176,9 @@ const liveFormGame = (x: LiveFormGame) => ({
 // live delta - the caller records them in `live` (so the client can strip them and
 // re-add the fresh feed figure) but does NOT re-add them to the base total. Carries
 // the actual teams + live score; the caller enriches with the entrant's own picks.
-async function inPlayKnockout(minutes: Map<number, number>) {
+async function inPlayKnockout(minutes: Map<string, number>) {
   const rows = (await sql`
-    select m.id, m.stage, m.matchday, m.home_goals hg, m.away_goals ag,
+    select m.id, m.stage, m.matchday, m.home_team_id mh, m.away_team_id ma, m.home_goals hg, m.away_goals ag,
            ht.tla hcode, at.tla acode, ht.name hname, at.name aname
     from matches m
     join teams ht on ht.id = m.home_team_id
@@ -199,7 +201,7 @@ async function inPlayKnockout(minutes: Map<number, number>) {
     const arr = map.get(s.eid) ?? [];
     arr.push({
       matchNo: m.id, stage: m.stage, matchday: m.matchday, points: s.points, tier,
-      home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname, hs: m.hg, as: m.ag, minute: minutes.get(m.id) ?? null,
+      home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname, hs: m.hg, as: m.ag, minute: minutes.get(pairKey(m.mh, m.ma)) ?? null,
     });
     map.set(s.eid, arr);
   }
@@ -225,7 +227,7 @@ app.get("/api/leaderboard", async () => {
     group by e.id, e.name, e.name_incomplete
   `) as any[];
 
-  const minutes = await liveMinutes();
+  const minutes = await espnPairMinutes();
   const live = await inPlayProvisional(minutes);
   const liveKo = await inPlayKnockout(minutes);
   if (live.size || liveKo.size) {
@@ -614,8 +616,9 @@ app.get("/api/stats", async () => {
     group by e.id, e.name
   `) as any[];
 
-  // fold in IN-PLAY games so the stats move mid-game too
-  const live = await inPlayProvisional(await liveMinutes());
+  // fold in IN-PLAY games so the stats move mid-game too (stats ignore the live
+  // minute, so skip the ESPN fetch and pass an empty minutes map)
+  const live = await inPlayProvisional(new Map());
   for (const r of rows) {
     for (const g of live.get(r.eid) ?? []) {
       if (g.exact) r.exact_cnt++;
@@ -921,7 +924,7 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
     for (const e of await getEspnMatches()) {
       const h = resolveEspn(e.home, byNorm);
       const a = resolveEspn(e.away, byNorm);
-      if (h && a) espnByPair.set([h, a].sort((x, y) => x - y).join("-"), { espn: e, homeId: h });
+      if (h && a) espnByPair.set(pairKey(h, a), { espn: e, homeId: h });
     }
   } catch {
     /* ESPN unavailable - DB scores only */
@@ -954,7 +957,7 @@ app.get("/api/entrants/:id/wallchart", async (req: any, reply) => {
     let aa = r.aa;
     let points = r.points ?? null;
     if (r.status === "IN_PLAY") {
-      const enrich = espnByPair.get([r.mh, r.ma].sort((x: number, y: number) => x - y).join("-"));
+      const enrich = espnByPair.get(pairKey(r.mh, r.ma));
       if (enrich) {
         const ours = enrich.homeId === r.mh;
         ah = ours ? enrich.espn.homeScore : enrich.espn.awayScore;
@@ -1182,7 +1185,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
     for (const e of await getEspnMatches()) {
       const h = resolveEspn(e.home, byNorm);
       const a = resolveEspn(e.away, byNorm);
-      if (h && a) espnByPair.set([h, a].sort((x, y) => x - y).join("-"), { espn: e, homeId: h });
+      if (h && a) espnByPair.set(pairKey(h, a), { espn: e, homeId: h });
     }
   } catch {
     /* ESPN unavailable - fall back to DB-only (no minute/events) */
@@ -1293,7 +1296,7 @@ async function buildLiveMatches(rows: any[], myId: number | null) {
 
   return (rows as any[]).map((m) => {
     // ESPN live enrichment (minute + live score + events), keyed by team-id pair.
-    const enrich = espnByPair.get([m.mh, m.ma].sort((x, y) => x - y).join("-"));
+    const enrich = espnByPair.get(pairKey(m.mh, m.ma));
 
     // For in-play matches use the live ESPN score so predictions recompute as fast
     // as the feed; the stored DB score only refreshes on the poller's cadence.

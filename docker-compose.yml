@@ -28,6 +28,12 @@ services:
     build: .
     ports:
       - "8790:8790"
+    # These are set here (not via .env) on purpose: the compose app always talks
+    # to the bundled `db` service. `environment:` wins over `env_file:`, so a
+    # DATABASE_URL in .env is intentionally ignored - to point at an external
+    # Postgres, edit the line below or run the image without compose (see
+    # DOCKER.md). Kept literal (not ${DATABASE_URL:-...}) so a stray DATABASE_URL
+    # in your shell can't redirect the container off the bundled db.
     environment:
       NODE_ENV: production
       PORT: 8790
@@ -35,6 +41,7 @@ services:
       VISION_MODEL: claude-sonnet-4-6
     # Optional secrets (ANTHROPIC_API_KEY, ADMIN_TOKEN, ADMIN_EMAIL,
     # ADMIN_PASSWORD_HASH, FOOTBALL_DATA_TOKEN). Absent .env is fine.
+    # NOTE: the long-form env_file (path/required) needs Docker Compose >= 2.24.
     env_file:
       - path: .env
         required: false
