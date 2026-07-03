@@ -174,6 +174,15 @@ const YouBadge = () => <span className="shrink-0 rounded bg-gold/20 px-1.5 py-px
 
 // Trophy badge for the winner of a completed competition.
 const WinnerBadge = () => <span className="shrink-0 rounded bg-gold/25 px-1.5 py-px text-[8px] font-semibold uppercase tracking-wide text-gold" title="Winner">🏆 Winner</span>;
+
+// A green ▲ / red ▼ next to the name while a game is live, flagging that the entrant
+// has moved up (+delta) or down (-delta) in position vs before kick-off. Pulses so it
+// reads as live. Rendered as a sibling of the name link (never inside the <a>).
+function PosCaret({ delta }: { delta: number }) {
+  if (!delta) return null;
+  const up = delta > 0;
+  return <span className={"shrink-0 animate-pulse text-[9px] leading-none " + (up ? "text-[#6bbf86]" : "text-[#d9534f]")} title={up ? `Up ${delta} since kick-off` : `Down ${-delta} since kick-off`}>{up ? "▲" : "▼"}</span>;
+}
 // Row highlight: gold for a declared winner, the softer gold for the logged-in entrant.
 const rowAccent = (won: boolean, you: boolean) =>
   won ? " bg-gold/20 ring-1 ring-inset ring-gold/70" : you ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "";
@@ -217,7 +226,7 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
   );
 }
 
-function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, nextStage, qualified, onOpenTrend }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextRow?: LiveBoardRow; nextStage?: string; qualified?: boolean; onOpenTrend: () => void }) {
+function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, nextStage, qualified, posDelta = 0, onOpenTrend }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextRow?: LiveBoardRow; nextStage?: string; qualified?: boolean; posDelta?: number; onOpenTrend: () => void }) {
   return (
     <div
       className={SUB_ROW + " border-t border-line py-2.5 text-[13px]" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
@@ -225,6 +234,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, 
       <RankCell label={label} top3={!!e.qualifying} onOpen={onOpenTrend} />
       <div className="flex min-w-0 items-center gap-1.5">
         <Link to={`/entrant/${e.entrantId}`} className={"truncate hover:underline " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</Link>
+        <PosCaret delta={posDelta} />
         {qualified && <span className="shrink-0 rounded bg-gold/20 px-1 py-px text-[8px] font-semibold uppercase tracking-wide text-gold" title="Qualified for the knockout bracket">Q</span>}
         {e.entrantId === myId && <YouBadge />}
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -417,7 +427,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <RankCell label={label} top3={label !== "=" && Number(label) <= 3} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
               <div className="flex min-w-0 items-center gap-1.5">
                 <Link to={`/entrant/${e.entrantId}`} className={"truncate hover:underline " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</Link>
-                {posDelta(e) !== 0 && <span className={"shrink-0 text-[9px] " + (posDelta(e) > 0 ? "text-[#6bbf86]" : "text-[#d9534f]")} title={posDelta(e) > 0 ? "Up since kick-off" : "Down since kick-off"}>{posDelta(e) > 0 ? "▲" : "▼"}</span>}
+                <PosCaret delta={posDelta(e)} />
                 {won(e) && <WinnerBadge />}
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -462,6 +472,12 @@ function EntrantGroups() {
           const liveOf = (eid: number) => groupGames(live.get(eid) ?? [], g.group);
           const anyLive = g.entrants.some((e) => liveOf(e.entrantId).length > 0);
           const liveCount = Math.max(0, ...g.entrants.map((e) => liveOf(e.entrantId).length));
+          // Live position move within the group vs before kick-off (folds the live
+          // group-game points into the group-competition key).
+          const gLive = (eid: number) => liveOf(eid).reduce((s, x) => s + x.points, 0);
+          const nowKey = (e: GroupEntrant) => knockoutGroupKey(e.total + gLive(e.entrantId), e.overallTotal ?? 0);
+          const posDelta = (e: GroupEntrant): number =>
+            !anyLive ? 0 : (1 + g.entrants.filter((x) => keyOf(x) > keyOf(e)).length) - (1 + g.entrants.filter((x) => nowKey(x) > nowKey(e)).length);
           // Next upcoming game in THIS WC group, for the Next Prediction column.
           const next = anyLive ? null : nextPredFor(fixtures, (m) => m.stage === "GROUP" && m.group === g.group);
           const showPred = anyLive || !!next;
@@ -480,7 +496,7 @@ function EntrantGroups() {
               </div>
               {g.entrants.map((e, i) => (
                 <Fragment key={e.entrantId}>
-                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextRow={next?.picks.get(e.entrantId)} nextStage={next?.game.stage} qualified={groupStageDone && !!e.qualifying} onOpenTrend={() => setTrendFor({ id: e.entrantId, name: e.name, group: g.group })} />
+                  <GroupRow e={e} myId={me?.entrantId} label={rankLabel(e)} liveGames={liveOf(e.entrantId)} anyLive={anyLive} showPred={showPred} nextRow={next?.picks.get(e.entrantId)} nextStage={next?.game.stage} qualified={groupStageDone && !!e.qualifying} posDelta={posDelta(e)} onOpenTrend={() => setTrendFor({ id: e.entrantId, name: e.name, group: g.group })} />
                   {i === 1 && <div className="col-span-full border-t border-dashed" style={{ borderColor: "rgba(201,168,106,0.4)" }} />}
                 </Fragment>
               ))}
@@ -600,6 +616,15 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
     (a, b) => keyOf(b) - keyOf(a) || a.name.localeCompare(b.name),
   );
   const rankLabel = rankLabeller(list, keyOf, (e) => !!e.consensus);
+  // Live position move within this phase vs before kick-off (see Overall).
+  const beforeKey = (e: Row) => standingKey(e[phase] - (e.live?.[phase] ?? 0), st(e)?.exact ?? 0, st(e)?.result ?? 0);
+  const posDelta = (e: Row): number => {
+    if (!anyLive || e.consensus) return 0;
+    const reals = list.filter((x) => !x.consensus);
+    const now = 1 + reals.filter((x) => keyOf(x) > keyOf(e)).length;
+    const before = 1 + reals.filter((x) => beforeKey(x) > beforeKey(e)).length;
+    return before - now;
+  };
   // Gold-highlight the winner once this week/round is fully decided.
   const phaseDone = !!(phase === "week1" ? phases?.week1Done : phase === "week2" ? phases?.week2Done : phase === "week3" ? phases?.week3Done : phase === "r32" ? phases?.r32Done : phases?.r16Done);
   const maxKey = Math.max(0, ...list.filter((e) => !e.consensus).map(keyOf));
@@ -630,6 +655,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             <RankCell label={label} top3={label !== "=" && Number(label) <= 3 && dispPhase(e) > 0} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
             <div className="flex min-w-0 items-center gap-1.5">
               <Link to={`/entrant/${e.entrantId}`} className={"truncate hover:underline " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</Link>
+              <PosCaret delta={posDelta(e)} />
               {won(e) && <WinnerBadge />}
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
