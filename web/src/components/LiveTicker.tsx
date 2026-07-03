@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useLiveMatches, type LiveMatch } from "../api.js";
 import { useMe } from "../auth.js";
 import { flagFor } from "../flags.js";
 import PointsPill from "./PointsPill.js";
+import KoOutcomeChip from "./KoOutcomeChip.js";
+import ScoredChips from "./ScoredChips.js";
 
 function initials(name: string) {
   return name.split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
@@ -29,9 +32,13 @@ const Avatar = ({ name }: { name: string | null }) => (
 // One ticker row: a live game (score + the entrant's prediction/chip/points) or
 // an upcoming game (kickoff + their predicted score).
 function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | null }) {
+  const [tip, setTip] = useState<{ x: number; y: number } | null>(null);
+  const ko = m.stage !== "GROUP";
+  const [ph, pa] = (m.myPick ?? "0-0").split("-").map(Number);
   return (
+    <>
     <Link
-      to={live ? "/statistics/live" : "/statistics/today"}
+      to="/statistics/today"
       className="flex items-center gap-3 overflow-x-auto text-[13px] transition-colors hover:text-cream [justify-content:safe_center]"
     >
       <Avatar name={name} />
@@ -74,11 +81,49 @@ function Row({ m, live, name }: { m: LiveMatch; live: boolean; name: string | nu
               // Group games: predicted teams are the fixture teams, so just the score.
               <span className="font-mono text-cream">{m.myPick.replace("-", "–")}</span>
             )}
-            {live && m.myPoints != null && <PointsPill points={m.myPoints} tier={m.myTier} />}
+            {live && m.myPoints != null && (
+              <span
+                className="inline-flex cursor-pointer"
+                onMouseEnter={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTip({ x: r.left + r.width / 2, y: r.top }); }}
+                onMouseLeave={() => setTip(null)}
+              >
+                <PointsPill points={m.myPoints} tier={m.myTier} />
+              </span>
+            )}
           </span>
         )}
       </span>
     </Link>
+    {tip && live && m.myPick && createPortal(
+      <div className="pointer-events-none fixed z-[60]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
+        <div className="flex flex-col items-center gap-1 rounded-lg border bg-[#0f120e] px-2.5 py-2 shadow-xl" style={{ borderColor: "rgba(217,83,79,0.6)" }}>
+          <span className="whitespace-nowrap font-mono text-[11px] text-cream">{flagFor(m.home)} {m.homeCode} {m.homeScore}-{m.awayScore} {m.awayCode} {flagFor(m.away)}</span>
+          <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[10px] text-[#d9534f]">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
+            LIVE{m.minute != null ? ` · ${m.minute}'` : ""}
+          </span>
+          {ko ? (
+            <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px] text-muted">
+              Pred <span>{flagFor(m.myPredHomeName ?? m.home)}</span> <span className={m.homeKnown && m.myPredHomeName === m.home ? "font-bold text-gold" : undefined}>{m.myPredHomeCode ?? m.homeCode}</span>
+              <span className="text-cream">{m.myPick.replace("-", "–")}</span>
+              <span className={m.awayKnown && m.myPredAwayName === m.away ? "font-bold text-gold" : undefined}>{m.myPredAwayCode ?? m.awayCode}</span> <span>{flagFor(m.myPredAwayName ?? m.away)}</span>
+            </span>
+          ) : (
+            <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {m.myPick.replace("-", "–")}</span>
+          )}
+          <span className="flex items-center gap-1">
+            {ko ? (
+              <KoOutcomeChip points={m.myPoints ?? 0} homeCode={m.homeCode} awayCode={m.awayCode} predHome={ph} predAway={pa} actualHome={m.homeScore} actualAway={m.awayScore} homeCorrect={m.myPredHomeName === m.home} awayCorrect={m.myPredAwayName === m.away} />
+            ) : (
+              <ScoredChips pick={m.myPick} hs={m.homeScore} as={m.awayScore} homeCode={m.homeCode} awayCode={m.awayCode} />
+            )}
+            <PointsPill points={m.myPoints ?? 0} tier={m.myTier} />
+          </span>
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }
 
