@@ -248,6 +248,7 @@ app.get("/api/leaderboard", async () => {
   const recent = (await sql`
     select s.entrant_id eid, s.points pts, s.breakdown bd, m.kickoff_utc ko, m.stage, m.matchday, m.bracket_slot slot, m.id "matchId",
            ht.tla hcode, at.tla acode, ht.name hname, at.name aname, m.home_goals hg, m.away_goals ag,
+           m.home_goals_90 hg90, m.away_goals_90 ag90,
            p.pred_home_goals phg, p.pred_away_goals pag
     from scores s
     join matches m on m.status = 'FINISHED' and s.ref = 'match:' || m.id
@@ -287,6 +288,9 @@ app.get("/api/leaderboard", async () => {
       home: x.hcode, away: x.acode,
       homeName: x.hname, awayName: x.aname,
       hs: x.hg, as: x.ag,
+      // the after-90-minutes score (what knockout scoring uses); null for group games
+      // and equal to hs/as unless the tie went to extra time.
+      hs90: x.hg90 ?? x.hg, as90: x.ag90 ?? x.ag,
       predHome: ko ? ko.phg : x.phg, predAway: ko ? ko.pag : x.pag,
       predHomeCode: ko ? ko.hcode : null, predAwayCode: ko ? ko.acode : null,
       predHomeTeam: ko ? ko.hname : null, predAwayTeam: ko ? ko.aname : null,

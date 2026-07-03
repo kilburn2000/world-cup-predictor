@@ -31,6 +31,9 @@ export default function FormCell({ games, className = "hidden items-center justi
         <div className="pointer-events-none fixed z-[60]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
           <div className={"flex flex-col items-center gap-1 rounded-lg border bg-[#0f120e] px-2.5 py-2 shadow-xl " + (tip.g.live ? "border-[#d9534f]/60" : "border-line")}>
             <span className="whitespace-nowrap font-mono text-[11px] text-cream">{flagFor(tip.g.homeName)} {tip.g.home} {tip.g.hs}-{tip.g.as} {tip.g.away} {flagFor(tip.g.awayName)}</span>
+            {tip.g.hs90 != null && (tip.g.hs90 !== tip.g.hs || tip.g.as90 !== tip.g.as) && (
+              <span className="whitespace-nowrap font-mono text-[10px] text-muted">After 90 · {tip.g.hs90}-{tip.g.as90} <span className="text-[9px]">(counts)</span></span>
+            )}
             {tip.g.live ? (
               <>
                 <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[10px] text-[#d9534f]">
@@ -58,7 +61,7 @@ export default function FormCell({ games, className = "hidden items-center justi
                 <KoOutcomeChip
                   points={tip.g.points} homeCode={tip.g.home} awayCode={tip.g.away}
                   predHome={tip.g.predHome} predAway={tip.g.predAway}
-                  actualHome={tip.g.hs} actualAway={tip.g.as}
+                  actualHome={tip.g.hs90 ?? tip.g.hs} actualAway={tip.g.as90 ?? tip.g.as}
                   homeCorrect={tip.g.predHomeTeam === tip.g.homeName} awayCorrect={tip.g.predAwayTeam === tip.g.awayName}
                 />
               ) : (

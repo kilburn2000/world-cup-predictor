@@ -17,6 +17,10 @@ export interface FormGame {
   awayName: string;
   hs: number;
   as: number;
+  /** the after-90-minutes score - what knockout scoring uses; differs from hs/as
+   *  only when the tie went to extra time. */
+  hs90?: number;
+  as90?: number;
   predHome: number;
   predAway: number;
   /** knockout only: the teams the entrant predicted for this tie (code + name). */
