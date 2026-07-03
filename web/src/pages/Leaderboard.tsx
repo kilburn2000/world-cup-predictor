@@ -362,6 +362,17 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
     (a, b) => keyOf(b) - keyOf(a) || a.name.localeCompare(b.name),
   );
   const rankLabel = rankLabeller(list, keyOf, (e) => !!e.consensus);
+  // During a live game: has this entrant moved up/down vs before kickoff? Compare
+  // their rank now (with live points) to their rank on the pre-live totals (strip
+  // the live delta back out). +ve = moved up, -ve = moved down.
+  const beforeKey = (e: Row) => standingKey(e.total - (e.live?.total ?? 0), e.exactCount ?? 0, e.resultCount ?? 0);
+  const posDelta = (e: Row): number => {
+    if (!anyLive || e.consensus) return 0;
+    const reals = list.filter((x) => !x.consensus);
+    const now = 1 + reals.filter((x) => keyOf(x) > keyOf(e)).length;
+    const before = 1 + reals.filter((x) => beforeKey(x) > beforeKey(e)).length;
+    return before - now;
+  };
   // Once the whole tournament is over, gold-highlight the winner(s) - the top of
   // the table (ties share the crown).
   const maxKey = Math.max(0, ...list.filter((e) => !e.consensus).map(keyOf));
@@ -406,6 +417,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <RankCell label={label} top3={label !== "=" && Number(label) <= 3} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
               <div className="flex min-w-0 items-center gap-1.5">
                 <Link to={`/entrant/${e.entrantId}`} className={"truncate hover:underline " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</Link>
+                {posDelta(e) !== 0 && <span className={"shrink-0 text-[9px] " + (posDelta(e) > 0 ? "text-[#6bbf86]" : "text-[#d9534f]")} title={posDelta(e) > 0 ? "Up since kick-off" : "Down since kick-off"}>{posDelta(e) > 0 ? "▲" : "▼"}</span>}
                 {won(e) && <WinnerBadge />}
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
