@@ -30,6 +30,8 @@ export interface FormGame {
   predAwayTeam?: string | null;
   /** true when this is the match currently in play (provisional points so far) */
   live?: boolean;
+  /** live minute (only for an in-play game) */
+  minute?: number | null;
 }
 
 /** one game on an entrant's position-trend graph: their points + rank after it. */

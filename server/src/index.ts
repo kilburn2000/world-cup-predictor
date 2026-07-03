@@ -100,13 +100,33 @@ const CURRENT_DAY = sql`(
 
 // Provisional points from group matches IN PLAY right now - so everything moves
 // mid-game. Returns entrantId -> list of their in-play games with the breakdown.
+// Live minute per IN_PLAY match, from the ESPN feed (keyed by DB team-id pair) -
+// so the live form chips' tooltips can show the minute like the standings do.
+async function liveMinutes(): Promise<Map<number, number>> {
+  const out = new Map<number, number>();
+  try {
+    const byNorm = await dbNameMap();
+    const byPair = new Map<string, number>();
+    for (const e of await getEspnMatches()) {
+      const h = resolveEspn(e.home, byNorm);
+      const a = resolveEspn(e.away, byNorm);
+      if (h && a && e.minute != null) byPair.set([h, a].sort((x, y) => x - y).join("-"), e.minute);
+    }
+    for (const m of (await sql`select id, home_team_id mh, away_team_id ma from matches where status = 'IN_PLAY'`) as any[]) {
+      const min = byPair.get([m.mh, m.ma].sort((x: number, y: number) => x - y).join("-"));
+      if (min != null) out.set(m.id, min);
+    }
+  } catch { /* ESPN unavailable - no minute */ }
+  return out;
+}
+
 interface LiveFormGame {
   matchday: number; group: string; kickoff: any; points: number; exact: boolean; outcome: boolean;
   // enough to render a form chip + tooltip, like a finished game (FormGame shape)
   home: string; away: string; homeName: string; awayName: string;
-  hs: number; as: number; predHome: number; predAway: number; tier: string;
+  hs: number; as: number; predHome: number; predAway: number; tier: string; minute: number | null;
 }
-async function inPlayProvisional() {
+async function inPlayProvisional(minutes: Map<number, number>) {
   const cfg = await loadConfig();
   const liveMatches = (await sql`
     select m.id, m.matchday, m.group_name grp, m.home_team_id mh, m.home_goals hg, m.away_goals ag, m.kickoff_utc,
@@ -135,7 +155,7 @@ async function inPlayProvisional() {
     arr.push({
       matchday: m.matchday, group: m.grp, kickoff: m.kickoff_utc, points: b.points, exact: b.exact, outcome: b.outcome,
       home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname,
-      hs: m.hg, as: m.ag, predHome: predH, predAway: predA, tier,
+      hs: m.hg, as: m.ag, predHome: predH, predAway: predA, tier, minute: minutes.get(m.id) ?? null,
     });
     map.set(p.entrant_id, arr);
   }
@@ -145,7 +165,7 @@ async function inPlayProvisional() {
 // A live in-play game rendered as a form chip (FormGame shape + live flag).
 const liveFormGame = (x: LiveFormGame) => ({
   points: x.points, tier: x.tier, home: x.home, away: x.away, homeName: x.homeName, awayName: x.awayName,
-  hs: x.hs, as: x.as, predHome: x.predHome, predAway: x.predAway, live: true,
+  hs: x.hs, as: x.as, predHome: x.predHome, predAway: x.predAway, minute: x.minute, live: true,
 });
 
 // In-play KNOCKOUT ties, per entrant, for the live form chip + total. Unlike the
@@ -154,7 +174,7 @@ const liveFormGame = (x: LiveFormGame) => ({
 // live delta - the caller records them in `live` (so the client can strip them and
 // re-add the fresh feed figure) but does NOT re-add them to the base total. Carries
 // the actual teams + live score; the caller enriches with the entrant's own picks.
-async function inPlayKnockout() {
+async function inPlayKnockout(minutes: Map<number, number>) {
   const rows = (await sql`
     select m.id, m.stage, m.matchday, m.home_goals hg, m.away_goals ag,
            ht.tla hcode, at.tla acode, ht.name hname, at.name aname
@@ -179,7 +199,7 @@ async function inPlayKnockout() {
     const arr = map.get(s.eid) ?? [];
     arr.push({
       matchNo: m.id, stage: m.stage, matchday: m.matchday, points: s.points, tier,
-      home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname, hs: m.hg, as: m.ag,
+      home: m.hcode, away: m.acode, homeName: m.hname, awayName: m.aname, hs: m.hg, as: m.ag, minute: minutes.get(m.id) ?? null,
     });
     map.set(s.eid, arr);
   }
@@ -205,8 +225,9 @@ app.get("/api/leaderboard", async () => {
     group by e.id, e.name, e.name_incomplete
   `) as any[];
 
-  const live = await inPlayProvisional();
-  const liveKo = await inPlayKnockout();
+  const minutes = await liveMinutes();
+  const live = await inPlayProvisional(minutes);
+  const liveKo = await inPlayKnockout(minutes);
   if (live.size || liveKo.size) {
     for (const r of rows) {
       const games = live.get(r.entrantId) ?? [];
@@ -323,7 +344,7 @@ app.get("/api/leaderboard", async () => {
         predHome: ko?.phg ?? 0, predAway: ko?.pag ?? 0,
         predHomeCode: ko?.hcode ?? null, predAwayCode: ko?.acode ?? null,
         predHomeTeam: ko?.hname ?? null, predAwayTeam: ko?.aname ?? null,
-        live: true,
+        minute: x.minute, live: true,
       };
     });
     r.last5 = [...list.slice(-5).map(mkGame), ...liveGames, ...liveKoGames].slice(-5);

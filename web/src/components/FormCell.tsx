@@ -38,7 +38,7 @@ export default function FormCell({ games, className = "hidden items-center justi
               <>
                 <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[10px] text-[#d9534f]">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
-                  LIVE
+                  LIVE{tip.g.minute != null ? ` · ${tip.g.minute}'` : ""}
                 </span>
                 {tip.g.predHomeCode ? (
                   <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px] text-muted">
