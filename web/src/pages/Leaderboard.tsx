@@ -309,11 +309,11 @@ function NextPredCell({ row, stage, game }: { row?: LiveBoardRow; stage?: string
     const awayOk = !!game?.awayKnown && !!row.predAwayName && row.predAwayName === game.away;
     return (
       <div className="hidden items-center justify-center gap-1 font-mono text-[10px] lg:flex">
-        <span>{homeOk && <span className="text-[#6bbf86]">✓</span>}{flagFor(row.predHomeName)}</span>
+        <span>{homeOk && <span className="mr-0.5 text-[#6bbf86]">✓</span>}{flagFor(row.predHomeName)}</span>
         <span className="text-muted">{row.predHome}{row.penSide === "home" ? "(p)" : ""}</span>
         <span className="text-cream">{row.pick.replace("-", "–")}</span>
         <span className="text-muted">{row.predAway}{row.penSide === "away" ? "(p)" : ""}</span>
-        <span>{flagFor(row.predAwayName)}{awayOk && <span className="text-[#6bbf86]">✓</span>}</span>
+        <span>{flagFor(row.predAwayName)}{awayOk && <span className="ml-0.5 text-[#6bbf86]">✓</span>}</span>
       </div>
     );
   }
