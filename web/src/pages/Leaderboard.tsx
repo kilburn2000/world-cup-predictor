@@ -88,9 +88,9 @@ function LiveTip({ tip }: { tip: { g: LiveGame; x: number; y: number } }) {
         </span>
         {g.stage !== "GROUP" && g.predHome ? (
           <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px] text-muted">
-            Pred <span>{flagFor(g.predHomeName)}</span> {g.predHome}{g.penSide === "home" ? "(p)" : ""}
+            Pred <span>{flagFor(g.predHomeName)}</span> <span className={g.predHomeName === g.home ? "font-bold text-gold" : undefined}>{g.predHome}</span>{g.penSide === "home" ? "(p)" : ""}
             <span className="text-cream">{g.pick.replace("-", "–")}</span>
-            {g.predAway}{g.penSide === "away" ? "(p)" : ""} <span>{flagFor(g.predAwayName)}</span>
+            <span className={g.predAwayName === g.away ? "font-bold text-gold" : undefined}>{g.predAway}</span>{g.penSide === "away" ? "(p)" : ""} <span>{flagFor(g.predAwayName)}</span>
           </span>
         ) : (
           <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {g.pick.replace("-", "–")}</span>

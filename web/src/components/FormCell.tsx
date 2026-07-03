@@ -32,14 +32,23 @@ export default function FormCell({ games, className = "hidden items-center justi
           <div className={"flex flex-col items-center gap-1 rounded-lg border bg-[#0f120e] px-2.5 py-2 shadow-xl " + (tip.g.live ? "border-[#d9534f]/60" : "border-line")}>
             <span className="whitespace-nowrap font-mono text-[11px] text-cream">{flagFor(tip.g.homeName)} {tip.g.home} v {tip.g.away} {flagFor(tip.g.awayName)}</span>
             {tip.g.live ? (
-              <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[10px] text-[#d9534f]">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
-                LIVE · {tip.g.hs}-{tip.g.as}
-              </span>
+              <>
+                <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[10px] text-[#d9534f]">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
+                  LIVE · {tip.g.hs}-{tip.g.as}
+                </span>
+                {tip.g.predHomeCode ? (
+                  <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px] text-muted">
+                    Pred <span>{flagFor(tip.g.predHomeTeam)}</span> <span className={tip.g.predHomeTeam === tip.g.homeName ? "font-bold text-gold" : undefined}>{tip.g.predHomeCode}</span> {tip.g.predHome}-{tip.g.predAway} <span className={tip.g.predAwayTeam === tip.g.awayName ? "font-bold text-gold" : undefined}>{tip.g.predAwayCode}</span> <span>{flagFor(tip.g.predAwayTeam)}</span>
+                  </span>
+                ) : (
+                  <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway}</span>
+                )}
+              </>
             ) : tip.g.predHomeCode ? (
               // Knockout: show the teams the entrant predicted (flags + codes) too.
               <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px] text-muted">
-                Pred <span>{flagFor(tip.g.predHomeTeam)}</span> {tip.g.predHomeCode} {tip.g.predHome}-{tip.g.predAway} {tip.g.predAwayCode} <span>{flagFor(tip.g.predAwayTeam)}</span> · Final {tip.g.hs}-{tip.g.as}
+                Pred <span>{flagFor(tip.g.predHomeTeam)}</span> <span className={tip.g.predHomeTeam === tip.g.homeName ? "font-bold text-gold" : undefined}>{tip.g.predHomeCode}</span> {tip.g.predHome}-{tip.g.predAway} <span className={tip.g.predAwayTeam === tip.g.awayName ? "font-bold text-gold" : undefined}>{tip.g.predAwayCode}</span> <span>{flagFor(tip.g.predAwayTeam)}</span> · Final {tip.g.hs}-{tip.g.as}
               </span>
             ) : (
               <span className="whitespace-nowrap font-mono text-[10px] text-muted">Pred {tip.g.predHome}-{tip.g.predAway} · Final {tip.g.hs}-{tip.g.as}</span>
