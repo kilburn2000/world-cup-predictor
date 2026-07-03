@@ -131,7 +131,7 @@ function LiveCell({ games }: { games: LiveGame[] }) {
     const id = setInterval(() => force((t) => t + 1), ROTATE_MS);
     return () => clearInterval(id);
   }, [rotate]);
-  if (!games.length) return <><div /><div /></>;
+  if (!games.length) return <div />;
   const enter = (g: LiveGame, ev: ReactMouseEvent) => {
     const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
     setTip({ g, x: r.left + r.width / 2, y: r.top });
@@ -139,9 +139,12 @@ function LiveCell({ games }: { games: LiveGame[] }) {
   if (rotate && !tip) idxRef.current = Math.floor(Date.now() / ROTATE_MS) % games.length; // freeze while hovering
   const idx = rotate ? idxRef.current : 0;
   const g = games[idx];
+  // One cell: the prediction (hidden below lg to protect the name) and its points
+  // pill sitting right beside it. The pill stays visible at every width; both carry
+  // the same hover tooltip (LiveTip) with the full scoring breakdown.
   return (
-    <>
-      <div className="hidden min-w-0 items-center gap-2 overflow-hidden lg:flex">
+    <div className="flex items-center justify-center gap-1.5">
+      <span className="hidden min-w-0 items-center gap-2 overflow-hidden lg:flex">
         <span key={idx} className={(rotate ? "fl-enter " : "") + "inline-flex"} onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><LiveLine g={g} /></span>
         {rotate && (
           <span className="flex shrink-0 items-center gap-0.5">
@@ -150,14 +153,10 @@ function LiveCell({ games }: { games: LiveGame[] }) {
             ))}
           </span>
         )}
-      </div>
-      {/* The pill carries the same live tooltip as the prediction (and the form
-          chips), so it's hoverable even below lg: where the prediction is hidden. */}
-      <div className="flex items-center justify-center">
-        <span className="inline-flex" onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><PointsPill points={g.points} tier={g.tier} /></span>
-      </div>
+      </span>
+      <span className="inline-flex" onMouseEnter={(e) => enter(g, e)} onMouseLeave={() => setTip(null)}><PointsPill points={g.points} tier={g.tier} /></span>
       {tip && <LiveTip tip={tip} />}
-    </>
+    </div>
   );
 }
 
@@ -260,12 +259,13 @@ const SUB_ROW = "col-span-full grid grid-cols-subgrid items-center gap-x-5 px-4"
 // priority and must never be squeezed out. Columns reveal progressively:
 //   mobile  - rank, name, pts (+ the compact live points pill when a game is live)
 //   sm:     - Exact / Results / Form join in
-//   lg:     - the wide prediction column (flags + FIFA codes for a knockout) joins,
-//             splitting into prediction + points-pill when live
-// so the name keeps its room on phones and small-desktop widths alike.
+//   lg:     - the wide prediction (flags + FIFA codes for a knockout) joins
+// When a game is live the prediction and its points pill share ONE column (pill
+// next to the prediction); the pill stays visible below lg where the prediction
+// is hidden, so the name keeps its room on phones and small-desktop widths alike.
 function tableCols(showPred: boolean, anyLive: boolean): string {
   if (!showPred) return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
-  if (anyLive) return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] lg:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto_auto]";
+  if (anyLive) return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]";
   return "grid gap-x-5 grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto] lg:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]";
 }
 
@@ -378,7 +378,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
       <div className={"fl-card overflow-hidden " + parentCols}>
         <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted [&>div]:pt-[2px]"}>
           <div className="text-center">#</div><div className="text-left">Entrant</div>
-          {showPred && <div className={anyLive ? "hidden text-left lg:block" : "hidden whitespace-nowrap text-center lg:block"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
+          {showPred && (anyLive ? <div className="whitespace-nowrap text-center"><span className="hidden lg:inline">{liveCount > 1 ? "Live Predictions" : "Live Prediction"}</span></div> : <div className="hidden whitespace-nowrap text-center lg:block">Next Prediction</div>)}
           <div className="hidden text-center sm:block">Exact</div>
           <div className="hidden text-center sm:block">Results</div>
           <div className="hidden text-center sm:block">Form</div>
@@ -393,7 +393,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
                 <span className="truncate font-medium text-gold">👥 {e.name}</span>
                 <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted">consensus</span>
               </div>
-              {showPred && <div className="hidden lg:block" />}{showPred && anyLive && <div />}
+              {showPred && (anyLive ? <div /> : <div className="hidden lg:block" />)}
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.exactCount ?? "–"}</div>
               <div className="hidden text-center font-mono text-[11px] text-gold/80 sm:block">{e.resultCount ?? "–"}</div>
               <div className="hidden sm:block" />
@@ -461,7 +461,7 @@ function EntrantGroups() {
             <div key={g.group} className={"fl-card overflow-hidden " + parentCols}>
               <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted [&>div]:pt-[2px]"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
-                {showPred && <div className={anyLive ? "hidden text-left lg:block" : "hidden whitespace-nowrap text-center lg:block"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
+                {showPred && (anyLive ? <div className="whitespace-nowrap text-center"><span className="hidden lg:inline">{liveCount > 1 ? "Live Predictions" : "Live Prediction"}</span></div> : <div className="hidden whitespace-nowrap text-center lg:block">Next Prediction</div>)}
                 <div className="hidden text-center sm:block">Exact</div>
                 <div className="hidden text-center sm:block">Results</div>
                 <div className="hidden text-center sm:block">Form</div>
@@ -597,7 +597,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
     <>
     <div className={"fl-card overflow-hidden " + parentCols}>
       <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted [&>div]:pt-[2px]"}>
-        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "hidden text-left lg:block" : "hidden whitespace-nowrap text-center lg:block"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
+        <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && (anyLive ? <div className="whitespace-nowrap text-center"><span className="hidden lg:inline">{liveCount > 1 ? "Live Predictions" : "Live Prediction"}</span></div> : <div className="hidden whitespace-nowrap text-center lg:block">Next Prediction</div>)}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
       </div>
       {list.map((e) => {
         const label = rankLabel(e);
