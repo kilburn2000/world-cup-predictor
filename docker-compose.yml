@@ -1,0 +1,46 @@
+# Run the whole app locally: the Fastify+React container plus a Postgres.
+#
+#   docker compose up --build            # start db + app
+#   docker compose exec app npm run db:push   # create the schema (first run)
+#   docker compose exec app npm run seed      # seed reference data (first run)
+#
+# Then open http://localhost:8790. Put secrets (ANTHROPIC_API_KEY, ADMIN_*, etc.)
+# in a local .env file - it is git/dockerignored and read via env_file below.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: worldcup
+      POSTGRES_USER: worldcup
+      POSTGRES_PASSWORD: worldcup
+    ports:
+      - "5432:5432"
+    volumes:
+      - wc-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U worldcup -d worldcup"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "8790:8790"
+    environment:
+      NODE_ENV: production
+      PORT: 8790
+      DATABASE_URL: postgres://worldcup:worldcup@db:5432/worldcup
+      VISION_MODEL: claude-sonnet-4-6
+    # Optional secrets (ANTHROPIC_API_KEY, ADMIN_TOKEN, ADMIN_EMAIL,
+    # ADMIN_PASSWORD_HASH, FOOTBALL_DATA_TOKEN). Absent .env is fine.
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  wc-pgdata:

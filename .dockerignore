@@ -1,0 +1,23 @@
+# Keep the build context small and reproducible: install deps and build inside
+# the image rather than copying local artefacts.
+.git
+node_modules
+**/node_modules
+web/dist
+dist
+**/dist
+
+# secrets + personal data (never bake into an image)
+.env
+.env.*
+!.env.example
+photos
+*.xlsx
+Screenshot*.png
+*.local
+
+# local cruft
+.DS_Store
+.cache
+.reskin-backup-*
+wc-dump.sql
