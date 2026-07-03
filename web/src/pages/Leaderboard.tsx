@@ -219,13 +219,12 @@ function StatCard({ label, l, unit, unitPlural }: { label: string; l?: StatLeade
 
 function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, nextStage, qualified, onOpenTrend }: { e: GroupEntrant; myId?: number | null; label: string; liveGames?: LiveGame[]; anyLive: boolean; showPred: boolean; nextRow?: LiveBoardRow; nextStage?: string; qualified?: boolean; onOpenTrend: () => void }) {
   return (
-    <Link
-      to={`/entrant/${e.entrantId}`}
-      className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
+    <div
+      className={SUB_ROW + " border-t border-line py-2.5 text-[13px]" + (e.entrantId === myId ? " bg-gold/10 ring-1 ring-inset ring-gold/40" : "")}
     >
       <RankCell label={label} top3={!!e.qualifying} onOpen={onOpenTrend} />
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className={"truncate " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</span>
+        <Link to={`/entrant/${e.entrantId}`} className={"truncate hover:underline " + (e.qualifying ? "text-cream" : "text-muted")}>{e.name}</Link>
         {qualified && <span className="shrink-0 rounded bg-gold/20 px-1 py-px text-[8px] font-semibold uppercase tracking-wide text-gold" title="Qualified for the knockout bracket">Q</span>}
         {e.entrantId === myId && <YouBadge />}
         {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -235,7 +234,7 @@ function GroupRow({ e, myId, label, liveGames = [], anyLive, showPred, nextRow, 
       <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
       <FormCell games={e.last5 ?? []} className="hidden items-center justify-center gap-0.5 sm:flex" />
       <div className="text-center font-mono text-sm font-semibold text-cream">{e.total}</div>
-    </Link>
+    </div>
   );
 }
 
@@ -403,10 +402,10 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
             (() => {
             const liveGames = live.get(e.entrantId) ?? [];
             return (
-            <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}>
+            <div key={e.entrantId} className={SUB_ROW + " border-t border-line py-2.5 text-[13px]" + rowAccent(won(e), e.entrantId === myId)}>
               <RankCell label={label} top3={label !== "=" && Number(label) <= 3} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
               <div className="flex min-w-0 items-center gap-1.5">
-                <span className={"truncate " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</span>
+                <Link to={`/entrant/${e.entrantId}`} className={"truncate hover:underline " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</Link>
                 {won(e) && <WinnerBadge />}
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -416,7 +415,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
               <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{e.resultCount ?? 0}</div>
               <FormCell games={e.last5 ?? []} />
               <div className="text-center font-mono text-sm font-semibold text-cream">{dispTotal(e)}</div>
-            </Link>
+            </div>
             );
             })()
           );
@@ -615,10 +614,10 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             <div className="text-center font-mono text-sm font-semibold text-gold">{e[phase]}</div>
           </div>
         ) : (
-          <Link key={e.entrantId} to={`/entrant/${e.entrantId}`} className={SUB_ROW + " border-t border-line py-2.5 text-[13px] transition-colors hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}>
+          <div key={e.entrantId} className={SUB_ROW + " border-t border-line py-2.5 text-[13px]" + rowAccent(won(e), e.entrantId === myId)}>
             <RankCell label={label} top3={label !== "=" && Number(label) <= 3 && dispPhase(e) > 0} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className={"truncate " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</span>
+              <Link to={`/entrant/${e.entrantId}`} className={"truncate hover:underline " + (won(e) ? "text-gold" : "text-cream")}>{e.name}</Link>
               {won(e) && <WinnerBadge />}
               {e.entrantId === myId && <YouBadge />}
               {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -628,7 +627,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
             <div className="hidden text-center font-mono text-[11px] text-muted sm:block">{st(e)?.result ?? 0}</div>
             <FormCell games={e.formByPhase?.[phase] ?? []} />
             <div className="text-center font-mono text-sm font-semibold text-cream">{dispPhase(e)}</div>
-          </Link>
+          </div>
         );
       })}
     </div>
@@ -660,15 +659,14 @@ function TopScorers() {
         {list.map((e) => {
           const label = rankLabel(e);
           return (
-          <Link
+          <div
             key={e.entrantId}
-            to={`/entrant/${e.entrantId}`}
-            className={cols + " border-t border-line px-4 py-2.5 transition-colors first:border-t-0 hover:bg-gold-soft" + rowAccent(won(e), e.entrantId === myId)}
+            className={cols + " border-t border-line px-4 py-2.5 first:border-t-0" + rowAccent(won(e), e.entrantId === myId)}
           >
             <RankCell label={label} top3={label !== "=" && Number(label) <= 3 && e.total > 0} onOpen={() => setTrendFor({ id: e.entrantId, name: e.name })} />
             <div className="min-w-0">
               <div className={"flex items-center gap-1.5 text-[13.5px] " + (won(e) ? "text-gold" : "text-cream")}>
-                <span className="truncate">{e.name}</span>
+                <Link to={`/entrant/${e.entrantId}`} className="truncate hover:underline">{e.name}</Link>
                 {won(e) && <WinnerBadge />}
                 {e.entrantId === myId && <YouBadge />}
                 {e.nameIncomplete && <span className="shrink-0 font-mono text-[9px]" style={{ color: "#e3c558" }}>(?)</span>}
@@ -685,7 +683,7 @@ function TopScorers() {
               </div>
             </div>
             <div className="text-right font-mono text-lg font-semibold text-cream">{e.total}</div>
-          </Link>
+          </div>
           );
         })}
       </div>
