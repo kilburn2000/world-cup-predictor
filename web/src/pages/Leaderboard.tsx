@@ -64,9 +64,9 @@ function LiveLine({ g }: { g: LiveGame }) {
     // score, since their matchup can differ from the actual fixture.
     <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px]">
       <span>{flagFor(g.predHomeName)}</span>
-      <span className="text-muted">{g.predHome}{g.penSide === "home" ? "(p)" : ""}</span>
+      <span className={g.predHomeName === g.home ? "font-bold text-gold" : "text-muted"}>{g.predHome}{g.penSide === "home" ? "(p)" : ""}</span>
       <span className="text-cream/90">{g.pick.replace("-", "–")}</span>
-      <span className="text-muted">{g.predAway}{g.penSide === "away" ? "(p)" : ""}</span>
+      <span className={g.predAwayName === g.away ? "font-bold text-gold" : "text-muted"}>{g.predAway}{g.penSide === "away" ? "(p)" : ""}</span>
       <span>{flagFor(g.predAwayName)}</span>
     </span>
   ) : (
@@ -81,10 +81,10 @@ function LiveTip({ tip }: { tip: { g: LiveGame; x: number; y: number } }) {
   return createPortal(
     <div className="pointer-events-none fixed z-[60]" style={{ left: tip.x, top: tip.y - 8, transform: "translate(-50%, -100%)" }}>
       <div className="flex flex-col items-center gap-1 rounded-lg border bg-[#0f120e] px-2.5 py-2 shadow-xl" style={{ borderColor: "rgba(217,83,79,0.6)" }}>
-        <span className="whitespace-nowrap font-mono text-[11px] text-cream">{flagFor(g.home)} {g.homeCode} v {g.awayCode} {flagFor(g.away)}</span>
+        <span className="whitespace-nowrap font-mono text-[11px] text-cream">{flagFor(g.home)} {g.homeCode} {g.hs}-{g.as} {g.awayCode} {flagFor(g.away)}</span>
         <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[10px] text-[#d9534f]">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#d9534f]" style={{ animation: "loadDots 1.2s infinite" }} />
-          LIVE · {g.hs}-{g.as}{g.minute != null ? ` · ${g.minute}'` : ""}
+          LIVE{g.minute != null ? ` · ${g.minute}'` : ""}
         </span>
         {g.stage !== "GROUP" && g.predHome ? (
           <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[10px] text-muted">
