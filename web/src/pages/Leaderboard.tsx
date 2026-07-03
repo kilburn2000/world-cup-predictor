@@ -309,11 +309,11 @@ function NextPredCell({ row, stage, game }: { row?: LiveBoardRow; stage?: string
     const awayOk = !!game?.awayKnown && !!row.predAwayName && row.predAwayName === game.away;
     return (
       <div className="hidden items-center justify-center gap-1 font-mono text-[10px] lg:flex">
-        <span>{flagFor(row.predHomeName)}</span>
-        <span className="text-muted">{row.predHome}{row.penSide === "home" ? "(p)" : ""}{homeOk && <span className="text-[#6bbf86]"> ✓</span>}</span>
+        <span>{homeOk && <span className="text-[#6bbf86]">✓</span>}{flagFor(row.predHomeName)}</span>
+        <span className="text-muted">{row.predHome}{row.penSide === "home" ? "(p)" : ""}</span>
         <span className="text-cream">{row.pick.replace("-", "–")}</span>
         <span className="text-muted">{row.predAway}{row.penSide === "away" ? "(p)" : ""}</span>
-        <span>{flagFor(row.predAwayName)}{awayOk && <span className="text-[#6bbf86]"> ✓</span>}</span>
+        <span>{flagFor(row.predAwayName)}{awayOk && <span className="text-[#6bbf86]">✓</span>}</span>
       </div>
     );
   }
@@ -389,7 +389,7 @@ function Overall({ everyone }: { everyone: Consensus | null }) {
         <StatCard label="Longest Result Streak" l={stats?.longestResultStreak} unit="in a row" unitPlural="in a row" />
       </div>
       <div className={"fl-card overflow-hidden " + parentCols}>
-        <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
+        <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted [&>div]:pt-[2px]"}>
           <div className="text-center">#</div><div className="text-left">Entrant</div>
           {showPred && <div className={anyLive ? "hidden text-left lg:block" : "hidden whitespace-nowrap text-center lg:block"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
           <div className="hidden text-center sm:block">Exact</div>
@@ -472,7 +472,7 @@ function EntrantGroups() {
           const parentCols = tableCols(showPred, anyLive);
           return (
             <div key={g.group} className={"fl-card overflow-hidden " + parentCols}>
-              <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted"}>
+              <div className={SUB_ROW + " border-b border-line py-3 text-[9px] uppercase tracking-wide text-muted [&>div]:pt-[2px]"}>
                 <div className="col-span-2 font-display text-lg normal-case tracking-normal text-cream">Group {g.group}</div>
                 {showPred && <div className={anyLive ? "hidden text-left lg:block" : "hidden whitespace-nowrap text-center lg:block"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}
                 <div className="hidden text-center sm:block">Exact</div>
@@ -609,7 +609,7 @@ function PhaseBoard({ phase, everyone }: { phase: Phase; everyone: Consensus | n
   return (
     <>
     <div className={"fl-card overflow-hidden " + parentCols}>
-      <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted"}>
+      <div className={SUB_ROW + " py-2 text-[9px] uppercase tracking-wide text-muted [&>div]:pt-[2px]"}>
         <div className="text-center">#</div><div className="text-left">Entrant</div>{showPred && <div className={anyLive ? "hidden text-left lg:block" : "hidden whitespace-nowrap text-center lg:block"}>{anyLive ? (liveCount > 1 ? "Live Predictions" : "Live Prediction") : "Next Prediction"}</div>}{showPred && anyLive && <div className="whitespace-nowrap text-center">Live Pts</div>}<div className="hidden text-center sm:block">Exact</div><div className="hidden text-center sm:block">Results</div><div className="hidden text-center sm:block">Form</div><div className="whitespace-nowrap text-center">Pts</div>
       </div>
       {list.map((e) => {
