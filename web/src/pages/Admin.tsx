@@ -32,6 +32,12 @@ const CARDS = [
     title: "Group Tables",
     blurb: "The live actual group standings as results come in.",
   },
+  {
+    to: "/breakdown",
+    icon: "🧮",
+    title: "Score Breakdown",
+    blurb: "Every game an entrant scored on - pick, actual result and points - to reconcile against an external sheet.",
+  },
 ];
 
 export default function Admin() {

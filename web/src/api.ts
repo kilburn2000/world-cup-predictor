@@ -357,6 +357,12 @@ export async function setEntrantIncomplete(id: number, incomplete: boolean, admi
 export const useEntrants = () =>
   useQuery({ queryKey: ["entrants"], queryFn: () => get<EntrantRow[]>("/api/entrants") });
 
+// Admin: one entrant's per-game scoring, for reconciling against a spreadsheet.
+export interface BreakdownRow { phase: string; group?: string; slot?: string; home: string; away: string; pick: string; actual: string; points: number }
+export interface EntrantBreakdown { entrant: string; group: BreakdownRow[]; knockout: BreakdownRow[] }
+export const useEntrantBreakdown = (id: number | null) =>
+  useQuery({ queryKey: ["breakdown", id], queryFn: () => get<EntrantBreakdown>(`/api/admin/entrant-breakdown/${id}`), enabled: id != null });
+
 export async function uploadEntrant(name: string, file: File, adminToken: string) {
   const form = new FormData();
   form.append("name", name);

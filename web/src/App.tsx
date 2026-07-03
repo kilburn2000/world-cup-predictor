@@ -20,6 +20,7 @@ import Prizes from "./pages/Prizes.js";
 import Admin from "./pages/Admin.js";
 import ManageEntrants from "./pages/ManageEntrants.js";
 import EditPredictions from "./pages/EditPredictions.js";
+import Breakdown from "./pages/Breakdown.js";
 import Loader from "./components/Loader.js";
 import LiveToasts from "./components/LiveToasts.js";
 import LiveTicker from "./components/LiveTicker.js";
@@ -197,6 +198,7 @@ export default function App() {
           <Route path="/scoring" element={<AuthGate admin><Scoring /></AuthGate>} />
           <Route path="/scorers" element={<AuthGate admin><ScorerAdmin /></AuthGate>} />
           <Route path="/manage" element={<AuthGate admin><ManageEntrants /></AuthGate>} />
+          <Route path="/breakdown" element={<AuthGate admin><Breakdown /></AuthGate>} />
         </Routes>
       </main>
 

@@ -1639,6 +1639,72 @@ app.patch("/api/admin/matches/:id/teams", async (req: any, reply) => {
   return { ok: true };
 });
 
+// Admin: one entrant's full per-game scoring (group + knockout) for reconciling
+// against an external spreadsheet. Each row is the fixture, their pick, the actual
+// result and the points it scored; grouped so you can diff a single game.
+app.get("/api/admin/entrant-breakdown/:id", async (req: any, reply) => {
+  if (!requireAdmin(req, reply)) return;
+  const id = Number(req.params.id);
+  const [ent] = await sql`select name from entrants where id = ${id}`;
+  if (!ent) return reply.code(404).send({ error: "not found" });
+
+  const groupRows = (await sql`
+    select m.matchday, m.group_name grp, m.status,
+           ht.name home, at.name away,
+           case when p.pred_home_team_id = m.home_team_id then p.pred_home_goals else p.pred_away_goals end ph,
+           case when p.pred_home_team_id = m.home_team_id then p.pred_away_goals else p.pred_home_goals end pa,
+           m.home_goals ah, m.away_goals aa, coalesce(s.points, 0)::int points
+    from predictions p
+    join matches m on m.id = p.match_id
+    join teams ht on ht.id = m.home_team_id
+    join teams at on at.id = m.away_team_id
+    left join scores s on s.entrant_id = p.entrant_id and s.ref = 'match:' || m.id
+    where p.entrant_id = ${id} and p.scope = 'MATCH' and m.stage = 'GROUP'
+    order by m.matchday, m.kickoff_utc, m.id
+  `) as any[];
+  const group = groupRows.map((r) => ({
+    phase: `Week ${r.matchday}`, group: r.grp,
+    home: r.home, away: r.away, pick: `${r.ph}-${r.pa}`,
+    actual: r.status === "FINISHED" ? `${r.ah}-${r.aa}` : "-",
+    points: r.points,
+  }));
+
+  const koPreds = (await sql`
+    select p.bracket_slot slot, ht.name home, at.name away, p.pred_home_goals phg, p.pred_away_goals pag
+    from predictions p
+    join teams ht on ht.id = p.pred_home_team_id
+    join teams at on at.id = p.pred_away_team_id
+    where p.entrant_id = ${id} and p.scope = 'SLOT'
+  `) as any[];
+  const koFix = (await sql`
+    select m.id, m.status, coalesce(m.home_goals_90, m.home_goals) hg, coalesce(m.away_goals_90, m.away_goals) ag,
+           ht.name home, at.name away
+    from matches m
+    left join teams ht on ht.id = m.home_team_id
+    left join teams at on at.id = m.away_team_id
+    where m.stage <> 'GROUP'
+  `) as any[];
+  const fixById = new Map<number, any>(koFix.map((f) => [f.id, f]));
+  const koPts = new Map<number, number>();
+  for (const s of (await sql`select ref, points from scores where entrant_id = ${id} and kind = 'KNOCKOUT'`) as any[]) {
+    koPts.set(Number(s.ref.split(":")[1]), s.points);
+  }
+  const ROUND_LABEL: Record<string, string> = { R32: "Round of 32", R16: "Round of 16", QF: "Quarter-final", SF: "Semi-final", THIRD: "Third place", FINAL: "Final" };
+  const knockout = koPreds.map((r) => {
+    const matchNo = PRED_SLOT_TO_MATCH[r.slot] ?? null;
+    const fx = matchNo != null ? fixById.get(matchNo) : null;
+    const played = fx && (fx.status === "FINISHED" || fx.status === "IN_PLAY");
+    return {
+      phase: ROUND_LABEL[r.slot.split("-")[0]] ?? r.slot, slot: r.slot, order: matchNo ?? 999,
+      home: r.home, away: r.away, pick: `${r.phg}-${r.pag}`,
+      actual: fx ? `${fx.home ?? "???"} ${played ? `${fx.hg}-${fx.ag}` : "v"} ${fx.away ?? "???"}` : "-",
+      points: matchNo != null ? (koPts.get(matchNo) ?? 0) : 0,
+    };
+  }).sort((a, b) => a.order - b.order);
+
+  return { entrant: ent.name, group, knockout };
+});
+
 // In production the same service serves the built React app. Registered after
 // all /api routes so they take precedence; everything else falls back to the
 // SPA's index.html for client-side routing.
