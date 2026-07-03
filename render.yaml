@@ -15,10 +15,10 @@ databases:
 services:
   - type: web
     name: world-cup-predictor
-    runtime: node
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:

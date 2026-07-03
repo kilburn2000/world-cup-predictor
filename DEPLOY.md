@@ -8,18 +8,21 @@ Render → **New → PostgreSQL** (name e.g. `wc-predictor-db`). Copy its **Inte
 (for the web service) and **External Database URL** (for the one-time data migration below).
 
 ## 2. Configure the web service
-On your existing web service → **Settings**:
+The service builds from the repo's `Dockerfile` (`render.yaml` sets
+`runtime: docker`). On your existing web service → **Settings**:
 
 | Setting | Value |
 |---|---|
-| Root Directory | *(blank — repo root)* |
-| Build Command | `npm install --include=dev && npm run build` |
-| Start Command | `npm start` |
+| Runtime | Docker |
+| Dockerfile Path | `./Dockerfile` |
+| Docker Build Context | `.` (repo root) |
 | Health Check Path | `/api/health` |
 | Auto-Deploy | On (`main`) |
 
-> `--include=dev` is required so the build tools (vite/typescript) install even with
-> `NODE_ENV=production`. The server runs via `tsx` (shipped as a runtime dependency).
+> The image builds the web bundle and prunes dev tooling; the server runs via
+> `tsx` (a runtime dependency). No Build/Start commands are needed - the
+> Dockerfile's `CMD` starts the app. Render injects `PORT`, which the server
+> honours. See `DOCKER.md` to run the same image locally.
 
 ## 3. Environment variables
 Service → **Environment** → add (copy the **values** from your local `server/.env`,
