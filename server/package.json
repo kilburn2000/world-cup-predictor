@@ -10,7 +10,8 @@
     "db:studio": "drizzle-kit studio",
     "seed": "tsx src/seed.ts",
     "verify:kickoffs": "tsx src/verifyKickoffs.ts",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts",
+    "restore:kickoffs": "tsx src/restoreKickoffs.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
