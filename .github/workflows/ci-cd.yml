@@ -1,10 +1,12 @@
-# CI for the World Cup predictor (React/Vite web + Node/tsx API + Postgres).
+# CI/CD for the World Cup predictor (React/Vite web + Node/tsx API + Postgres).
 #
-# Deployment (CD) is handled by RENDER, which builds the Docker image from this
-# repo's Dockerfile and deploys on push to main. This workflow is the quality
-# GATE: lint, type-check, test (with a Postgres service), Fallow audit, and the
-# Vite build. Make it a required status check (branch protection on main, or
-# Render's "Wait for CI checks to pass") so Render only ships green commits.
+# Push-to-deploy: on push to main, run the quality gate (lint, type-check, test
+# with a Postgres service, Fallow audit, Vite build); if it all passes, the
+# `deploy` job fires Render's deploy hook. A red build never deploys - prod stays
+# on the last good release. PRs run the gate only (no deploy).
+#
+# Render itself must have Auto-Deploy turned OFF (so only this workflow deploys)
+# and the deploy hook URL stored as the RENDER_DEPLOY_HOOK repo secret.
 #
 # Migrations run automatically inside the container on boot (the idempotent
 # migration block in server/src/index.ts) - no db:push step here, because
@@ -75,3 +77,18 @@ jobs:
 
       - name: Production build (Vite)
         run: npm run build
+
+  # Deploy only runs after `quality` passes, and only on a push to main (never on
+  # PRs). It fires Render's deploy hook; Render then builds the image, runs the
+  # boot migrations, and health-checks /api/health before switching traffic. A
+  # failed quality job means this never runs, so a red build never deploys.
+  deploy:
+    name: Deploy to Render
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" > /dev/null
+          echo "Render deploy triggered - it will build, migrate on boot, and health-check /api/health before going live."
