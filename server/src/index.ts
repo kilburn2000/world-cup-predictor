@@ -19,7 +19,6 @@ import { computeGroupStandings, buildKnockout, venueForSlot, GROUP_VENUES, predi
 import { topScorerStandings, eventsForMatches, matchEvents, topScorerTrend } from "./scorers.js";
 import { loginByEmail, userForToken, deleteSession, hashPassword, SESSION_COOKIE, type SessionUser } from "./auth.js";
 import { runImport, savePredictions, checkUnresolved, diffAgainstCurrent } from "./importSheet.js";
-import { REUPLOAD_2026_06_16 } from "./reupload_2026_06_16.js";
 import { extractFromPhoto, toPredictions } from "./photoImport.js";
 import { startPoller } from "./poller.js";
 
@@ -674,14 +673,18 @@ app.get("/api/stats", async () => {
   };
 });
 
-// Knockout competition group tables: each entrant is scored ONLY on their own
-// Entrant-group ties that were settled arbitrarily on the day (a nominated match's
-// scores), which the usual overall-total tiebreak can't reproduce. Hardcoded winner
-// beats loser whenever they're level on group points. [winnerName, loserName].
-const GROUP_TIEBREAK: [string, string][] = [
-  ["[redacted]", "[redacted]"],
-  ["[redacted]", "[redacted]"],
-];
+// Entrant-group ties that were settled arbitrarily on the day (a nominated
+// match's scores), which the usual overall-total tiebreak can't reproduce. The
+// winner beats the loser whenever they're level on group points. Loaded from the
+// DB at boot (loadGroupTiebreaks) as [winnerName, loserName] pairs, so participant
+// names live only in the database, never in source.
+let GROUP_TIEBREAK: [string, string][] = [];
+async function loadGroupTiebreaks() {
+  try {
+    const [row] = await sql`select value from app_config where key = 'group_tiebreaks'`;
+    if (Array.isArray(row?.value)) GROUP_TIEBREAK = row.value as [string, string][];
+  } catch { /* app_config not present yet - no overrides */ }
+}
 const groupTieOverride = (aName: string, bName: string): number => {
   for (const [w, l] of GROUP_TIEBREAK) {
     if (aName === w && bName === l) return -1;
@@ -1772,68 +1775,14 @@ try {
   // One-time: drop finished-match key events so the poller's backfill re-captures
   // them with the latest flags (own goal, penalty). Guarded so it runs only once.
   await sql`create table if not exists app_meta (key text primary key)`;
+  // Config that would otherwise hardcode participant data in source (e.g. the
+  // arbitrated group tiebreaks) lives here instead - seeded directly in the DB.
+  await sql`create table if not exists app_config (key text primary key, value jsonb not null)`;
+  await loadGroupTiebreaks();
   const [recaptured] = await sql`select 1 from app_meta where key = 'own_recapture_v3'`;
   if (!recaptured) {
     await sql`delete from match_events where match_id in (select id from matches where status = 'FINISHED')`;
     await sql`insert into app_meta (key) values ('own_recapture_v3')`;
-  }
-
-  // One-time: corrections found re-reading the entry photos against the DB
-  // (2026-06-16). Each update only touches the one intended prediction; the final
-  // recompute also re-scores everyone under the new "called-draw" rule.
-  const [audited] = await sql`select 1 from app_meta where key = 'pred_audit_fix_v1'`;
-  if (!audited) {
-    const fixes: [string, string, string, number, number][] = [
-      ["[redacted]", "Spain", "Cape Verde", 5, 0],
-      ["[redacted]", "Belgium", "Egypt", 2, 0],
-      ["[redacted]", "Saudi Arabia", "Uruguay", 0, 2],
-      ["[redacted]", "Iran", "New Zealand", 2, 1],
-      ["[redacted]", "Portugal", "Uzbekistan", 3, 0],
-      ["[redacted]", "Argentina", "Algeria", 2, 0],
-      ["[redacted]", "Uzbekistan", "Colombia", 0, 1],
-      ["[redacted]", "Colombia", "Congo DR", 2, 0],
-      ["[redacted]", "Iran", "New Zealand", 3, 1],
-      ["[redacted]", "Senegal", "Iraq", 1, 0],
-    ];
-    for (const [ent, h, a, gh, ga] of fixes) {
-      await sql`
-        update predictions p set pred_home_goals = ${gh}, pred_away_goals = ${ga}
-        from entrants e, teams ht, teams at
-        where p.entrant_id = e.id and p.pred_home_team_id = ht.id and p.pred_away_team_id = at.id
-          and p.match_id is not null
-          and e.name = ${ent} and ht.name = ${h} and at.name = ${a}`;
-    }
-    // [redacted]'s R32: opponent was transcribed as Sweden but the sheet reads
-    // Senegal (score 3-0 unchanged); Sweden was wrongly placed in two R32 ties.
-    await sql`
-      update predictions p set pred_away_team_id = (select id from teams where name = 'Senegal')
-      from entrants e, teams ht, teams at
-      where p.entrant_id = e.id and p.pred_home_team_id = ht.id and p.pred_away_team_id = at.id
-        and p.match_id is null
-        and e.name = '[redacted]' and ht.name = 'Germany' and at.name = 'Sweden'
-        and p.pred_home_goals = 3 and p.pred_away_goals = 0`;
-    await sql`insert into app_meta (key) values ('pred_audit_fix_v1')`;
-    await recomputeAll();
-  }
-
-  // 2026-06-16: [redacted] & [redacted] handed in fresh sheets - the OCR import
-  // was unreliable, so both were re-transcribed by hand and fully replaced. Runs
-  // once (prod picks it up on deploy); savePredictions wipes + re-inserts each.
-  // v3: more transcription fixes after re-reading the photos against the DB -
-  // Lucy: Rep. of Korea v Czechia 1-1 (was 2-1). Dave: England v Croatia 2-1
-  // (was 0-0) and Switzerland v Bosnia 2-1 (was 1-0).
-  const [reuploaded] = await sql`select 1 from app_meta where key = 'dave_lucy_reupload_v3'`;
-  if (!reuploaded) {
-    for (const { entrant, predictions } of REUPLOAD_2026_06_16) {
-      const r = await savePredictions(entrant, predictions);
-      if (r.unresolved.length) console.warn(`reupload ${entrant}: unresolved ${r.unresolved.join(", ")}`);
-      if (r.groupPredictions !== 72 || r.knockoutPredictions !== 32) {
-        throw new Error(`reupload ${entrant} wrote ${r.groupPredictions} group + ${r.knockoutPredictions} knockout (expected 72 + 32) - aborting, key not set`);
-      }
-    }
-    await sql`insert into app_meta (key) values ('dave_lucy_reupload_v3')`;
-    await recomputeAll();
-    console.log("reupload dave_lucy_reupload_v3 applied");
   }
 
   // 2026-07-02: the two evening R32 kickoff times were swapped versus the real
@@ -1855,42 +1804,6 @@ try {
         and h.name = 'Spain' and a.name = 'Austria'`;
     await sql`insert into app_meta (key) values ('r32_kickoff_fix_v1')`;
     console.log("r32_kickoff_fix_v1 applied");
-  }
-
-  // 2026-07-03: knockout scoring now uses the fixed positional map
-  // (PRED_SLOT_TO_MATCH) - slot N scored against the actual game N, exactly how the
-  // paper sheets are scored. Two entrants also needed prediction data fixes the
-  // import got wrong: [redacted]'s R32 away column had slipped (Morocco dropped,
-  // Sweden duplicated); [redacted]'s re-typed sheet had its R32 + R16 rows in a
-  // scrambled slot order. Both corrected here from the original photos. Runs once.
-  const [koFix] = await sql`select 1 from app_meta where key = 'ko_positional_fix_v1'`;
-  if (!koFix) {
-    await sql`
-      update predictions p set pred_away_team_id = t.id
-      from entrants e, teams t, (values
-        ('R32-4','Morocco'),('R32-5','Norway'),('R32-6','Sweden'),('R32-7','Haiti'),
-        ('R32-8','Congo DR'),('R32-9','Senegal'),('R32-10','Qatar'),('R32-11','Austria'),
-        ('R32-12','England'),('R32-13','New Zealand'),('R32-14','Egypt')
-      ) as fix(slot, away)
-      where e.name = '[redacted]' and p.entrant_id = e.id and p.scope = 'SLOT'
-        and p.bracket_slot = fix.slot and t.name = fix.away`;
-    await sql`
-      update predictions p set pred_home_team_id = h.id, pred_away_team_id = a.id,
-        pred_home_goals = fix.hg, pred_away_goals = fix.ag
-      from entrants e, teams h, teams a, (values
-        ('R32-1','South Africa','Bosnia',2,0),('R32-2','Brazil','Japan',2,0),('R32-3','Germany','Scotland',2,0),
-        ('R32-4','Netherlands','Morocco',3,0),('R32-5','Ivory Coast','Senegal',2,1),('R32-6','France','United States',2,1),
-        ('R32-7','Mexico','Ecuador',1,0),('R32-8','England','Congo DR',1,0),('R32-9','Belgium','Czechia',3,1),
-        ('R32-10','Paraguay','Canada',2,1),('R32-11','Spain','Austria',2,0),('R32-12','Colombia','Croatia',1,0),
-        ('R32-13','Switzerland','New Zealand',1,0),('R32-14','Türkiye','Egypt',1,2),('R32-15','Argentina','Uruguay',1,1),
-        ('R32-16','Portugal','Norway',2,0),('R16-1','South Africa','Netherlands',2,0),('R16-2','Germany','France',1,2),
-        ('R16-3','Brazil','Ivory Coast',3,1),('R16-4','Mexico','England',2,2),('R16-5','Colombia','Spain',1,3),
-        ('R16-6','Paraguay','Belgium',2,0),('R16-7','Argentina','Egypt',2,0),('R16-8','Switzerland','Portugal',1,2)
-      ) as fix(slot, home, away, hg, ag)
-      where e.name = '[redacted]' and p.entrant_id = e.id and p.scope = 'SLOT'
-        and p.bracket_slot = fix.slot and h.name = fix.home and a.name = fix.away`;
-    await sql`insert into app_meta (key) values ('ko_positional_fix_v1')`;
-    console.log("ko_positional_fix_v1 applied");
   }
 
   // 2026-07-04: kickoff times were wrong for most knockout fixtures. Knockout
