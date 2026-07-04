@@ -90,7 +90,7 @@ export async function syncFromEspn(): Promise<number> {
     let winnerId: number | null = null;
     if (status === "FINISHED") {
       if (m.winner) winnerId = m.winner === "home" ? homeId : awayId;
-      else winnerId = hg > ag ? dbm.home_team_id : hg < ag ? dbm.away_team_id : null;
+      else winnerId = (hg ?? 0) > (ag ?? 0) ? dbm.home_team_id : (hg ?? 0) < (ag ?? 0) ? dbm.away_team_id : null;
     }
 
     // keep the synthesised goal log in step with the score (handles both new

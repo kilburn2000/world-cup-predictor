@@ -23,7 +23,7 @@ export function toneFor(points: number) {
   return { bg: "rgba(217,83,79,0.16)", fg: "#e08a84" };                    // red (0)
 }
 
-export default function PointsPill({ points, tier, compact }: { points: number; tier?: LiveTier | null; compact?: boolean }) {
+export default function PointsPill({ points, compact }: { points: number; tier?: LiveTier | null; compact?: boolean }) {
   const t = toneFor(points);
   return (
     <span
