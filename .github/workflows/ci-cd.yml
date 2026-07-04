@@ -44,12 +44,12 @@ jobs:
       DATABASE_URL: postgres://worldcup:worldcup@localhost:5432/worldcup_test
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0 # full history so Fallow can diff the branch against main
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm

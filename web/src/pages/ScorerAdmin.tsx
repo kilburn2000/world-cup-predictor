@@ -15,6 +15,8 @@ export default function ScorerAdmin() {
   const token = getToken();
 
   const load = () => getScorerPlayers(token).then(setPlayers).catch(() => setStatus("Couldn’t load."));
+  // run once on mount; `load` is stable enough for this admin screen
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
   const save = async (id: number, raw: string) => {
