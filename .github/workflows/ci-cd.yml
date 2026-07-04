@@ -1,23 +1,14 @@
-# CI/CD for the World Cup predictor (React/Vite web + Node/tsx API + Postgres,
-# shipped as one Docker image).
+# CI for the World Cup predictor (React/Vite web + Node/tsx API + Postgres).
 #
-# Flow: on every push/PR to main -> lint, type-check, test (with a Postgres
-# service), Fallow audit, Vite build. On push to main only -> build the Docker
-# image tagged with the commit SHA, push to GHCR, then SSH to the deploy host to
-# run migrations, pull + start the new container (health-gated), and smoke-test.
+# Deployment (CD) is handled by RENDER, which builds the Docker image from this
+# repo's Dockerfile and deploys on push to main. This workflow is the quality
+# GATE: lint, type-check, test (with a Postgres service), Fallow audit, and the
+# Vite build. Make it a required status check (branch protection on main, or
+# Render's "Wait for CI checks to pass") so Render only ships green commits.
 #
-# Required repository SECRETS (Settings -> Secrets and variables -> Actions):
-#   DEPLOY_HOST      - host/IP of the docker-compose server
-#   DEPLOY_USER      - SSH user on that host
-#   DEPLOY_SSH_KEY   - private SSH key for that user (PEM)
-#   DEPLOY_PATH      - dir on the host holding docker-compose.prod.yml + .env
-#   APP_HEALTH_URL   - public health URL, e.g. https://towtonworldcup.com/api/health
-#   DEPLOY_SSH_PORT  - (optional) SSH port, defaults to 22
-# GHCR uses the built-in GITHUB_TOKEN (no secret to create).
-#
-# Host prerequisites: Docker + compose plugin installed, this repo's
-# docker-compose.prod.yml present in DEPLOY_PATH, and a .env there holding the
-# real DATABASE_URL + app secrets (ANTHROPIC_API_KEY, ADMIN_*, etc.).
+# Migrations run automatically inside the container on boot (the idempotent
+# migration block in server/src/index.ts) - no db:push step here, because
+# drizzle-kit push can be destructive against the live schema.
 
 name: CI/CD
 
@@ -29,9 +20,6 @@ on:
 
 permissions:
   contents: read
-
-env:
-  NODE_VERSION: "22"
 
 jobs:
   quality:
@@ -63,7 +51,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies
@@ -86,89 +74,3 @@ jobs:
 
       - name: Production build (Vite)
         run: npm run build
-
-  build-and-push:
-    name: Build & push image
-    needs: quality
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image: ${{ steps.image.outputs.name }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Compute image name (lowercased for GHCR)
-        id: image
-        run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build & push (tagged with the commit SHA)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ steps.image.outputs.name }}:${{ github.sha }}
-            ${{ steps.image.outputs.name }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  deploy:
-    name: Migrate & deploy
-    needs: build-and-push
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      # Steps 9 + 10: on the host, log in to GHCR, pull the SHA-tagged image, run
-      # pending migrations with it, then start the new container and wait for its
-      # health check to pass before this step succeeds.
-      - name: Migrate & deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.DEPLOY_PATH }}"
-            export IMAGE_TAG="${{ github.sha }}"
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            docker compose -f docker-compose.prod.yml pull app
-            # 9. run pending migrations with the new image against the live db
-            docker compose -f docker-compose.prod.yml up -d db
-            docker compose -f docker-compose.prod.yml run --rm app npm run db:push
-            # 10. start the new app container; --wait blocks until it is healthy
-            #     (the image's HEALTHCHECK), so an unhealthy release fails here
-            docker compose -f docker-compose.prod.yml up -d --wait app
-            docker logout ghcr.io
-            docker image prune -f
-
-      # Step 11: independent post-deploy smoke test against the public endpoint.
-      - name: Post-deploy smoke test
-        run: |
-          for i in $(seq 1 10); do
-            code=$(curl -fsS -o /dev/null -w '%{http_code}' "${{ secrets.APP_HEALTH_URL }}" || true)
-            echo "attempt $i -> HTTP $code"
-            if [ "$code" = "200" ]; then echo "healthy"; exit 0; fi
-            sleep 6
-          done
-          echo "health endpoint never returned 200"; exit 1
