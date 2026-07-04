@@ -110,9 +110,9 @@ export default function Home() {
           {signingIn ? "Signing in…" : "Sign in"}
         </button>
         {error && <p className="text-center text-[13px] text-down">{error}</p>}
-        <a href="mailto:[redacted]?subject=World%20Cup%20password%20reset" className="text-center text-[12px] text-muted hover:text-cream">
-          Forgot your password?
-        </a>
+        <p className="text-center text-[12px] text-muted">
+          Forgot your password? Ask the organiser to reset it.
+        </p>
       </form>
       <p className="mt-4 text-center text-sm">
         <Link to="/standings/overall" className="text-gold hover:underline">Browse the standings →</Link>
