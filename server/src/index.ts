@@ -10,7 +10,7 @@ import { existsSync } from "node:fs";
 import { z } from "zod";
 import { DEFAULT_SCORING } from "@wc/shared";
 import { sql } from "./db/index.js";
-import { fd, mapGroup } from "./footballData.js";
+import { fd, mapGroup, mapStage } from "./footballData.js";
 import { recomputeAll, loadConfig } from "./score.js";
 import { scoreGroupMatch, standingKey, knockoutGroupKey } from "@wc/shared";
 import { getMatches as getEspnMatches } from "./espn.js";
@@ -1749,6 +1749,20 @@ if (existsSync(webDist)) {
 // them up on deploy without a manual step).
 try {
   await sql`update teams set name = 'Bosnia' where name = 'Bosnia-Herzegovina'`;
+  // match_events is managed via raw SQL (not the drizzle schema), so a fresh DB
+  // from `drizzle-kit push` won't have it. Create it before the ALTERs below -
+  // otherwise the first ALTER throws on a fresh DB and aborts the whole block,
+  // leaving later columns (home_goals_90) missing and the leaderboard 500ing.
+  await sql`create table if not exists match_events (
+    id serial primary key,
+    match_id integer not null references matches(id) on delete cascade,
+    minute integer,
+    type text,
+    team text,
+    player text,
+    own boolean not null default false,
+    penalty boolean not null default false
+  )`;
   await sql`alter table match_events add column if not exists own boolean not null default false`;
   await sql`alter table match_events add column if not exists penalty boolean not null default false`;
   // Knockout ties store the FINAL score (home_goals/away_goals, incl. extra time)
@@ -1877,6 +1891,42 @@ try {
         and p.bracket_slot = fix.slot and h.name = fix.home and a.name = fix.away`;
     await sql`insert into app_meta (key) values ('ko_positional_fix_v1')`;
     console.log("ko_positional_fix_v1 applied");
+  }
+
+  // 2026-07-04: kickoff times were wrong for most knockout fixtures. Knockout
+  // rows don't sync their kickoff by api_match_id (that linkage is unreliable),
+  // and sim/test runs stamped some kickoffs to now(). football-data holds the
+  // real times, so match its fixtures by TEAM PAIR + STAGE (order-independent,
+  // NOT api_match_id) and correct kickoff_utc wherever it differs. Kickoff only -
+  // scores and result_overridden are left untouched, so no manual result override
+  // is disturbed. Guarded; if the feed is unreachable the outer catch leaves the
+  // key unset so it retries on the next boot.
+  const [koTimes] = await sql`select 1 from app_meta where key = 'kickoff_restore_v1'`;
+  if (!koTimes) {
+    const { matches: feed } = await fd.matches();
+    const teamMap = new Map(
+      (await sql`select id, api_team_id from teams where api_team_id is not null`)
+        .map((r: any) => [r.api_team_id as number, r.id as number]),
+    );
+    const fixed: string[] = [];
+    for (const fm of feed as any[]) {
+      const hid = fm.homeTeam?.id ? teamMap.get(fm.homeTeam.id) : null;
+      const aid = fm.awayTeam?.id ? teamMap.get(fm.awayTeam.id) : null;
+      if (!hid || !aid || !fm.utcDate) continue; // teams not yet known / no time
+      const stage = mapStage(fm.stage);
+      const rows = (await sql`
+        update matches
+        set kickoff_utc = ${fm.utcDate}
+        where stage = ${stage}
+          and ((home_team_id = ${hid} and away_team_id = ${aid})
+            or (home_team_id = ${aid} and away_team_id = ${hid}))
+          and kickoff_utc is distinct from ${fm.utcDate}::timestamptz
+        returning id, result_overridden ovr
+      `) as any[];
+      for (const r of rows) fixed.push(`m${r.id} ${stage}->${fm.utcDate}${r.ovr ? " (still overridden)" : ""}`);
+    }
+    console.log(`[kickoff_restore_v1] corrected ${fixed.length} kickoff(s): ${fixed.join(", ") || "none"}`);
+    await sql`insert into app_meta (key) values ('kickoff_restore_v1')`;
   }
 } catch (e) {
   console.error("startup migration failed", e);
