@@ -68,12 +68,24 @@ jobs:
       - name: Test (Vitest)
         run: npm test
 
-      # Fallow audit. Currently NON-BLOCKING (continue-on-error) until we confirm
-      # `fallow` installs in CI - flip continue-on-error to false to make it a
-      # hard gate that fails the build on issues, as originally specced.
+      # Audit the actual diff this push/PR introduces (dead code, complexity,
+      # duplication in changed files) and FAIL the build on new issues. Fallow's
+      # default gate only counts findings the change introduces, not inherited
+      # ones. Base = the PR's base on PRs, else the commit before this push.
       - name: Fallow audit
-        continue-on-error: true
-        run: npx --yes fallow audit --base main --format json --quiet
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          # first push to a new branch has an all-zero "before"; fall back to the
+          # commit's parent so there's always a real diff to audit.
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="$(git rev-parse HEAD^ 2>/dev/null || git rev-parse HEAD)"
+          fi
+          echo "Auditing changes since $BASE"
+          npx --yes fallow audit --base "$BASE" --format json --quiet
 
       - name: Production build (Vite)
         run: npm run build
