@@ -28,6 +28,9 @@ services:
     build: .
     ports:
       - "8790:8790"
+    # Cap memory so a runaway can't take down your machine (local only; Render
+    # sizes its own instances). The app OOM-kills + restarts if it exceeds this.
+    mem_limit: 512m
     # These are set here (not via .env) on purpose: the compose app always talks
     # to the bundled `db` service. `environment:` wins over `env_file:`, so a
     # DATABASE_URL in .env is intentionally ignored - to point at an external
